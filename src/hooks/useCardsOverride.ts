@@ -36,8 +36,6 @@ export function useCardsOverride(eventId?: string) {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
       const url = new URL(`${apiBaseUrl}/cards`);
       url.searchParams.append('event_id', eventId);
-      // Always include archived cards since we need them for the archived tab
-      url.searchParams.append('include_archived', 'true');
       console.log("useCardsOverride: Fetching cards from", url.toString());
       
       const response = await authFetch(url.toString());

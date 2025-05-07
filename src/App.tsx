@@ -7,7 +7,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import PricingPage from './pages/PricingPage';
 import Dashboard from './components/EventDetails';
-import DashboardCopy from './components/DashboardCopy';
+import EventsHome from './components/EventsHome';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminSettings from './components/AdminSettings';
@@ -47,7 +47,7 @@ function App() {
           <Route element={<AppLayout><Outlet /></AppLayout>}>
             {/* Redirect /dashboard to /events */}
             <Route path="/dashboard" element={<Navigate to="/events" replace />} />
-            <Route path="/events" element={<DashboardCopy />} />
+            <Route path="/events" element={<EventsHome />} />
             <Route path="/events/:eventId" element={<Dashboard />} />
             <Route path="/settings" element={<AdminSettings />} />
             <Route path="/scan" element={<ScanPage />} />

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, Camera, Cog, ChevronLeft, ChevronRight, User } from 'lucide-react'
+import { CalendarDays, Camera, Cog, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useLocation, Link } from 'react-router-dom'
@@ -15,7 +15,6 @@ export default function Sidebar() {
     { href: '/scan', label: 'Scan', icon: <Camera /> },
   ]
   const bottomItems = [
-    { href: '/users', label: 'Users', icon: <User /> },
     { href: '/settings', label: 'Settings', icon: <Cog /> },
   ]
 

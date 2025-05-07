@@ -1457,11 +1457,6 @@ const Dashboard = () => {
     prevHideExported.current = hideExported;
   }, [hideExported]);
 
-  // Add this effect after the state declarations for rowSelection, selectedTab, hideExported, debouncedSearchQuery
-  useEffect(() => {
-    setRowSelection({});
-  }, [selectedTab, hideExported, debouncedSearchQuery]);
-
   // --- JSX ---
   return (
     <ErrorBoundary>
