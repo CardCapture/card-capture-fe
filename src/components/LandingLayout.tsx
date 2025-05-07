@@ -1,0 +1,181 @@
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { Menu, X } from 'lucide-react';
+
+interface LandingLayoutProps {
+  children: React.ReactNode;
+}
+
+const LandingLayout = ({ children }: LandingLayoutProps) => {
+  const location = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const NavLink = ({ to, children, className = '' }: { to: string; children: React.ReactNode; className?: string }) => (
+    <Link 
+      to={to} 
+      className={`relative px-4 py-2 text-sm font-medium transition-colors hover:text-primary ${
+        location.pathname === to 
+          ? 'text-primary font-semibold' 
+          : 'text-foreground/60'
+      } ${className}`}
+      onClick={() => setMobileMenuOpen(false)}
+    >
+      {location.pathname === to && (
+        <span className="absolute inset-0 bg-primary/10 rounded-full -z-10" />
+      )}
+      {children}
+    </Link>
+  );
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Header Navigation */}
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled ? 'bg-white/70 dark:bg-black/70 backdrop-blur-lg shadow-md py-3' : 'bg-transparent py-5'
+      }`}>
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-2">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                <span className="text-white font-bold text-lg">CC</span>
+              </div>
+              <span className="font-bold text-xl tracking-tight">CardCapture</span>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center flex-1 justify-center">
+              <nav className="flex items-center space-x-6">
+                <NavLink to="/">Home</NavLink>
+                <NavLink to="/pricing">Pricing</NavLink>
+              </nav>
+            </div>
+            
+            {/* Right side navigation */}
+            <div className="hidden md:flex items-center">
+              <Link 
+                to="/get-started"
+                className="px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Get Started
+              </Link>
+              
+              {user ? (
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  className="ml-3"
+                  onClick={() => navigate('/events')}
+                >
+                  Go to Dashboard
+                </Button>
+              ) : (
+                <Link to="/login" className="ml-3">
+                  <Button variant="default" size="sm">
+                    Login
+                  </Button>
+                </Link>
+              )}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden p-2"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+          </div>
+
+          {/* Mobile Navigation */}
+          {mobileMenuOpen && (
+            <nav className="md:hidden py-4 space-y-2">
+              <NavLink to="/">Home</NavLink>
+              <NavLink to="/pricing">Pricing</NavLink>
+              <Link 
+                to="/get-started"
+                className="block px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Get Started
+              </Link>
+              {!user && (
+                <NavLink to="/login">Login</NavLink>
+              )}
+            </nav>
+          )}
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 pt-20">
+        {children}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-secondary/30 py-12">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">CC</span>
+                </div>
+                <span className="font-bold text-lg tracking-tight">CardCapture</span>
+              </div>
+              <p className="text-sm text-foreground/70">
+                Transform handwritten prospect cards into digital data with AI-powered technology.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-4">Product</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link to="/pricing" className="text-foreground/70 hover:text-foreground">Pricing</Link></li>
+                <li><Link to="/features" className="text-foreground/70 hover:text-foreground">Features</Link></li>
+                <li><Link to="/login" className="text-foreground/70 hover:text-foreground">Login</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-4">Company</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link to="/about" className="text-foreground/70 hover:text-foreground">About</Link></li>
+                <li><Link to="/contact" className="text-foreground/70 hover:text-foreground">Contact</Link></li>
+                <li><Link to="/privacy" className="text-foreground/70 hover:text-foreground">Privacy Policy</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-4">Legal</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link to="/terms" className="text-foreground/70 hover:text-foreground">Terms of Service</Link></li>
+                <li><Link to="/privacy" className="text-foreground/70 hover:text-foreground">Privacy Policy</Link></li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-12 pt-8 border-t border-foreground/10 text-center text-sm text-foreground/70">
+            <p>&copy; {new Date().getFullYear()} CardCapture. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default LandingLayout; 
