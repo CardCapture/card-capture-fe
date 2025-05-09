@@ -43,3 +43,6 @@ yarn-error.log*
 
 # Yarn Integrity file
 .yarn-integrity
+
+supabase/.temp
+supabase/.branches

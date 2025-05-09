@@ -1,3 +1,22 @@
+-- Create user_type enum if it doesn't exist
+DO $$ BEGIN
+    CREATE TYPE user_type AS ENUM ('user', 'admin');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+-- Create profiles table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    first_name TEXT,
+    last_name TEXT,
+    role user_type NOT NULL DEFAULT 'user',
+    school_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Drop existing trigger and function if they exist
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();

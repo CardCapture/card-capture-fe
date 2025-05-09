@@ -1,12 +1,4 @@
--- Create schools table
-CREATE TABLE IF NOT EXISTS public.schools (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    pricing_tier TEXT NOT NULL DEFAULT 'starter',
-    stripe_price_id TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+
 
 -- Add RLS policies
 ALTER TABLE public.schools ENABLE ROW LEVEL SECURITY;
