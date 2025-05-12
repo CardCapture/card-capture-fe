@@ -1,15 +1,22 @@
 // src/pages/LoginPage.tsx
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Import Link if needed
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom"; // Import Link if needed
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signInWithPassword } = useAuth(); // Get function from context
@@ -19,8 +26,11 @@ const LoginPage = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    const { error: signInError } = await signInWithPassword({ email, password });
+    console.log("Signing in with email:", email, "and password:", password);
+    const { error: signInError } = await signInWithPassword({
+      email,
+      password,
+    });
 
     if (signInError) {
       setError(signInError.message); // Show Supabase error message
@@ -29,7 +39,7 @@ const LoginPage = () => {
       // Login successful! onAuthStateChange handles context update.
       // Redirect user to the dashboard.
       // setLoading(false); // No need to set loading false here, as navigation occurs
-      navigate('/dashboard', { replace: true }); // Replace login page in history
+      navigate("/dashboard", { replace: true }); // Replace login page in history
     }
     // setLoading(false); // Redundant if navigating away on success
   };
@@ -43,13 +53,17 @@ const LoginPage = () => {
             <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
               <span className="text-white font-bold text-xl">CC</span>
             </div>
-            <span className="font-bold text-2xl tracking-tight">CardCapture</span>
+            <span className="font-bold text-2xl tracking-tight">
+              CardCapture
+            </span>
           </div>
         </div>
 
         <Card className="w-full border-muted-foreground/20 shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">
+              Welcome back
+            </CardTitle>
             <CardDescription className="text-center">
               Enter your credentials to access your account
             </CardDescription>
@@ -88,9 +102,9 @@ const LoginPage = () => {
               )}
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button 
-                type="submit" 
-                className="w-full transition-all duration-200" 
+              <Button
+                type="submit"
+                className="w-full transition-all duration-200"
                 disabled={loading}
                 size="lg"
               >
@@ -100,11 +114,11 @@ const LoginPage = () => {
                     <span>Signing In...</span>
                   </div>
                 ) : (
-                  'Sign In'
+                  "Sign In"
                 )}
               </Button>
               <p className="text-center text-sm text-muted-foreground">
-                Don't have an account?{' '}
+                Don't have an account?{" "}
                 <Link to="/signup" className="text-primary hover:underline">
                   Sign up
                 </Link>
