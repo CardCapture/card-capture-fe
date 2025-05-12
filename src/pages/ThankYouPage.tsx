@@ -46,7 +46,7 @@ const ThankYouPage = () => {
                   <Button
                     onClick={() => navigate('/pricing')}
                   >
-                    View Pricing
+                   Request Demo 
                   </Button>
                 </div>
               </div>

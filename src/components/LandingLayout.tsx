@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Menu, X } from 'lucide-react';
+import ccLogoOnly from '../../assets/cc-logo-only.svg';
 
 interface LandingLayoutProps {
   children: React.ReactNode;
@@ -50,17 +51,14 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-white font-bold text-lg">CC</span>
-              </div>
+              <img src={ccLogoOnly} alt="Card Capture Logo" className="h-10 w-10" />
               <span className="font-bold text-xl tracking-tight">CardCapture</span>
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center flex-1 justify-center">
               <nav className="flex items-center space-x-6">
-                <NavLink to="/">Home</NavLink>
-                <NavLink to="/pricing">Pricing</NavLink>
+                {/* No links needed since Home is the only page */}
               </nav>
             </div>
             
@@ -71,7 +69,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                 className="px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Get Started
+                Request Demo
               </Link>
               
               {user ? (
@@ -108,14 +106,13 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
             <nav className="md:hidden py-4 space-y-2">
-              <NavLink to="/">Home</NavLink>
-              <NavLink to="/pricing">Pricing</NavLink>
+              {/* No links needed since Home is the only page */}
               <Link 
                 to="/get-started"
                 className="block px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Get Started
+                Request Demo
               </Link>
               {!user && (
                 <NavLink to="/login">Login</NavLink>
@@ -136,9 +133,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">CC</span>
-                </div>
+                <img src={ccLogoOnly} alt="Card Capture Logo" className="h-8 w-8" />
                 <span className="font-bold text-lg tracking-tight">CardCapture</span>
               </div>
               <p className="text-sm text-foreground/70">
@@ -148,8 +143,6 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
             <div>
               <h3 className="font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/pricing" className="text-foreground/70 hover:text-foreground">Pricing</Link></li>
-                <li><Link to="/features" className="text-foreground/70 hover:text-foreground">Features</Link></li>
                 <li><Link to="/login" className="text-foreground/70 hover:text-foreground">Login</Link></li>
               </ul>
             </div>
@@ -158,13 +151,6 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
               <ul className="space-y-2 text-sm">
                 <li><Link to="/about" className="text-foreground/70 hover:text-foreground">About</Link></li>
                 <li><Link to="/contact" className="text-foreground/70 hover:text-foreground">Contact</Link></li>
-                <li><Link to="/privacy" className="text-foreground/70 hover:text-foreground">Privacy Policy</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Legal</h3>
-              <ul className="space-y-2 text-sm">
-                <li><Link to="/terms" className="text-foreground/70 hover:text-foreground">Terms of Service</Link></li>
                 <li><Link to="/privacy" className="text-foreground/70 hover:text-foreground">Privacy Policy</Link></li>
               </ul>
             </div>
