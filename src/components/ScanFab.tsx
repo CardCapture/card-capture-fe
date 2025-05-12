@@ -108,6 +108,8 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
     const formData = new FormData();
     formData.append("file", file);
     formData.append("event_id", selectedEventId);
+    // Add school_id if available (optional, adjust as needed)
+    // formData.append("school_id", selectedSchoolId);
     console.log('FormData created:', {
       file: file.name,
       event_id: selectedEventId
@@ -115,10 +117,13 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
     const timer = setTimeout(() => setLocalUploadProgress(50 + Math.random() * 20), 600);
 
     try {
-      // Always make the upload request directly, ignoring onUploadRequested
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      console.log('Making upload request to:', `${apiBaseUrl}/upload`);
-      const response = await authFetch(`${apiBaseUrl}/upload`, {
+      let endpoint = "/upload";
+      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
+        endpoint = "/bulk-upload";
+      }
+      console.log('Making upload request to:', `${apiBaseUrl}${endpoint}`);
+      const response = await authFetch(`${apiBaseUrl}${endpoint}`, {
         method: "POST",
         body: formData,
       });
@@ -135,7 +140,7 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
           <div className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
             <span className="text-sm font-medium">
-              Card uploaded successfully.
+              {endpoint === "/bulk-upload" ? `Bulk upload successful. ${data.jobs_created} cards queued.` : "Card uploaded successfully."}
             </span>
           </div>
         ),
@@ -250,8 +255,9 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
               </SelectContent>
             </Select>
             <Button onClick={() => fileInputRef.current?.click()}>
-              Choose File
+              Upload Image or PDF
             </Button>
+            <span className="text-xs text-muted-foreground">Accepted file types: Images (JPG, PNG, etc.) or PDF (one or more cards)</span>
           </div>
         </DialogContent>
       </Dialog>
@@ -260,7 +266,7 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
         type="file"
         ref={fileInputRef}
         onChange={handleFileSelect}
-        accept="image/*"
+        accept="application/pdf,image/*"
         className="hidden"
       />
 
