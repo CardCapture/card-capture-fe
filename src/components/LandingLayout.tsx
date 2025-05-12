@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Menu, X } from 'lucide-react';
+import ccLogoOnly from '../../assets/cc-logo-only.svg';
 
 interface LandingLayoutProps {
   children: React.ReactNode;
@@ -50,9 +51,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-white font-bold text-lg">CC</span>
-              </div>
+              <img src={ccLogoOnly} alt="Card Capture Logo" className="h-10 w-10" />
               <span className="font-bold text-xl tracking-tight">CardCapture</span>
             </Link>
 
@@ -136,9 +135,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">CC</span>
-                </div>
+                <img src={ccLogoOnly} alt="Card Capture Logo" className="h-8 w-8" />
                 <span className="font-bold text-lg tracking-tight">CardCapture</span>
               </div>
               <p className="text-sm text-foreground/70">
