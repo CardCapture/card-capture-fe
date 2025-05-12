@@ -58,8 +58,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center flex-1 justify-center">
               <nav className="flex items-center space-x-6">
-                <NavLink to="/">Home</NavLink>
-                <NavLink to="/pricing">Plans</NavLink>
+                {/* No links needed since Home is the only page */}
               </nav>
             </div>
             
@@ -107,8 +106,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
             <nav className="md:hidden py-4 space-y-2">
-              <NavLink to="/">Home</NavLink>
-              <NavLink to="/pricing">Plans</NavLink>
+              {/* No links needed since Home is the only page */}
               <Link 
                 to="/get-started"
                 className="block px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -145,7 +143,6 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
             <div>
               <h3 className="font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/pricing" className="text-foreground/70 hover:text-foreground">Plans</Link></li>
                 <li><Link to="/login" className="text-foreground/70 hover:text-foreground">Login</Link></li>
               </ul>
             </div>

@@ -5,7 +5,6 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 // --- Component & Page Imports ---
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
-import PricingPage from './pages/PricingPage';
 import Dashboard from './components/EventDetails';
 import EventsHome from './components/EventsHome';
 import NotFound from './pages/NotFound';
@@ -33,7 +32,6 @@ function App() {
         {/* --- Public Routes with Landing Layout --- */}
         <Route element={<LandingLayout><Outlet /></LandingLayout>}>
           <Route path="/" element={<HomePage />} />
-          <Route path="/pricing" element={<PricingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/get-started" element={<GetStartedPage />} />
           <Route path="/thank-you" element={<ThankYouPage />} />

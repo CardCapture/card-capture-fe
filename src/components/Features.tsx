@@ -144,14 +144,6 @@ const Features = () => {
             >
               Request Demo
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="text-lg bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10"
-              onClick={() => navigate('/pricing')}
-            >
-              See Plans
-            </Button>
           </div>
         </div>
       </section>
