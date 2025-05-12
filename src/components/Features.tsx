@@ -142,7 +142,7 @@ const Features = () => {
               className="text-lg"
               onClick={() => navigate('/get-started')}
             >
-              Get Started Free
+              Request Demo
             </Button>
             <Button 
               size="lg" 
@@ -150,7 +150,7 @@ const Features = () => {
               className="text-lg bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10"
               onClick={() => navigate('/pricing')}
             >
-              View Pricing
+              See Plans
             </Button>
           </div>
         </div>

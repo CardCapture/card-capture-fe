@@ -48,7 +48,7 @@ const Hero = () => {
                 className="text-lg"
                 onClick={() => navigate('/pricing')}
               >
-                View Pricing
+                See Plans
               </Button>
             </div>
 
