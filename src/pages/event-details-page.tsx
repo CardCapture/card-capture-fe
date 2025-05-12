@@ -364,7 +364,8 @@ const EventDetailsPage = () => {
         case 'exported': 
           return currentStatus === 'exported';
         case 'archived': 
-          return currentStatus === 'archived';
+          // Always show cards with review_status 'archived' in the archived tab
+          return card.review_status === 'archived';
         default: 
           return true;
       }

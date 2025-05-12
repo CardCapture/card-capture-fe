@@ -211,20 +211,18 @@ export function useCardsOverride(eventId?: string) {
   const getStatusCount = useCallback((status: CardStatus) => {
     if (!Array.isArray(cards)) return 0;
     
-    // Log the cards being counted for debugging
-    console.log('Counting cards:', cards.map(card => ({
+    // Log the raw review_status of each card for debugging
+    console.log('Raw card review_status:', cards.map(card => ({
       id: card.id,
-      review_status: card.review_status,
-      determined_status: determineCardStatus(card)
+      review_status: card.review_status
     })));
     
     return cards.filter(card => {
+      // For archived status, check the raw review_status directly
+      if (status === 'archived') {
+        return card.review_status === 'archived';
+      }
       const cardStatus = determineCardStatus(card);
-      console.log('Card status:', {
-        id: card.id,
-        review_status: card.review_status,
-        determined_status: cardStatus
-      });
       return cardStatus === status;
     }).length;
   }, [cards]);

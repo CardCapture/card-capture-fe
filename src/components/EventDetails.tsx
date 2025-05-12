@@ -990,7 +990,21 @@ const Dashboard = () => {
       rowSelection,
     },
     enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: (updater) => {
+      setRowSelection((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater;
+        // Map selected row indices to card IDs using filteredCards
+        const ids = Object.keys(next)
+          .filter((key) => next[key])
+          .map((key) => {
+            const idx = parseInt(key, 10);
+            return filteredCards[idx]?.id;
+          })
+          .filter(Boolean);
+        setSelectedCardIds(ids as string[]);
+        return next;
+      });
+    },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -1273,16 +1287,12 @@ const Dashboard = () => {
     }
   }, [rowSelection, table, dataFieldsMap, toast, fetchCards, selectedEvent]);
 
-  // Update handleArchiveSelected to use the table's selected row model
+  // Add state for selected card IDs
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+
   const handleArchiveSelected = useCallback(async () => {
     try {
-      // Use the table's selected row model for robust selection
-      const selectedRows = table.getSelectedRowModel().rows;
-      const selectedIds = selectedRows.map((row) => row.original.id);
-      console.log("Selected rows:", selectedRows);
-      console.log("Selected IDs:", selectedIds);
-
-      if (selectedIds.length === 0) {
+      if (selectedCardIds.length === 0) {
         toast({
           title: "No Cards Selected",
           description: "Please select at least one card to archive.",
@@ -1290,20 +1300,17 @@ const Dashboard = () => {
         });
         return;
       }
-
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${apiBaseUrl}/archive-cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: selectedIds }),
+        body: JSON.stringify({ document_ids: selectedCardIds }),
       });
-
       if (!response.ok) {
         throw new Error("Failed to archive cards");
       }
-
       setRowSelection({});
+      setSelectedCardIds([]);
       await fetchCards();
       toast({
         title: "Success",
@@ -1317,7 +1324,45 @@ const Dashboard = () => {
         variant: "destructive",
       });
     }
-  }, [table, toast, fetchCards]);
+  }, [selectedCardIds, toast, fetchCards]);
+
+  const handleExportSelected = useCallback(async () => {
+    try {
+      if (selectedCardIds.length === 0) {
+        toast({
+          title: "No Cards Selected",
+          description: "Please select at least one card to export.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const response = await fetch(`${apiBaseUrl}/mark-exported`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document_ids: selectedCardIds }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to mark cards as exported");
+      }
+      // ... existing CSV export logic ...
+      setRowSelection({});
+      setSelectedCardIds([]);
+      await fetchCards();
+      toast({
+        title: "Export Successful",
+        description: `${selectedCardIds.length} ${selectedCardIds.length === 1 ? "card" : "cards"} exported successfully.`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error exporting cards:", error);
+      toast({
+        title: "Export Failed",
+        description: "Something went wrong while exporting cards. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [selectedCardIds, toast, fetchCards, selectedEvent, dataFieldsMap]);
 
   // Update the modal open/close handlers
   const handleModalOpenChange = useCallback(
@@ -1906,7 +1951,7 @@ const Dashboard = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={downloadCSV}
+                            onClick={handleExportSelected}
                             className="text-gray-700 hover:text-gray-900 gap-1.5"
                             disabled={isUploading}
                           >
