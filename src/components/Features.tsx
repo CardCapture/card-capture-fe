@@ -14,7 +14,7 @@ const Features = () => {
     {
       icon: <Brain className="h-6 w-6 text-green-500" />,
       title: "AI-Powered Review",
-      description: "Our AI reviewer does the first pass, reducing manual data entry by 80%. Humans review and clean up what's left.",
+      description: "Our AI reviewer does the first pass, reducing manual data entry by 95%. Humans review and clean up what's left.",
     },
     {
       icon: <Check className="h-6 w-6 text-blue-500" />,
@@ -24,7 +24,7 @@ const Features = () => {
     {
       icon: <Database className="h-6 w-6 text-indigo-500" />,
       title: "CRM Integration",
-      description: "Seamlessly sync with your favorite CRM systems through our secure API connections.",
+      description: "Seamlessly sync with Slate through our secure SFTP connection.",
     },
     {
       icon: <FileSpreadsheet className="h-6 w-6 text-amber-500" />,
@@ -56,7 +56,7 @@ const Features = () => {
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Powerful Features for Modern Recruitment</h2>
             <p className="text-lg text-foreground/70">
-              Transform your recruitment process with our comprehensive suite of features designed for efficiency and accuracy.
+              Transform your recruitment and college fair process with our comprehensive suite of features designed for efficiency and accuracy.
             </p>
           </div>
 
@@ -103,7 +103,7 @@ const Features = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">AI Review</h3>
               <p className="text-foreground/70">
-                Our AI reviewer does the first pass, reducing manual data entry by 80%.
+                Our AI reviewer does the first pass, reducing manual data entry by 95%.
               </p>
             </div>
             <div className="text-center">

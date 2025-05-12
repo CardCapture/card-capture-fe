@@ -70,7 +70,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                 className="px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Get Started
+                Request Demo
               </Link>
               
               {user ? (
@@ -114,7 +114,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                 className="block px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Get Started
+                Request Demo
               </Link>
               {!user && (
                 <NavLink to="/login">Login</NavLink>
@@ -146,7 +146,6 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
               <h3 className="font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/pricing" className="text-foreground/70 hover:text-foreground">Pricing</Link></li>
-                <li><Link to="/features" className="text-foreground/70 hover:text-foreground">Features</Link></li>
                 <li><Link to="/login" className="text-foreground/70 hover:text-foreground">Login</Link></li>
               </ul>
             </div>
@@ -155,13 +154,6 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
               <ul className="space-y-2 text-sm">
                 <li><Link to="/about" className="text-foreground/70 hover:text-foreground">About</Link></li>
                 <li><Link to="/contact" className="text-foreground/70 hover:text-foreground">Contact</Link></li>
-                <li><Link to="/privacy" className="text-foreground/70 hover:text-foreground">Privacy Policy</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Legal</h3>
-              <ul className="space-y-2 text-sm">
-                <li><Link to="/terms" className="text-foreground/70 hover:text-foreground">Terms of Service</Link></li>
                 <li><Link to="/privacy" className="text-foreground/70 hover:text-foreground">Privacy Policy</Link></li>
               </ul>
             </div>

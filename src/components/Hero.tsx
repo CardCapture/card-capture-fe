@@ -30,7 +30,7 @@ const Hero = () => {
             </h1>
 
             <p className="text-lg md:text-xl text-foreground/80 max-w-xl">
-              Our AI reviewer does the heavy lifting, reducing manual data entry by 80%. Just review and export - it's that simple.
+              Our AI reviewer does the heavy lifting, reducing manual data entry by 95%. Just review and export - it's that simple.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -39,7 +39,7 @@ const Hero = () => {
                 className="text-lg"
                 onClick={() => navigate('/get-started')}
               >
-                Get Started
+                Request Demo
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button 
@@ -60,7 +60,7 @@ const Hero = () => {
 
               <div className="flex items-center gap-2 text-sm text-foreground/70">
                 <CheckCircle className="h-5 w-5 text-primary" />
-                <span>80% less manual entry</span>
+                <span>95% less manual entry</span>
               </div>
 
               <div className="flex items-center gap-2 text-sm text-foreground/70">

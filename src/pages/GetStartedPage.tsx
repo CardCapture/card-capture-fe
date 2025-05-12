@@ -84,7 +84,7 @@ const GetStartedPage = () => {
             <h1 className="text-4xl font-bold tracking-tight">Ready to Capture More Cards?</h1>
           </div>
           <p className="text-lg text-muted-foreground">
-            Tell us about your school and we'll reach out to help you get started.
+            Tell us about your school and we'll reach out to book a demo.
           </p>
         </motion.div>
 
@@ -95,7 +95,7 @@ const GetStartedPage = () => {
         >
           <Card className="w-full">
             <CardHeader>
-              <CardTitle>Get Started</CardTitle>
+              <CardTitle>Request a Demo</CardTitle>
               <CardDescription>
                 Fill out the form below and we'll be in touch shortly.
               </CardDescription>
