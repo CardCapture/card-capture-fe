@@ -266,7 +266,7 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
         type="file"
         ref={fileInputRef}
         onChange={handleFileSelect}
-        accept="application/pdf,image/*"
+        accept=".pdf,image/*"
         className="hidden"
       />
 

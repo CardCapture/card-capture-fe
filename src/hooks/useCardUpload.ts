@@ -19,7 +19,11 @@ export const useCardUpload = () => {
       formData.append("school_id", schoolId);
       
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await authFetch(`${apiBaseUrl}/upload`, {
+      let endpoint = "/upload";
+      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
+        endpoint = "/bulk-upload";
+      }
+      const response = await authFetch(`${apiBaseUrl}${endpoint}`, {
         method: 'POST',
         body: formData
       }, session?.access_token);

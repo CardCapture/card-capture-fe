@@ -718,7 +718,7 @@ const DashboardCopy = () => {
               type="file"
               ref={fileInputRef}
               onChange={handleFileSelect}
-              accept="image/*"
+              accept=".pdf,image/*"
               className="hidden"
             />
 
