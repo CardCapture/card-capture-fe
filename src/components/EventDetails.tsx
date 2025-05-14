@@ -102,282 +102,15 @@ import {
 import { useCardUpload } from "@/hooks/useCardUpload";
 import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { supabase } from "@/lib/supabaseClient";
-// import { getSignedImageUrl } from '@/lib/supabaseHelpers';
-
-// Move getSignedImageUrl above its first usage
-const getSignedImageUrl = async (imagePath: string) => {
-  if (!imagePath) {
-    console.log("getSignedImageUrl: No imagePath provided");
-    return "";
-  }
-  // Do not strip or add any prefix, just use imagePath as is
-  console.log(
-    "getSignedImageUrl: Requesting signed URL for path:",
-    JSON.stringify(imagePath)
-  );
-  const { data, error } = await supabase.storage
-    .from("cards-uploads")
-    .createSignedUrl(imagePath, 60 * 60); // 1 hour expiry
-  if (error) {
-    console.error("getSignedImageUrl: Error generating signed URL:", error);
-    return "";
-  }
-  console.log("getSignedImageUrl: Signed URL generated:", data.signedUrl);
-  return data.signedUrl;
-};
-
-// Add ReviewImagePanel component before Dashboard component
-const ReviewImagePanel = ({
-  imagePath, // change from imageUrl to imagePath
-  zoom: externalZoom,
-  zoomIn,
-  zoomOut,
-  selectedCardId,
-}: {
-  imagePath: string;
-  zoom: number;
-  zoomIn: () => void;
-  zoomOut: () => void;
-  selectedCardId: string | undefined;
-}) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const [internalZoom, setInternalZoom] = useState(1.875);
-  const { toast } = useToast();
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [imgError, setImgError] = useState(false);
-
-  // Add pan state and drag tracking
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const draggingRef = useRef(false);
-  const startRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
-  const lastDistanceRef = useRef<number | null>(null);
-
-  // Add a ref to track accumulated movement
-  const accumulatedMovementRef = useRef(0);
-
-  // Pan handlers
-  const onMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      draggingRef.current = true;
-      startRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-        panX: pan.x,
-        panY: pan.y,
-      };
-    },
-    [pan]
-  );
-
-  const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!draggingRef.current) return;
-    const dx = e.clientX - startRef.current.x;
-    const dy = e.clientY - startRef.current.y;
-    setPan({
-      x: startRef.current.panX + dx,
-      y: startRef.current.panY + dy,
-    });
-  }, []);
-
-  const onMouseUp = useCallback(() => {
-    draggingRef.current = false;
-  }, []);
-
-  // Handle wheel zoom
-  const handleWheel = useCallback(
-    (e: WheelEvent) => {
-      e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        // Pinch zoom on trackpad
-        const delta = -e.deltaY;
-        if (delta > 0) {
-          zoomIn();
-        } else {
-          zoomOut();
-        }
-      } else {
-        // Regular scroll wheel zoom
-        const delta = -e.deltaY;
-        if (delta > 0) {
-          zoomIn();
-        } else {
-          zoomOut();
-        }
-      }
-    },
-    [zoomIn, zoomOut]
-  );
-
-  // Handle touch events for pinch zoom
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (e.touches.length === 2) {
-      const distance = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      lastDistanceRef.current = distance;
-      accumulatedMovementRef.current = 0; // Reset accumulated movement
-    }
-  }, []);
-
-  const handleTouchMove = useCallback(
-    (e: TouchEvent) => {
-      if (e.touches.length === 2 && lastDistanceRef.current !== null) {
-        const newDistance = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-
-        const delta = newDistance - lastDistanceRef.current;
-
-        // Accumulate the movement
-        accumulatedMovementRef.current += delta;
-
-        // Much higher threshold for zoom operations
-        const ZOOM_THRESHOLD = 50; // Significantly increased threshold
-        const SCALE_FACTOR = 0.2; // Much smaller scale factor for more gradual zoom
-
-        if (Math.abs(accumulatedMovementRef.current) > ZOOM_THRESHOLD) {
-          if (accumulatedMovementRef.current > 0) {
-            // Zoom in
-            zoomIn();
-            // Reset accumulated movement after zoom
-            accumulatedMovementRef.current = 0;
-            lastDistanceRef.current = newDistance;
-          } else {
-            // Zoom out
-            zoomOut();
-            // Reset accumulated movement after zoom
-            accumulatedMovementRef.current = 0;
-            lastDistanceRef.current = newDistance;
-          }
-        }
-      }
-    },
-    [zoomIn, zoomOut]
-  );
-
-  const handleTouchEnd = useCallback(() => {
-    lastDistanceRef.current = null;
-    accumulatedMovementRef.current = 0; // Reset accumulated movement
-  }, []);
-
-  // Reset pan when image changes
-  useEffect(() => {
-    setPan({ x: 0, y: 0 });
-  }, [selectedCardId]);
-
-  // Add event listeners
-  useEffect(() => {
-    const containerEl = containerRef.current;
-    if (!containerEl) return;
-
-    containerEl.addEventListener("wheel", handleWheel, { passive: false });
-    containerEl.addEventListener("touchstart", handleTouchStart);
-    containerEl.addEventListener("touchmove", handleTouchMove);
-    containerEl.addEventListener("touchend", handleTouchEnd);
-
-    return () => {
-      containerEl.removeEventListener("wheel", handleWheel);
-      containerEl.removeEventListener("touchstart", handleTouchStart);
-      containerEl.removeEventListener("touchmove", handleTouchMove);
-      containerEl.removeEventListener("touchend", handleTouchEnd);
-    };
-  }, [handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd]);
-
-  useEffect(() => {
-    if (imagePath) {
-      setLoading(true);
-      setImgError(false);
-      getSignedImageUrl(imagePath)
-        .then((url) => setSignedUrl(url))
-        .catch(() => setSignedUrl(null))
-        .finally(() => setLoading(false));
-    } else {
-      setSignedUrl(null);
-    }
-  }, [imagePath]);
-
-  // Debug log for imageUrl
-  console.log("ReviewImagePanel: Rendering img with imageUrl:", imagePath);
-
-  return (
-    <div className="relative flex-1 flex flex-col overflow-hidden bg-white rounded-lg">
-      {/* Zoom controls - position absolutely in top right */}
-      <div className="absolute top-4 right-4 flex gap-2 z-10">
-        <Button size="icon" variant="outline" onClick={zoomOut}>
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <Button size="icon" variant="outline" onClick={zoomIn}>
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Image container with pan and zoom */}
-      <div
-        ref={containerRef}
-        className={`flex-1 overflow-hidden ${
-          draggingRef.current ? "cursor-grabbing" : "cursor-grab"
-        }`}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
-        style={{
-          touchAction: "none", // Prevent default touch actions to enable custom handling
-          minHeight: 0, // Ensures proper flex behavior
-        }}
-      >
-        <div
-          className="w-full h-full flex items-center justify-center"
-          style={{
-            transform: `translate(${pan.x}px, ${pan.y}px)`,
-            transition: draggingRef.current
-              ? "none"
-              : "transform 0.1s ease-out",
-          }}
-        >
-          {loading && <div>Loading image...</div>}
-          {!loading && signedUrl && !imgError && (
-            <img
-              ref={imgRef}
-              src={signedUrl}
-              alt={`Scanned card ${selectedCardId}`}
-              draggable={false}
-              style={{
-                transform: `scale(${internalZoom * externalZoom})`,
-                transformOrigin: "center center",
-                transition: draggingRef.current ? "none" : "transform 0.2s",
-                maxWidth: "100%",
-                maxHeight: "100%",
-                objectFit: "contain",
-                margin: "auto",
-              }}
-              crossOrigin="anonymous"
-              onError={() => {
-                setImgError(true);
-                toast({
-                  title: "Image Load Error",
-                  description:
-                    "Failed to load image. Please try refreshing the page.",
-                  variant: "destructive",
-                });
-              }}
-            />
-          )}
-          {!loading && imgError && (
-            <div style={{ color: "red" }}>Failed to load image.</div>
-          )}
-          {!loading && !signedUrl && !imgError && (
-            <div>No image available.</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
+import { getSignedImageUrl } from "@/lib/imageUtils";
+import ReviewImagePanel from "@/components/review/ReviewImagePanel";
+import ReviewForm from "@/components/review/ReviewForm";
+import ArchiveConfirmDialog from "@/components/modals/ArchiveConfirmDialog";
+import MoveConfirmDialog from "@/components/modals/MoveConfirmDialog";
+import DeleteConfirmDialog from "@/components/modals/DeleteConfirmDialog";
+import ManualEntryModal from "@/components/modals/ManualEntryModal";
+import EventHeader from "@/components/events/EventHeader";
+import CardTable from "@/components/cards/CardTable";
 
 // === Component Definition ===
 const Dashboard = () => {
@@ -488,7 +221,7 @@ const Dashboard = () => {
     if (!selectedCardForReview)
       return { reviewedCount: 0, totalFields: 0, allReviewed: false };
 
-    let fieldsNeedingReview = new Set<string>();
+    const fieldsNeedingReview = new Set<string>();
 
     // First pass: collect all fields that need or needed review
     Object.entries(selectedCardForReview.fields).forEach(([key, field]) => {
@@ -940,7 +673,7 @@ const Dashboard = () => {
           if (fieldKey === "cell") formattedValue = formatPhoneNumber(value);
           if (fieldKey === "date_of_birth")
             formattedValue = formatBirthday(value);
-          let tooltipContent =
+          const tooltipContent =
             reviewNotes || (needsReview ? "Needs human review" : null);
           return (
             <TooltipProvider delayDuration={100}>
@@ -1192,12 +925,14 @@ const Dashboard = () => {
         description: "Card has been successfully archived",
         variant: "default",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error archiving card:", error);
       toast({
         title: "Archive Failed",
         description:
-          error.message || "Failed to archive card. Please try again.",
+          error instanceof Error
+            ? error.message
+            : "Failed to archive card. Please try again.",
         variant: "destructive",
       });
       setIsArchiveConfirmOpen(false);
@@ -1276,12 +1011,14 @@ const Dashboard = () => {
         } exported successfully.`,
         variant: "default",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error exporting cards:", error);
       toast({
         title: "Export Failed",
         description:
-          "Something went wrong while exporting cards. Please try again.",
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while exporting cards. Please try again.",
         variant: "destructive",
       });
     }
@@ -1500,11 +1237,14 @@ const Dashboard = () => {
 
       // Refresh cards list
       fetchCards();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Manual entry failed:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create manual entry",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to create manual entry",
         variant: "destructive",
       });
     }
@@ -1648,11 +1388,16 @@ const Dashboard = () => {
         ev ? { ...ev, name: eventNameInput.trim() } : ev
       );
       fetchEvents();
-    } catch (error: any) {
-      setEventNameError(error.message || "Failed to update event name");
+    } catch (error: unknown) {
+      setEventNameError(
+        error instanceof Error ? error.message : "Failed to update event name"
+      );
       toast({
         title: "Error",
-        description: error.message || "Failed to update event name",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to update event name",
         variant: "destructive",
       });
     } finally {
@@ -1877,245 +1622,34 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Table Toolbar */}
-            <div className="flex flex-col gap-4 mb-4">
-              <div className="flex flex-row justify-between items-center">
-                <div className="w-full md:w-auto md:flex-1 max-w-sm">
-                  <Input
-                    type="search"
-                    placeholder="Search cards..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      const newValue = e.target.value;
-                      setSearchQuery(newValue);
-                      debouncedSearch(newValue);
-                    }}
-                    className="w-full"
-                  />
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 hover:scale-[1.02]">
-                      <PlusCircle className="w-5 h-5" />
-                      Add Card
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onSelect={handleCaptureCard}>
-                      <Camera className="w-4 h-4 mr-2" />
-                      <span>Capture Card</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleImportFile}>
-                      <Upload className="w-4 h-4 mr-2" />
-                      <span>Import File</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleManualEntry}>
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      <span>Record Name</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              {selectedTab === "ready_to_export" && (
-                <div className="flex items-center gap-3 text-xs text-gray-500">
-                  <Switch
-                    id="hide-exported"
-                    checked={hideExported}
-                    onCheckedChange={setHideExported}
-                    className="h-3 w-7 rounded-full bg-gray-200 ring-1 ring-gray-300 data-[state=checked]:bg-blue-500 data-[state=checked]:ring-blue-500 transition-colors"
-                  />
-                  <Label
-                    htmlFor="hide-exported"
-                    className="text-xs text-gray-500 ml-2"
-                  >
-                    Hide Exported
-                  </Label>
-                </div>
-              )}
-            </div>
-
-            {/* Hidden file input for file upload */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              accept="image/*"
-              className="hidden"
+            <CardTable
+              table={table}
+              rowSelection={rowSelection}
+              handleRowClick={handleRowClick}
+              selectedTab={selectedTab}
+              filteredCards={filteredCards}
+              getStatusCount={getStatusCount}
+              hideExported={hideExported}
+              setHideExported={setHideExported}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              debouncedSearch={debouncedSearch}
+              isUploading={isUploading}
+              handleExportSelected={handleExportSelected}
+              handleArchiveSelected={handleArchiveSelected}
+              handleMoveSelected={handleMoveSelected}
+              handleDeleteSelected={handleDeleteSelected}
+              setIsArchiveConfirmOpen={setIsArchiveConfirmOpen}
+              setIsMoveConfirmOpen={setIsMoveConfirmOpen}
+              setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
+              dataFieldsMap={dataFieldsMap}
+              reviewFieldOrder={reviewFieldOrder}
+              fileInputRef={fileInputRef}
+              handleFileSelect={handleFileSelect}
+              handleCaptureCard={handleCaptureCard}
+              handleImportFile={handleImportFile}
+              handleManualEntry={handleManualEntry}
             />
-
-            <div className="overflow-hidden rounded-lg border border-gray-200">
-              {Object.keys(rowSelection).length > 0 ? (
-                <div className="bg-blue-50 border-b border-blue-200 shadow-sm sticky top-0 z-10 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-top-2">
-                  <div className="w-full flex justify-between items-center px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={table.getIsAllRowsSelected()}
-                        ref={(input) => {
-                          if (input) {
-                            input.indeterminate = table.getIsSomeRowsSelected();
-                          }
-                        }}
-                        onChange={table.getToggleAllRowsSelectedHandler()}
-                        className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
-                      />
-                      <span className="text-sm font-semibold text-blue-800">
-                        {Object.keys(rowSelection).length}{" "}
-                        {Object.keys(rowSelection).length === 1
-                          ? "Card"
-                          : "Cards"}{" "}
-                        Selected
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {selectedTab === "archived" ? (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsMoveConfirmOpen(true)}
-                            className="text-gray-700 hover:text-gray-900 gap-1.5"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                            Move
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsDeleteConfirmOpen(true)}
-                            className="text-red-600 hover:text-red-700 gap-1.5"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleExportSelected}
-                            className="text-gray-700 hover:text-gray-900 gap-1.5"
-                            disabled={isUploading}
-                          >
-                            {isUploading ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Exporting...
-                              </>
-                            ) : (
-                              <>
-                                <Download className="h-4 w-4" />
-                                Export as CSV
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsArchiveConfirmOpen(true)}
-                            className="text-gray-700 hover:text-gray-900 gap-1.5"
-                          >
-                            <Archive className="h-4 w-4" />
-                            Archive
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              <Table>
-                {Object.keys(rowSelection).length === 0 && (
-                  <TableHeader className="bg-gray-50 sticky top-0 z-10">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => (
-                          <TableHead
-                            key={header.id}
-                            className={`py-3 px-4 whitespace-nowrap ${
-                              header.column.getCanSort()
-                                ? "cursor-pointer select-none"
-                                : ""
-                            }`}
-                            onClick={header.column.getToggleSortingHandler()}
-                          >
-                            <div className="flex items-center gap-1 text-xs font-medium text-gray-500">
-                              {flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                              {{ asc: " ▲", desc: " ▼" }[
-                                header.column.getIsSorted() as string
-                              ] ?? ""}
-                            </div>
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                )}
-                <TableBody>
-                  {table.getRowModel().rows.length > 0 ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && "selected"}
-                        className="hover:bg-gray-100 cursor-pointer"
-                        onClick={() => handleRowClick(row.original)}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            className="px-4 py-3 whitespace-nowrap text-sm text-gray-700"
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={13} className="h-24">
-                        <div className="flex flex-col items-center justify-center h-full gap-2">
-                          {selectedTab === "needs_human_review" ? (
-                            <>
-                              <div className="text-sm font-medium text-gray-900">
-                                Nice work! No cards need review right now.
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                Upload more cards to get started.
-                              </div>
-                            </>
-                          ) : selectedTab === "ready_to_export" ? (
-                            <>
-                              <div className="text-sm font-medium text-gray-900">
-                                No cards ready to export yet
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                Review cards first to prepare them for export.
-                              </div>
-                            </>
-                          ) : selectedTab === "archived" ? (
-                            <>
-                              <div className="text-sm font-medium text-gray-900">
-                                No archived cards
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                Archived cards will appear here.
-                              </div>
-                            </>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
           </div>
         </div>
 
@@ -2197,7 +1731,7 @@ const Dashboard = () => {
                         if (fieldKey === "date_of_birth")
                           formattedValue = formatBirthday(fieldData?.value);
 
-                        let tooltipContent =
+                        const tooltipContent =
                           reviewNotes ||
                           (needsReview ? "Needs human review" : null);
 
@@ -2328,166 +1862,38 @@ const Dashboard = () => {
         </Dialog>
 
         {/* Archive Confirmation Dialog */}
-        <AlertDialog
+        <ArchiveConfirmDialog
           open={isArchiveConfirmOpen}
           onOpenChange={setIsArchiveConfirmOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Archive Cards</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to archive{" "}
-                {selectedCardForReview
-                  ? "this card"
-                  : `${Object.keys(rowSelection).length} ${
-                      Object.keys(rowSelection).length === 1 ? "card" : "cards"
-                    }`}
-                ? Archived cards will be moved to the Archived tab.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={
-                  selectedCardForReview
-                    ? confirmArchiveAction
-                    : handleArchiveSelected
-                }
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                Archive
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          onConfirm={confirmArchiveAction}
+          count={selectedCardForReview ? 1 : Object.keys(rowSelection).length}
+          singleCard={!!selectedCardForReview}
+        />
 
         {/* Move Confirmation Dialog */}
-        <AlertDialog
+        <MoveConfirmDialog
           open={isMoveConfirmOpen}
           onOpenChange={setIsMoveConfirmOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Move Cards</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to move {Object.keys(rowSelection).length}{" "}
-                {Object.keys(rowSelection).length === 1 ? "card" : "cards"} back
-                to Ready to Export?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleMoveSelected}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Move
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          onConfirm={handleMoveSelected}
+          count={Object.keys(rowSelection).length}
+        />
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog
+        <DeleteConfirmDialog
           open={isDeleteConfirmOpen}
           onOpenChange={setIsDeleteConfirmOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Cards</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to permanently delete{" "}
-                {Object.keys(rowSelection).length}{" "}
-                {Object.keys(rowSelection).length === 1 ? "card" : "cards"}?
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteSelected}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          onConfirm={handleDeleteSelected}
+          count={Object.keys(rowSelection).length}
+        />
 
         {/* Add the Manual Entry Modal */}
-        <Dialog
+        <ManualEntryModal
           open={isManualEntryModalOpen}
           onOpenChange={setIsManualEntryModalOpen}
-        >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Record Contact Information</DialogTitle>
-              <DialogDescription>
-                Manually enter a contact's information to add to this event.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">
-                  Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="name"
-                  value={manualEntryForm.name}
-                  onChange={(e) =>
-                    handleManualEntryChange("name", e.target.value)
-                  }
-                  placeholder="John Doe"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={manualEntryForm.email}
-                  onChange={(e) =>
-                    handleManualEntryChange("email", e.target.value)
-                  }
-                  placeholder="johndoe@example.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cell">Phone</Label>
-                <Input
-                  id="cell"
-                  value={manualEntryForm.cell}
-                  onChange={(e) =>
-                    handleManualEntryChange("cell", e.target.value)
-                  }
-                  placeholder="(123) 456-7890"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dob">Birthday</Label>
-                <Input
-                  id="dob"
-                  value={manualEntryForm.date_of_birth}
-                  onChange={(e) =>
-                    handleManualEntryChange("date_of_birth", e.target.value)
-                  }
-                  placeholder="MM/DD/YYYY"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsManualEntryModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" onClick={handleManualEntrySubmit}>
-                Add Contact
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          form={manualEntryForm}
+          onChange={handleManualEntryChange}
+          onSubmit={handleManualEntrySubmit}
+        />
       </div>
     </ErrorBoundary>
   );
