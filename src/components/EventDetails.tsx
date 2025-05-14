@@ -992,7 +992,7 @@ const Dashboard = () => {
     enableRowSelection: true,
     onRowSelectionChange: (updater) => {
       setRowSelection((prev) => {
-        const next = typeof updater === 'function' ? updater(prev) : updater;
+        const next = typeof updater === "function" ? updater(prev) : updater;
         // Map selected row indices to card IDs using filteredCards
         const ids = Object.keys(next)
           .filter((key) => next[key])
@@ -1300,7 +1300,8 @@ const Dashboard = () => {
         });
         return;
       }
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${apiBaseUrl}/archive-cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1336,7 +1337,8 @@ const Dashboard = () => {
         });
         return;
       }
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${apiBaseUrl}/mark-exported`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1351,14 +1353,17 @@ const Dashboard = () => {
       await fetchCards();
       toast({
         title: "Export Successful",
-        description: `${selectedCardIds.length} ${selectedCardIds.length === 1 ? "card" : "cards"} exported successfully.`,
+        description: `${selectedCardIds.length} ${
+          selectedCardIds.length === 1 ? "card" : "cards"
+        } exported successfully.`,
         variant: "default",
       });
     } catch (error) {
       console.error("Error exporting cards:", error);
       toast({
         title: "Export Failed",
-        description: "Something went wrong while exporting cards. Please try again.",
+        description:
+          "Something went wrong while exporting cards. Please try again.",
         variant: "destructive",
       });
     }
@@ -1568,6 +1573,7 @@ const Dashboard = () => {
   // Update the image URL when the selected card changes
   useEffect(() => {
     console.log("useEffect: selectedCardForReview", selectedCardForReview);
+
     async function updateImageUrl() {
       if (selectedCardForReview?.image_path) {
         console.log(
@@ -1662,6 +1668,43 @@ const Dashboard = () => {
     }
     prevHideExported.current = hideExported;
   }, [hideExported]);
+
+  const [cardFieldPrefs, setCardFieldPrefs] = useState<Record<
+    string,
+    boolean
+  > | null>(null);
+
+  useEffect(() => {
+    async function fetchSettings() {
+      if (!selectedEvent) return;
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("settings")
+        .select("preferences")
+        .eq("user_id", user.id)
+        .eq("school_id", selectedEvent.school_id)
+        .single();
+      if (!error && data?.preferences?.card_fields) {
+        setCardFieldPrefs(data.preferences.card_fields);
+      } else {
+        setCardFieldPrefs(null);
+      }
+    }
+    fetchSettings();
+  }, [selectedEvent]);
+
+  const fieldsToShow = selectedCardForReview
+    ? cardFieldPrefs && Object.keys(cardFieldPrefs).length > 0
+      ? Object.keys(selectedCardForReview.fields).filter((fieldKey) => {
+          const actualName =
+            selectedCardForReview.fields[fieldKey]?.actual_field_name;
+          return cardFieldPrefs[actualName] !== false; // show if true or undefined
+        })
+      : reviewFieldOrder.filter(
+          (fieldKey) => selectedCardForReview.fields[fieldKey]
+        )
+    : [];
 
   // --- JSX ---
   return (
@@ -2133,10 +2176,11 @@ const Dashboard = () => {
                 <div className="bg-gray-50 rounded-lg p-4 overflow-y-auto">
                   <div className="space-y-4">
                     {selectedCardForReview ? (
-                      reviewFieldOrder.map((fieldKey) => {
+                      fieldsToShow.map((fieldKey) => {
                         const fieldData =
                           selectedCardForReview.fields?.[fieldKey];
                         const label =
+                          fieldData?.actual_field_name ||
                           dataFieldsMap.get(fieldKey) ||
                           fieldKey.replace(/_/g, " ");
                         const needsReview =
