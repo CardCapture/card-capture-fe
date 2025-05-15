@@ -111,6 +111,14 @@ import DeleteConfirmDialog from "@/components/modals/DeleteConfirmDialog";
 import ManualEntryModal from "@/components/modals/ManualEntryModal";
 import EventHeader from "@/components/events/EventHeader";
 import CardTable from "@/components/cards/CardTable";
+import { useEventName } from "@/hooks/useEventName";
+import { useCardReviewModal } from "@/hooks/useCardReviewModal";
+import { useCardTableActions } from "@/hooks/useCardTableActions";
+import { useManualEntryModal } from "@/hooks/useManualEntryModal";
+import { useCardUploadActions } from "@/hooks/useCardUploadActions";
+import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
+import { useZoom } from "@/hooks/useZoom";
+import { useStatusTabs } from "@/hooks/useStatusTabs";
 
 // === Component Definition ===
 const Dashboard = () => {
@@ -125,75 +133,18 @@ const Dashboard = () => {
   );
   const { uploadCard } = useCardUpload();
 
-  // Add getStatusCount function locally
-  const getStatusCount = useCallback(
-    (status: string) => {
-      if (!cards) return 0;
-      return cards.filter((card) => {
-        const c = card as ProspectCard & { deleted?: boolean };
-        return determineCardStatus(c) === status && !c.deleted;
-      }).length;
-    },
-    [cards]
+  // Status Tabs
+  const { selectedTab, setSelectedTab, getStatusCount } = useStatusTabs(
+    cards,
+    determineCardStatus
   );
 
-  // --- State ---
-  const [selectedTab, setSelectedTab] = useState<string>("needs_human_review");
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
-  const [selectedCardForReview, setSelectedCardForReview] =
-    useState<ProspectCard | null>(null);
-  const [formData, setFormData] = useState<Record<string, string>>({});
-  const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] =
-    useState<boolean>(false);
-  const [reviewedCards, setReviewedCards] = useState<Set<string>>(new Set());
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [hideExported, setHideExported] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [zoom, setZoom] = useState(0.47);
+  // Event Name
+  const eventName = useEventName(selectedEvent, fetchEvents, (args) =>
+    toast({ ...args, variant: args.variant as "default" | "destructive" })
+  );
 
-  // Add a ref to track the selected card ID
-  const selectedCardIdRef = useRef<string | null>(null);
-
-  // Add a ref to track the image key
-  const imageKeyRef = useRef<string>(`image-${Date.now()}`);
-
-  // Add a ref to store the image URL
-  const imageUrlRef = useRef<string>("");
-
-  // Add a ref to store a local copy of the selected card that won't be affected by updates
-  const localCardRef = useRef<ProspectCard | null>(null);
-
-  // Add debounce timer ref
-  const debounceTimerRef = useRef<NodeJS.Timeout>();
-
-  // Add a ref to track which fields have shown a toast
-  const fieldsWithToastRef = useRef<Set<string>>(new Set());
-
-  // Add a ref to track the events object
-  const eventsRef = useRef<{ fetchEvents: () => Promise<void> } | null>(null);
-
-  // Add a ref for the file input
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Add a new state for the manual entry modal
-  const [isManualEntryModalOpen, setIsManualEntryModalOpen] =
-    useState<boolean>(false);
-  // Add state for the manual entry form
-  const [manualEntryForm, setManualEntryForm] = useState({
-    name: "",
-    email: "",
-    cell: "",
-    date_of_birth: "",
-  });
-
-  // Add a new state for the debounced search query
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-
-  // Add the reviewProgress memo after reviewFieldOrder declaration
+  // Review Field Order (don't modify this)
   const reviewFieldOrder: string[] = useMemo(
     () => [
       "name",
@@ -217,6 +168,204 @@ const Dashboard = () => {
     []
   );
 
+  // Field mapping (don't modify this)
+  const dataFieldsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    [
+      { key: "name", label: "Name" },
+      { key: "preferred_first_name", label: "Preferred Name" },
+      { key: "email", label: "Email" },
+      { key: "cell", label: "Phone Number" },
+      { key: "date_of_birth", label: "Birthday" },
+      { key: "address", label: "Address" },
+      { key: "city", label: "City" },
+      { key: "state", label: "State" },
+      { key: "zip_code", label: "Zip Code" },
+      { key: "high_school", label: "High School/College" },
+      { key: "student_type", label: "Student Type" },
+      { key: "entry_term", label: "Entry Term" },
+      { key: "gpa", label: "GPA" },
+      { key: "class_rank", label: "Class Rank" },
+      { key: "students_in_class", label: "Students in Class" },
+      { key: "major", label: "Major" },
+      { key: "permission_to_text", label: "Permission to Text" },
+    ].forEach((field) => map.set(field.key, field.label));
+    return map;
+  }, []);
+
+  // --- State Declarations (consolidated here) ---
+  // Table state
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  // Upload/processing state
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+
+  // Review modal state
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
+  const [selectedCardForReview, setSelectedCardForReview] =
+    useState<ProspectCard | null>(null);
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  // Confirmation dialogs
+  const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] =
+    useState<boolean>(false);
+  const [isMoveConfirmOpen, setIsMoveConfirmOpen] = useState<boolean>(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] =
+    useState<boolean>(false);
+
+  // Card selection and filtering
+  const [reviewedCards, setReviewedCards] = useState<Set<string>>(new Set());
+  const [hideExported, setHideExported] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+
+  // Image and zoom
+  const [zoom, setZoom] = useState(0.47);
+  const [imageUrlState, setImageUrlState] = useState("");
+
+  // Event editing
+  const [isEditingEventName, setIsEditingEventName] = useState(false);
+  const [eventNameInput, setEventNameInput] = useState(
+    selectedEvent?.name || ""
+  );
+  const [eventNameLoading, setEventNameLoading] = useState(false);
+  const [eventNameError, setEventNameError] = useState<string | null>(null);
+
+  // Manual entry
+  const [isManualEntryModalOpen, setIsManualEntryModalOpen] =
+    useState<boolean>(false);
+  const [manualEntryForm, setManualEntryForm] = useState({
+    name: "",
+    email: "",
+    cell: "",
+    date_of_birth: "",
+  });
+
+  // Settings/preferences
+  const [cardFieldPrefs, setCardFieldPrefs] = useState<Record<
+    string,
+    boolean
+  > | null>(null);
+
+  // --- Refs ---
+  const selectedCardIdRef = useRef<string | null>(null);
+  const imageKeyRef = useRef<string>(`image-${Date.now()}`);
+  const imageUrlRef = useRef<string>("");
+  const localCardRef = useRef<ProspectCard | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout>();
+  const fieldsWithToastRef = useRef<Set<string>>(new Set());
+  const eventsRef = useRef<{ fetchEvents: () => Promise<void> } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevHideExported = useRef(hideExported);
+
+  // --- Custom Hooks ---
+  const zoomState = useZoom();
+  const reviewModal = useCardReviewModal(
+    cards,
+    reviewFieldOrder,
+    fetchCards,
+    (args) =>
+      toast({ ...args, variant: args.variant as "default" | "destructive" }),
+    dataFieldsMap
+  );
+
+  // --- Callbacks ---
+  const debouncedSearch = useCallback((query: string) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(query);
+    }, 300);
+  }, []);
+
+  // --- Filtered Cards ---
+  const filteredCards = useMemo(() => {
+    if (!cards) return [];
+
+    return cards.filter((card) => {
+      // Always filter by event if eventId is provided
+      if (selectedEvent && card.event_id !== selectedEvent.id) {
+        return false;
+      }
+
+      const currentStatus = determineCardStatus(card);
+
+      // Apply hideExported filter if enabled
+      if (hideExported && card.exported_at) {
+        return false;
+      }
+
+      // Apply search filter if query exists
+      if (debouncedSearchQuery) {
+        const query = debouncedSearchQuery.toLowerCase();
+        const searchableFields = [
+          card.fields?.name?.value,
+          card.fields?.email?.value,
+          card.fields?.cell?.value,
+          card.fields?.preferred_first_name?.value,
+          card.fields?.high_school?.value,
+          card.fields?.address?.value,
+          card.fields?.city?.value,
+          card.fields?.state?.value,
+          card.fields?.zip_code?.value,
+          card.fields?.major?.value,
+        ];
+
+        // Check if any field contains the search query
+        const matchesSearch = searchableFields.some((field) =>
+          field?.toLowerCase().includes(query)
+        );
+
+        if (!matchesSearch) {
+          return false;
+        }
+      }
+
+      switch (selectedTab) {
+        case "ready_to_export":
+          return currentStatus === "reviewed" || currentStatus === "exported";
+        case "needs_human_review":
+          return currentStatus === "needs_human_review";
+        case "exported":
+          return currentStatus === "exported";
+        case "archived":
+          return currentStatus === "archived";
+        default:
+          return true;
+      }
+    });
+  }, [cards, selectedTab, selectedEvent, hideExported, debouncedSearchQuery]);
+
+  // Now, AFTER filteredCards is defined, define cardTableActions
+  const cardTableActions = useCardTableActions(
+    filteredCards,
+    fetchCards,
+    (args) =>
+      toast({ ...args, variant: args.variant as "default" | "destructive" }),
+    selectedEvent,
+    dataFieldsMap
+  );
+
+  // Manual Entry Modal
+  const manualEntry = useManualEntryModal(eventId, fetchCards, (args) =>
+    toast({ ...args, variant: args.variant as "default" | "destructive" })
+  );
+
+  // Card Upload
+  const cardUpload = useCardUploadActions(
+    selectedEvent,
+    uploadCard,
+    fetchCards,
+    (args) =>
+      toast({ ...args, variant: args.variant as "default" | "destructive" })
+  );
+
+  // Review Progress
   const reviewProgress = useMemo(() => {
     if (!selectedCardForReview)
       return { reviewedCount: 0, totalFields: 0, allReviewed: false };
@@ -285,31 +434,6 @@ const Dashboard = () => {
   useEffect(() => {
     fetchCards();
   }, [selectedEvent, fetchCards]);
-
-  // --- Memos ---
-  const dataFieldsMap = useMemo(() => {
-    const map = new Map<string, string>();
-    [
-      { key: "name", label: "Name" },
-      { key: "preferred_first_name", label: "Preferred Name" },
-      { key: "email", label: "Email" },
-      { key: "cell", label: "Phone Number" },
-      { key: "date_of_birth", label: "Birthday" },
-      { key: "address", label: "Address" },
-      { key: "city", label: "City" },
-      { key: "state", label: "State" },
-      { key: "zip_code", label: "Zip Code" },
-      { key: "high_school", label: "High School/College" },
-      { key: "student_type", label: "Student Type" },
-      { key: "entry_term", label: "Entry Term" },
-      { key: "gpa", label: "GPA" },
-      { key: "class_rank", label: "Class Rank" },
-      { key: "students_in_class", label: "Students in Class" },
-      { key: "major", label: "Major" },
-      { key: "permission_to_text", label: "Permission to Text" },
-    ].forEach((field) => map.set(field.key, field.label));
-    return map;
-  }, []);
 
   // --- Callbacks & Effects ---
   const handleFieldReview = useCallback(
@@ -442,115 +566,7 @@ const Dashboard = () => {
     }
   }, [selectedCardForReview?.id]);
 
-  // Update the debounced search function
-  const debouncedSearch = useCallback((query: string) => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = setTimeout(() => {
-      setDebouncedSearchQuery(query);
-    }, 300);
-  }, []);
-
-  // Update filteredCards to use debouncedSearchQuery instead of searchQuery
-  const filteredCards = useMemo(() => {
-    if (!cards) return [];
-
-    return cards.filter((card) => {
-      // Always filter by event if eventId is provided
-      if (selectedEvent && card.event_id !== selectedEvent.id) {
-        return false;
-      }
-
-      const currentStatus = determineCardStatus(card);
-
-      // Apply hideExported filter if enabled
-      if (hideExported && card.exported_at) {
-        return false;
-      }
-
-      // Apply search filter if query exists
-      if (debouncedSearchQuery) {
-        const query = debouncedSearchQuery.toLowerCase();
-        const searchableFields = [
-          card.fields?.name?.value,
-          card.fields?.email?.value,
-          card.fields?.cell?.value,
-          card.fields?.preferred_first_name?.value,
-          card.fields?.high_school?.value,
-          card.fields?.address?.value,
-          card.fields?.city?.value,
-          card.fields?.state?.value,
-          card.fields?.zip_code?.value,
-          card.fields?.major?.value,
-        ];
-
-        // Check if any field contains the search query
-        const matchesSearch = searchableFields.some((field) =>
-          field?.toLowerCase().includes(query)
-        );
-
-        if (!matchesSearch) {
-          return false;
-        }
-      }
-
-      switch (selectedTab) {
-        case "ready_to_export":
-          return currentStatus === "reviewed" || currentStatus === "exported";
-        case "needs_human_review":
-          return currentStatus === "needs_human_review";
-        case "exported":
-          return currentStatus === "exported";
-        case "archived":
-          return currentStatus === "archived";
-        default:
-          return true;
-      }
-    });
-  }, [cards, selectedTab, selectedEvent, hideExported, debouncedSearchQuery]);
-
-  const handleDeleteSelected = useCallback(async () => {
-    try {
-      const selectedIds = Object.keys(rowSelection).map((index) => {
-        const card = filteredCards[parseInt(index)];
-        return card.id;
-      });
-
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${apiBaseUrl}/delete-cards`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          document_ids: selectedIds,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete cards");
-      }
-
-      setRowSelection({});
-      await fetchCards();
-
-      toast({
-        title: "Success",
-        description: "Selected cards have been deleted",
-      });
-    } catch (error) {
-      console.error("Error deleting cards:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete cards",
-        variant: "destructive",
-      });
-    }
-  }, [rowSelection, filteredCards, toast, fetchCards]);
-
-  // Restore columns definition directly in Dashboard
+  // Table definition
   const columns = useMemo<ColumnDef<ProspectCard>[]>(
     () => [
       {
@@ -713,8 +729,7 @@ const Dashboard = () => {
     [selectedTab, dataFieldsMap, reviewFieldOrder]
   );
 
-  // --- Table Instance ---
-  // Restore useReactTable call
+  // Table instance
   const table = useReactTable({
     data: filteredCards,
     columns,
@@ -743,289 +758,59 @@ const Dashboard = () => {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // --- Callbacks & Effects ---
-  useEffect(() => {
-    if (selectedCardForReview && reviewFieldOrder) {
-      const initialFormData: Record<string, string> = {};
-      reviewFieldOrder.forEach((fieldKey) => {
-        initialFormData[fieldKey] =
-          selectedCardForReview.fields?.[fieldKey]?.value ?? "";
-      });
-      setFormData(initialFormData);
-    } else {
-      setFormData({});
-    }
-  }, [selectedCardForReview, reviewFieldOrder]);
-  const startUploadProcess = useCallback(
-    async (file: File) => {
-      if (!selectedEvent?.id) {
-        toast({
-          title: "Event Required",
-          description: "Please select an event before uploading a card.",
-          variant: "destructive",
-        });
-        return;
-      }
+  // Fields to show in the review panel
+  const fieldsToShow = selectedCardForReview
+    ? cardFieldPrefs && Object.keys(cardFieldPrefs).length > 0
+      ? Object.keys(selectedCardForReview.fields).filter((fieldKey) => {
+          const actualName =
+            selectedCardForReview.fields[fieldKey]?.actual_field_name;
+          return cardFieldPrefs[actualName] !== false; // show if true or undefined
+        })
+      : reviewFieldOrder.filter(
+          (fieldKey) => selectedCardForReview.fields[fieldKey]
+        )
+    : [];
 
-      setIsUploading(true);
-      setUploadProgress(0);
-
-      try {
-        // Define the onUploadStart callback to show the toast
-        const onUploadStart = () => {
-          toast({
-            title: "Card Processing",
-            description:
-              "Your card is being processed. You can continue scanning more cards.",
-            variant: "default",
-            duration: 4000,
-            className:
-              "bg-white border-green-200 shadow-md rounded-lg animate-in fade-in-0 slide-in-from-top-2",
-            action: (
-              <div className="flex items-center justify-center h-6 w-6 rounded-full bg-green-100 text-green-600">
-                <CheckCircle className="h-4 w-4" />
-              </div>
-            ),
-          });
-        };
-
-        // Use the new uploadCard hook with the callback
-        const data = await uploadCard(
-          file,
-          selectedEvent.id,
-          selectedEvent.school_id,
-          onUploadStart
-        );
-
-        // Handle successful upload
-        setUploadProgress(100);
-        setTimeout(() => {
-          setIsUploading(false);
-          setUploadProgress(0);
-        }, 200);
-
-        // Fetch updated cards list
-        await fetchCards();
-      } catch (error) {
-        setIsUploading(false);
-        setUploadProgress(0);
-      }
-    },
-    [selectedEvent, uploadCard, fetchCards, toast]
-  );
-  const handleReviewSave = async () => {
-    if (!selectedCardForReview) return;
-
-    setIsSaving(true);
+  // --- Row Selection and Card Actions ---
+  const handleDeleteSelected = useCallback(async () => {
     try {
-      toast({
-        title: "Saving Changes",
-        description: "Updating card information...",
-        variant: "default",
+      const selectedIds = Object.keys(rowSelection).map((index) => {
+        const card = filteredCards[parseInt(index)];
+        return card.id;
       });
 
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-
-      // Prepare the updated fields
-      const updatedFields = Object.fromEntries(
-        Object.entries(selectedCardForReview.fields).map(([key, field]) => [
-          key,
-          {
-            ...field,
-            value: formData[key] || field.value,
-            reviewed: true,
-            requires_human_review: false,
-            review_notes: "Manually reviewed",
-          },
-        ])
-      );
-
-      // Check if all fields have been reviewed
-      const allFieldsReviewed = Object.values(updatedFields).every(
-        (field) =>
-          field.reviewed === true && field.requires_human_review === false
-      );
-
-      // Save all field updates at once
-      const response = await fetch(
-        `${apiBaseUrl}/save-review/${selectedCardForReview.id}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fields: updatedFields,
-            status: allFieldsReviewed ? "reviewed" : "needs_human_review",
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to save changes");
-      }
-
-      const result = await response.json();
-
-      // Update UI based on the response
-      await fetchCards();
-      setIsReviewModalOpen(false);
-      setSelectedCardForReview(null);
-      toast({
-        title: "Review Complete",
-        description: allFieldsReviewed
-          ? "All fields have been reviewed and saved."
-          : "Changes saved successfully.",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error("Error saving review:", error);
-      toast({
-        title: "Save Failed",
-        description: "Unable to save your changes. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  const handleArchiveCard = useCallback(() => {
-    if (!selectedCardForReview) return;
-    // Set the archive confirm modal open
-    setIsArchiveConfirmOpen(true);
-  }, [selectedCardForReview]);
-  const confirmArchiveAction = useCallback(async () => {
-    if (!selectedCardForReview) return;
-
-    try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${apiBaseUrl}/archive-cards`, {
+      const response = await fetch(`${apiBaseUrl}/delete-cards`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: [selectedCardForReview.id] }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error || `Failed to archive card (${response.status})`
-        );
-      }
-
-      // Close both modals
-      setIsArchiveConfirmOpen(false);
-      setIsReviewModalOpen(false);
-      setReviewModalState(false);
-
-      // Refresh the cards list
-      await fetchCards();
-
-      toast({
-        title: "Card Archived",
-        description: "Card has been successfully archived",
-        variant: "default",
-      });
-    } catch (error: unknown) {
-      console.error("Error archiving card:", error);
-      toast({
-        title: "Archive Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to archive card. Please try again.",
-        variant: "destructive",
-      });
-      setIsArchiveConfirmOpen(false);
-    }
-  }, [selectedCardForReview, fetchCards, toast]);
-  const downloadCSV = useCallback(async () => {
-    try {
-      const selectedRows = table
-        .getRowModel()
-        .rows.filter((row) => rowSelection[row.id]);
-      if (selectedRows.length === 0) {
-        toast({
-          title: "No Cards Selected",
-          description: "Please select at least one card to export.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const selectedIds = selectedRows.map((row) => row.original.id);
-
-      toast({
-        title: "Exporting Cards",
-        description: "Processing your export request...",
-        variant: "default",
-      });
-
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${apiBaseUrl}/mark-exported`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: selectedIds }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error ||
-            `Failed to mark cards as exported (${response.status})`
-        );
-      }
-
-      // Generate CSV content
-      const headers = ["Event", ...Array.from(dataFieldsMap.values())];
-      const csvContent = [
-        headers.map(escapeCsvValue).join(","),
-        ...selectedRows.map((row) => {
-          const eventName = selectedEvent?.name || "Unknown Event";
-          return [
-            escapeCsvValue(eventName),
-            ...Array.from(dataFieldsMap.keys()).map((key) =>
-              escapeCsvValue(row.original.fields?.[key]?.value ?? "")
-            ),
-          ].join(",");
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          document_ids: selectedIds,
         }),
-      ].join("\n");
+      });
 
-      // Download CSV
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `card_data_${new Date().toISOString().split("T")[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (!response.ok) {
+        throw new Error("Failed to delete cards");
+      }
 
-      // Clear selection and refresh cards
       setRowSelection({});
       await fetchCards();
 
       toast({
-        title: "Export Successful",
-        description: `${selectedIds.length} ${
-          selectedIds.length === 1 ? "card" : "cards"
-        } exported successfully.`,
-        variant: "default",
+        title: "Success",
+        description: "Selected cards have been deleted",
       });
-    } catch (error: unknown) {
-      console.error("Error exporting cards:", error);
+    } catch (error) {
+      console.error("Error deleting cards:", error);
       toast({
-        title: "Export Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Something went wrong while exporting cards. Please try again.",
+        title: "Error",
+        description: "Failed to delete cards",
         variant: "destructive",
       });
     }
-  }, [rowSelection, table, dataFieldsMap, toast, fetchCards, selectedEvent]);
-
-  // Add state for selected card IDs
-  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+  }, [rowSelection, filteredCards, toast, fetchCards]);
 
   const handleArchiveSelected = useCallback(async () => {
     try {
@@ -1106,7 +891,195 @@ const Dashboard = () => {
     }
   }, [selectedCardIds, toast, fetchCards, selectedEvent, dataFieldsMap]);
 
-  // Update the modal open/close handlers
+  const handleMoveSelected = useCallback(async () => {
+    try {
+      const selectedIds = Object.keys(rowSelection).map((index) => {
+        const card = filteredCards[parseInt(index)];
+        return card.id;
+      });
+
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+      // Update each card's status to 'reviewed'
+      for (const documentId of selectedIds) {
+        const response = await fetch(
+          `${apiBaseUrl}/save-review/${documentId}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              status: "reviewed",
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to move cards");
+        }
+      }
+
+      setRowSelection({});
+      await fetchCards();
+
+      toast({
+        title: "Success",
+        description: "Selected cards have been moved to Ready to Export",
+      });
+    } catch (error) {
+      console.error("Error moving cards:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move cards",
+        variant: "destructive",
+      });
+    }
+  }, [rowSelection, filteredCards, toast, fetchCards]);
+
+  // --- Event Name Management ---
+  const handleEditEventName = () => {
+    setIsEditingEventName(true);
+    setEventNameInput(selectedEvent?.name || "");
+    setEventNameError(null);
+  };
+
+  const handleCancelEditEventName = () => {
+    setIsEditingEventName(false);
+    setEventNameInput(selectedEvent?.name || "");
+    setEventNameError(null);
+  };
+
+  const handleSaveEventName = async () => {
+    if (!selectedEvent || !eventNameInput.trim()) return;
+    setEventNameLoading(true);
+    setEventNameError(null);
+    try {
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const response = await fetch(`${apiBaseUrl}/events/${selectedEvent.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ name: eventNameInput.trim() }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update event name");
+      }
+      toast({
+        title: "Event name updated",
+        description: "The event name was updated successfully.",
+      });
+      setIsEditingEventName(false);
+      setSelectedEvent((ev) =>
+        ev ? { ...ev, name: eventNameInput.trim() } : ev
+      );
+      fetchEvents();
+    } catch (error: unknown) {
+      setEventNameError(
+        error instanceof Error ? error.message : "Failed to update event name"
+      );
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to update event name",
+        variant: "destructive",
+      });
+    } finally {
+      setEventNameLoading(false);
+    }
+  };
+
+  // --- Card Importing ---
+  const handleImportFile = () => {
+    // Trigger file input click
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      startUploadProcess(file);
+    }
+    if (event.target) event.target.value = "";
+  };
+
+  const handleCaptureCard = () => {
+    // Implementation would open the camera modal
+    toast({
+      title: "Capture Card",
+      description: "Camera capture functionality would be triggered here",
+    });
+    // We would typically open a camera modal here, similar to ScanFab
+  };
+
+  const startUploadProcess = useCallback(
+    async (file: File) => {
+      if (!selectedEvent?.id) {
+        toast({
+          title: "Event Required",
+          description: "Please select an event before uploading a card.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsUploading(true);
+      setUploadProgress(0);
+
+      try {
+        // Define the onUploadStart callback to show the toast
+        const onUploadStart = () => {
+          toast({
+            title: "Card Processing",
+            description:
+              "Your card is being processed. You can continue scanning more cards.",
+            variant: "default",
+            duration: 4000,
+            className:
+              "bg-white border-green-200 shadow-md rounded-lg animate-in fade-in-0 slide-in-from-top-2",
+            action: (
+              <div className="flex items-center justify-center h-6 w-6 rounded-full bg-green-100 text-green-600">
+                <CheckCircle className="h-4 w-4" />
+              </div>
+            ),
+          });
+        };
+
+        // Use the new uploadCard hook with the callback
+        const data = await uploadCard(
+          file,
+          selectedEvent.id,
+          selectedEvent.school_id,
+          onUploadStart
+        );
+
+        // Handle successful upload
+        setUploadProgress(100);
+        setTimeout(() => {
+          setIsUploading(false);
+          setUploadProgress(0);
+        }, 200);
+
+        // Fetch updated cards list
+        await fetchCards();
+      } catch (error) {
+        setIsUploading(false);
+        setUploadProgress(0);
+      }
+    },
+    [selectedEvent, uploadCard, fetchCards, toast]
+  );
+
+  // --- Review Actions ---
   const handleModalOpenChange = useCallback(
     (open: boolean) => {
       // Set the review modal state first
@@ -1126,49 +1099,139 @@ const Dashboard = () => {
     [setReviewModalState]
   );
 
-  // Add keyboard event listener for Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && Object.keys(rowSelection).length > 0) {
-        setRowSelection({});
+  const handleReviewSave = async () => {
+    if (!selectedCardForReview) return;
+
+    setIsSaving(true);
+    try {
+      toast({
+        title: "Saving Changes",
+        description: "Updating card information...",
+        variant: "default",
+      });
+
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+      // Prepare the updated fields
+      const updatedFields = Object.fromEntries(
+        Object.entries(selectedCardForReview.fields).map(([key, field]) => [
+          key,
+          {
+            ...field,
+            value: formData[key] || field.value,
+            reviewed: true,
+            requires_human_review: false,
+            review_notes: "Manually reviewed",
+          },
+        ])
+      );
+
+      // Check if all fields have been reviewed
+      const allFieldsReviewed = Object.values(updatedFields).every(
+        (field) =>
+          field.reviewed === true && field.requires_human_review === false
+      );
+
+      // Save all field updates at once
+      const response = await fetch(
+        `${apiBaseUrl}/save-review/${selectedCardForReview.id}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fields: updatedFields,
+            status: allFieldsReviewed ? "reviewed" : "needs_human_review",
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save changes");
       }
-    };
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [rowSelection, setRowSelection]);
+      const result = await response.json();
 
-  // Handler for capturing a card
-  const handleCaptureCard = () => {
-    // Implementation would open the camera modal
-    toast({
-      title: "Capture Card",
-      description: "Camera capture functionality would be triggered here",
-    });
-    // We would typically open a camera modal here, similar to ScanFab
-  };
-
-  // Handler for importing a file
-  const handleImportFile = () => {
-    // Trigger file input click
-    fileInputRef.current?.click();
-  };
-
-  // Handler for file selection
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      startUploadProcess(file);
+      // Update UI based on the response
+      await fetchCards();
+      setIsReviewModalOpen(false);
+      setSelectedCardForReview(null);
+      toast({
+        title: "Review Complete",
+        description: allFieldsReviewed
+          ? "All fields have been reviewed and saved."
+          : "Changes saved successfully.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error saving review:", error);
+      toast({
+        title: "Save Failed",
+        description: "Unable to save your changes. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
-    if (event.target) event.target.value = "";
   };
 
-  // Add handler for opening the manual entry modal
+  const handleArchiveCard = useCallback(() => {
+    if (!selectedCardForReview) return;
+    // Set the archive confirm modal open
+    setIsArchiveConfirmOpen(true);
+  }, [selectedCardForReview]);
+
+  const confirmArchiveAction = useCallback(async () => {
+    if (!selectedCardForReview) return;
+
+    try {
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const response = await fetch(`${apiBaseUrl}/archive-cards`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document_ids: [selectedCardForReview.id] }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || `Failed to archive card (${response.status})`
+        );
+      }
+
+      // Close both modals
+      setIsArchiveConfirmOpen(false);
+      setIsReviewModalOpen(false);
+      setReviewModalState(false);
+
+      // Refresh the cards list
+      await fetchCards();
+
+      toast({
+        title: "Card Archived",
+        description: "Card has been successfully archived",
+        variant: "default",
+      });
+    } catch (error: unknown) {
+      console.error("Error archiving card:", error);
+      toast({
+        title: "Archive Failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to archive card. Please try again.",
+        variant: "destructive",
+      });
+      setIsArchiveConfirmOpen(false);
+    }
+  }, [selectedCardForReview, fetchCards, toast, setReviewModalState]);
+
+  // --- Manual Entry ---
   const handleManualEntry = () => {
     setIsManualEntryModalOpen(true);
   };
 
-  // Add handler for manual entry form changes
   const handleManualEntryChange = (field: string, value: string) => {
     setManualEntryForm((prev) => ({
       ...prev,
@@ -1176,7 +1239,6 @@ const Dashboard = () => {
     }));
   };
 
-  // Add handler for submitting the manual entry form
   const handleManualEntrySubmit = async () => {
     if (!manualEntryForm.name) {
       toast({
@@ -1250,163 +1312,14 @@ const Dashboard = () => {
     }
   };
 
-  // Add zoom functions
+  // --- Zoom Functions ---
   const zoomIn = useCallback(() => setZoom((z) => Math.min(z * 1.2, 2)), []);
   const zoomOut = useCallback(
     () => setZoom((z) => Math.max(z / 1.2, 0.47)),
     []
   );
 
-  const [isMoveConfirmOpen, setIsMoveConfirmOpen] = useState<boolean>(false);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] =
-    useState<boolean>(false);
-
-  const handleMoveSelected = useCallback(async () => {
-    try {
-      const selectedIds = Object.keys(rowSelection).map((index) => {
-        const card = filteredCards[parseInt(index)];
-        return card.id;
-      });
-
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-
-      // Update each card's status to 'reviewed'
-      for (const documentId of selectedIds) {
-        const response = await fetch(
-          `${apiBaseUrl}/save-review/${documentId}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              status: "reviewed",
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to move cards");
-        }
-      }
-
-      setRowSelection({});
-      await fetchCards();
-
-      toast({
-        title: "Success",
-        description: "Selected cards have been moved to Ready to Export",
-      });
-    } catch (error) {
-      console.error("Error moving cards:", error);
-      toast({
-        title: "Error",
-        description: "Failed to move cards",
-        variant: "destructive",
-      });
-    }
-  }, [rowSelection, filteredCards, toast, fetchCards]);
-
-  const [imageUrlState, setImageUrlState] = useState("");
-
-  // Update the image URL when the selected card changes
-  useEffect(() => {
-    console.log("useEffect: selectedCardForReview", selectedCardForReview);
-
-    async function updateImageUrl() {
-      if (selectedCardForReview?.image_path) {
-        console.log(
-          "updateImageUrl: Calling getSignedImageUrl with:",
-          selectedCardForReview.image_path
-        );
-        const signedUrl = await getSignedImageUrl(
-          selectedCardForReview.image_path
-        );
-        setImageUrlState(signedUrl);
-        console.log("updateImageUrl: setImageUrlState to", signedUrl);
-      } else {
-        setImageUrlState("");
-        console.log(
-          "updateImageUrl: No image_path, setImageUrlState to empty string"
-        );
-      }
-    }
-    updateImageUrl();
-  }, [selectedCardForReview?.image_path, getSignedImageUrl]);
-
-  const [isEditingEventName, setIsEditingEventName] = useState(false);
-  const [eventNameInput, setEventNameInput] = useState(
-    selectedEvent?.name || ""
-  );
-  const [eventNameLoading, setEventNameLoading] = useState(false);
-  const [eventNameError, setEventNameError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setEventNameInput(selectedEvent?.name || "");
-  }, [selectedEvent]);
-
-  const handleEditEventName = () => {
-    setIsEditingEventName(true);
-    setEventNameInput(selectedEvent?.name || "");
-    setEventNameError(null);
-  };
-
-  const handleCancelEditEventName = () => {
-    setIsEditingEventName(false);
-    setEventNameInput(selectedEvent?.name || "");
-    setEventNameError(null);
-  };
-
-  const handleSaveEventName = async () => {
-    if (!selectedEvent || !eventNameInput.trim()) return;
-    setEventNameLoading(true);
-    setEventNameError(null);
-    try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const response = await fetch(`${apiBaseUrl}/events/${selectedEvent.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ name: eventNameInput.trim() }),
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to update event name");
-      }
-      toast({
-        title: "Event name updated",
-        description: "The event name was updated successfully.",
-      });
-      setIsEditingEventName(false);
-      setSelectedEvent((ev) =>
-        ev ? { ...ev, name: eventNameInput.trim() } : ev
-      );
-      fetchEvents();
-    } catch (error: unknown) {
-      setEventNameError(
-        error instanceof Error ? error.message : "Failed to update event name"
-      );
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to update event name",
-        variant: "destructive",
-      });
-    } finally {
-      setEventNameLoading(false);
-    }
-  };
-
-  // Add this effect after the hideExported state declaration
-  const prevHideExported = useRef(hideExported);
+  // --- useEffect for hiding exported cards & sorting ---
   useEffect(() => {
     if (prevHideExported.current && !hideExported) {
       setSorting([{ id: "status", desc: true }]);
@@ -1414,11 +1327,12 @@ const Dashboard = () => {
     prevHideExported.current = hideExported;
   }, [hideExported]);
 
-  const [cardFieldPrefs, setCardFieldPrefs] = useState<Record<
-    string,
-    boolean
-  > | null>(null);
+  // --- useEffect for event name ---
+  useEffect(() => {
+    setEventNameInput(selectedEvent?.name || "");
+  }, [selectedEvent]);
 
+  // --- useEffect for card field preferences ---
   useEffect(() => {
     async function fetchSettings() {
       if (!selectedEvent) return;
@@ -1439,17 +1353,46 @@ const Dashboard = () => {
     fetchSettings();
   }, [selectedEvent]);
 
-  const fieldsToShow = selectedCardForReview
-    ? cardFieldPrefs && Object.keys(cardFieldPrefs).length > 0
-      ? Object.keys(selectedCardForReview.fields).filter((fieldKey) => {
-          const actualName =
-            selectedCardForReview.fields[fieldKey]?.actual_field_name;
-          return cardFieldPrefs[actualName] !== false; // show if true or undefined
-        })
-      : reviewFieldOrder.filter(
-          (fieldKey) => selectedCardForReview.fields[fieldKey]
-        )
-    : [];
+  // --- useEffect for initializing form data ---
+  useEffect(() => {
+    if (selectedCardForReview && reviewFieldOrder) {
+      const initialFormData: Record<string, string> = {};
+      reviewFieldOrder.forEach((fieldKey) => {
+        initialFormData[fieldKey] =
+          selectedCardForReview.fields?.[fieldKey]?.value ?? "";
+      });
+      setFormData(initialFormData);
+    } else {
+      setFormData({});
+    }
+  }, [selectedCardForReview, reviewFieldOrder]);
+
+  // --- useEffect for image URL ---
+  useEffect(() => {
+    async function updateImageUrl() {
+      if (selectedCardForReview?.image_path) {
+        const signedUrl = await getSignedImageUrl(
+          selectedCardForReview.image_path
+        );
+        setImageUrlState(signedUrl);
+      } else {
+        setImageUrlState("");
+      }
+    }
+    updateImageUrl();
+  }, [selectedCardForReview?.image_path, getSignedImageUrl]);
+
+  // --- Keyboard event listener ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && Object.keys(rowSelection).length > 0) {
+        setRowSelection({});
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [rowSelection]);
 
   // --- JSX ---
   return (
