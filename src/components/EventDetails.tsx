@@ -1,11 +1,10 @@
 // src/components/Dashboard.tsx (Reverted State - After useCards, Before useCardTable)
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 // Restore full Tanstack Table imports
 import {
   ColumnDef,
-  flexRender,
   getCoreRowModel,
   getSortedRowModel,
   SortingState,
@@ -16,14 +15,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import {
   Tooltip,
   TooltipContent,
@@ -36,47 +28,24 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+
 import { Badge } from "@/components/ui/badge"; // Restore Badge import
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  Camera,
   Download,
-  Trash2,
   CheckCircle,
-  FileText,
-  FolderOpen,
   Loader2,
   X,
   Info,
   Archive,
-  CalendarDays,
   CheckCircle2,
-  PlusCircle,
-  Upload,
-  UserPlus,
   ChevronRight,
-  ZoomIn,
-  ZoomOut,
   Pencil,
   Check,
 } from "lucide-react";
 // Custom Components and Hooks
-import ScanFab from "@/components/ScanFab";
 import { useToast } from "@/hooks/use-toast";
 import { useCardsOverride } from "@/hooks/useCardsOverride";
 import { useEvents } from "@/hooks/useEvents";
@@ -84,23 +53,13 @@ import { useEvents } from "@/hooks/useEvents";
 import {
   formatPhoneNumber,
   formatBirthday,
-  escapeCsvValue,
   formatDateOrTimeAgo,
 } from "@/lib/utils";
-import type { ProspectCard, FieldDetail, CardStatus } from "@/types/card";
+import type { ProspectCard } from "@/types/card";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import { LoadingState } from "@/components/LoadingState";
 import type { Event } from "@/types/event";
 import { determineCardStatus } from "@/lib/cardUtils";
-import { Switch } from "@/components/ui/switch";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
 import { useCardUpload } from "@/hooks/useCardUpload";
-import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { supabase } from "@/lib/supabaseClient";
 import { getSignedImageUrl } from "@/lib/imageUtils";
 import ReviewImagePanel from "@/components/review/ReviewImagePanel";
@@ -109,14 +68,12 @@ import ArchiveConfirmDialog from "@/components/modals/ArchiveConfirmDialog";
 import MoveConfirmDialog from "@/components/modals/MoveConfirmDialog";
 import DeleteConfirmDialog from "@/components/modals/DeleteConfirmDialog";
 import ManualEntryModal from "@/components/modals/ManualEntryModal";
-import EventHeader from "@/components/events/EventHeader";
 import CardTable from "@/components/cards/CardTable";
 import { useEventName } from "@/hooks/useEventName";
 import { useCardReviewModal } from "@/hooks/useCardReviewModal";
 import { useCardTableActions } from "@/hooks/useCardTableActions";
 import { useManualEntryModal } from "@/hooks/useManualEntryModal";
 import { useCardUploadActions } from "@/hooks/useCardUploadActions";
-import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { useZoom } from "@/hooks/useZoom";
 import { useStatusTabs } from "@/hooks/useStatusTabs";
 
@@ -1650,135 +1607,15 @@ const Dashboard = () => {
                   selectedCardId={selectedCardForReview?.id}
                 />
                 {/* Form Fields Panel */}
-                <div className="bg-gray-50 rounded-lg p-4 overflow-y-auto">
-                  <div className="space-y-4">
-                    {selectedCardForReview ? (
-                      fieldsToShow.map((fieldKey) => {
-                        const fieldData =
-                          selectedCardForReview.fields?.[fieldKey];
-                        const label =
-                          fieldData?.actual_field_name ||
-                          dataFieldsMap.get(fieldKey) ||
-                          fieldKey.replace(/_/g, " ");
-                        const needsReview =
-                          fieldData?.requires_human_review === true;
-                        const isReviewed = fieldData?.reviewed === true;
-                        const reviewNotes = fieldData?.review_notes;
-
-                        // Show review indicators only for fields that need review
-                        const showIcon = needsReview;
-
-                        let formattedValue = fieldData?.value ?? "";
-                        if (fieldKey === "cell")
-                          formattedValue = formatPhoneNumber(fieldData?.value);
-                        if (fieldKey === "date_of_birth")
-                          formattedValue = formatBirthday(fieldData?.value);
-
-                        const tooltipContent =
-                          reviewNotes ||
-                          (needsReview ? "Needs human review" : null);
-
-                        return (
-                          <div
-                            key={fieldKey}
-                            className="grid grid-cols-5 items-center gap-x-4 gap-y-1"
-                          >
-                            <Label
-                              htmlFor={fieldKey}
-                              className="text-right col-span-2 text-xs font-medium text-gray-600 flex items-center justify-end gap-1"
-                            >
-                              {showIcon && !isReviewed && (
-                                <TooltipProvider delayDuration={100}>
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <div className="flex h-3 w-3 items-center justify-center rounded-full bg-red-400 flex-shrink-0 text-white text-[8px] font-bold leading-none">
-                                        !
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="left">
-                                      <p>{tooltipContent}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                              {label}:
-                            </Label>
-                            <div className="col-span-3 flex items-center gap-2">
-                              {fieldKey === "cell" ? (
-                                <PhoneNumberInput
-                                  id={fieldKey}
-                                  value={formData[fieldKey] ?? ""}
-                                  onChange={(value) =>
-                                    handleFormChange(fieldKey, value)
-                                  }
-                                  className={`h-8 text-sm flex-1 ${
-                                    isReviewed &&
-                                    selectedTab === "needs_human_review"
-                                      ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
-                                      : showIcon
-                                      ? "border-red-300 focus-visible:ring-red-400"
-                                      : ""
-                                  }`}
-                                />
-                              ) : (
-                                <Input
-                                  id={fieldKey}
-                                  value={formData[fieldKey] ?? ""}
-                                  onChange={(e) =>
-                                    handleFormChange(fieldKey, e.target.value)
-                                  }
-                                  className={`h-8 text-sm flex-1 ${
-                                    isReviewed &&
-                                    selectedTab === "needs_human_review"
-                                      ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
-                                      : showIcon
-                                      ? "border-red-300 focus-visible:ring-red-400"
-                                      : ""
-                                  }`}
-                                />
-                              )}
-                              {showIcon &&
-                                selectedTab === "needs_human_review" && (
-                                  <TooltipProvider delayDuration={100}>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className={`h-8 w-8 p-1 ${
-                                            isReviewed
-                                              ? "text-green-500"
-                                              : "text-gray-400 hover:text-gray-600"
-                                          }`}
-                                          onClick={(e) =>
-                                            handleFieldReview(fieldKey, e)
-                                          }
-                                        >
-                                          <CheckCircle className="h-5 w-5" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="right">
-                                        <p>
-                                          {isReviewed
-                                            ? "Mark as needing review"
-                                            : "Mark as reviewed"}
-                                        </p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className="text-gray-500 text-center mt-4">
-                        No card selected for review.
-                      </p>
-                    )}
-                  </div>
-                </div>
+                <ReviewForm
+                  selectedCardForReview={selectedCardForReview}
+                  fieldsToShow={fieldsToShow}
+                  formData={formData}
+                  handleFormChange={handleFormChange}
+                  handleFieldReview={handleFieldReview}
+                  selectedTab={selectedTab}
+                  dataFieldsMap={dataFieldsMap}
+                />
               </div>
             </div>
             <DialogFooter className="px-6 py-3 border-t flex-shrink-0">

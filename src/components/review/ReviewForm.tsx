@@ -32,6 +32,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   selectedTab,
   dataFieldsMap,
 }) => {
+  console.log({ fieldsToShow });
   return (
     <div className="bg-gray-50 rounded-lg p-4 overflow-y-auto">
       <div className="space-y-4">
