@@ -143,7 +143,7 @@ export const SettingsPreferences: React.FC = () => {
   }
 
   return (
-    <Card className="max-w-xl mx-auto">
+    <Card className="max-h-[80vh] flex flex-col">
       <CardHeader>
         <CardTitle>Card Field Preferences</CardTitle>
         <CardDescription>
@@ -151,7 +151,7 @@ export const SettingsPreferences: React.FC = () => {
           saved per user and school.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-y-auto">
         <div className="space-y-4">
           {Object.keys(cardFields).map((key) => {
             // Format key: replace underscores with spaces and capitalize each word
