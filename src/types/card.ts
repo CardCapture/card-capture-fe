@@ -1,5 +1,10 @@
 // Define all possible status strings returned by the backend's 'review_status'
-export type CardStatus = 'reviewed' | 'needs_human_review' | 'exported' | 'archived' | 'processing';
+export type CardStatus =
+  | "reviewed"
+  | "needs_human_review"
+  | "exported"
+  | "archived"
+  | "processing";
 
 // Interface for the nested detail object for each field
 export interface FieldDetail {
@@ -8,6 +13,7 @@ export interface FieldDetail {
   requires_human_review: boolean;
   source: string;
   review_notes: string;
+  actual_field_name: string;
 }
 
 // Updated ProspectCard interface
@@ -32,7 +38,7 @@ export interface ProspectCard {
 // ScannerResult remains the same
 export interface ScannerResult {
   success: boolean;
-  data?: Partial<Record<keyof ProspectCard['fields'], string>>;
+  data?: Partial<Record<keyof ProspectCard["fields"], string>>;
   missingFields?: string[];
   errorMessage?: string;
 }
