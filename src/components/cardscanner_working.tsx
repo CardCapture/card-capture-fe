@@ -79,8 +79,14 @@ const CardScanner = ({ initialMode }: CardScannerProps) => {
       }, 300);
   
       try {
-        // Send the image to the backend
-        const response = await authFetch("http://localhost:8000/upload", {
+        // Determine endpoint based on file type
+        let endpoint = "/upload";
+        if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
+          endpoint = "/bulk-upload";
+        }
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        // Send the image or PDF to the backend
+        const response = await authFetch(`${apiBaseUrl}${endpoint}`, {
           method: "POST",
           body: formData,
         });

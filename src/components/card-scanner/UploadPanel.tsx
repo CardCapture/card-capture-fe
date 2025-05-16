@@ -1,4 +1,3 @@
-
 import { useRef } from 'react';
 import { Camera, Upload } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -44,7 +43,7 @@ const UploadPanel = ({ onCameraStart, onFileUpload }: UploadPanelProps) => {
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept="image/*"
+          accept=".pdf,image/*"
           className="hidden"
         />
       </div>

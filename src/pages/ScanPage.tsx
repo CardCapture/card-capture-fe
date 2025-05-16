@@ -456,10 +456,9 @@ const ScanPage: React.FC = () => {
         {useFileInput && (
           <input
             type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFileChange}
             ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".pdf,image/*"
             className="hidden"
           />
         )}
@@ -630,10 +629,9 @@ const ScanPage: React.FC = () => {
                 <input
                   type="file"
                   ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  capture="environment"
                   onChange={handleFileChange}
+                  accept=".pdf,image/*"
+                  className="hidden"
                 />
               )}
             </div>
