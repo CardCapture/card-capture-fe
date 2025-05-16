@@ -123,7 +123,7 @@ const CardTable = ({
           type="file"
           ref={fileInputRef}
           onChange={handleFileSelect}
-          accept="image/*"
+          accept=".pdf,image/*"
           className="hidden"
         />
         {Object.keys(rowSelection).length > 0 ? (
