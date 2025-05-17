@@ -112,7 +112,7 @@ const Features = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Human Review</h3>
               <p className="text-foreground/70">
-                Review only the 20% of cards flagged by AI for verification.
+                Review only the 5% of cards flagged by AI for verification.
               </p>
             </div>
             <div className="text-center">

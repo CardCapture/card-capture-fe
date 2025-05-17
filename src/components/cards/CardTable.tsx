@@ -66,7 +66,7 @@ const CardTable = ({
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
       <div className="px-6 py-5">
-        <div className="flex flex-row justify-between items-center">
+        <div className="flex flex-row justify-between items-center gap-6">
           <div className="w-full md:w-auto md:flex-1 max-w-sm">
             <Input
               type="search"
@@ -104,7 +104,7 @@ const CardTable = ({
           </DropdownMenu>
         </div>
         {selectedTab === "ready_to_export" && (
-          <div className="flex items-center gap-3 text-xs text-gray-500">
+          <div className="flex items-center gap-3 text-xs text-gray-500 mt-4">
             <Switch
               id="hide-exported"
               checked={hideExported}

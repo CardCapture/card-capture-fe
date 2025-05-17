@@ -22,15 +22,6 @@ export function hasFieldsNeedingReview(fields: Record<string, FieldDetail>): boo
  * Determines the current status of a card based on its fields and metadata
  */
 export function determineCardStatus(card: ProspectCard): CardStatus | null {
-  // Debug log the incoming card
-  console.log('determineCardStatus input:', {
-    id: card.id,
-    review_status: card.review_status,
-    deleted_at: card.deleted_at,
-    exported_at: card.exported_at,
-    fields: card.fields ? Object.keys(card.fields).length : 0
-  });
-
   // If the card has been deleted, return null to exclude it from counts
   if (card.deleted_at) {
     return null;

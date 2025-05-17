@@ -14,7 +14,7 @@ const Hero = () => {
   return (
     <section className="relative min-h-[80vh] flex items-center py-16 overflow-hidden">
       {/* Background gradient */}
-      <div className="absolute top-32 right-[20%] w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute top-32 right-[5%] w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       <div className="absolute bottom-32 left-[15%] w-96 h-96 bg-blue-400/5 rounded-full blur-3xl" />
       
       <div className="w-full mx-auto relative z-10">

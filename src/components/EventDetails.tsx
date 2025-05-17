@@ -178,7 +178,6 @@ const Dashboard = () => {
   const [hideExported, setHideExported] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
 
   // Image and zoom
   const [zoom, setZoom] = useState(0.47);
@@ -391,6 +390,18 @@ const Dashboard = () => {
   useEffect(() => {
     fetchCards();
   }, [selectedEvent, fetchCards]);
+
+  // Add this after filteredCards is defined and before JSX return
+  useEffect(() => {
+    setRowSelection((prev) => {
+      const validIds = new Set(filteredCards.map(card => card.id));
+      const next = Object.fromEntries(
+        Object.entries(prev).filter(([id]) => validIds.has(id))
+      );
+      // Only update if changed
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+  }, [filteredCards]);
 
   // --- Callbacks & Effects ---
   const handleFieldReview = useCallback(
@@ -695,18 +706,10 @@ const Dashboard = () => {
       rowSelection,
     },
     enableRowSelection: true,
+    getRowId: (row) => row.id,
     onRowSelectionChange: (updater) => {
       setRowSelection((prev) => {
         const next = typeof updater === "function" ? updater(prev) : updater;
-        // Map selected row indices to card IDs using filteredCards
-        const ids = Object.keys(next)
-          .filter((key) => next[key])
-          .map((key) => {
-            const idx = parseInt(key, 10);
-            return filteredCards[idx]?.id;
-          })
-          .filter(Boolean);
-        setSelectedCardIds(ids as string[]);
         return next;
       });
     },
@@ -731,11 +734,15 @@ const Dashboard = () => {
   // --- Row Selection and Card Actions ---
   const handleDeleteSelected = useCallback(async () => {
     try {
-      const selectedIds = Object.keys(rowSelection).map((index) => {
-        const card = filteredCards[parseInt(index)];
-        return card.id;
-      });
-
+      const selectedIds = Object.keys(rowSelection);
+      if (selectedIds.length === 0) {
+        toast({
+          title: "No Cards Selected",
+          description: "Please select at least one card to delete.",
+          variant: "destructive",
+        });
+        return;
+      }
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${apiBaseUrl}/delete-cards`, {
@@ -747,14 +754,11 @@ const Dashboard = () => {
           document_ids: selectedIds,
         }),
       });
-
       if (!response.ok) {
         throw new Error("Failed to delete cards");
       }
-
-      setRowSelection({});
-      await fetchCards();
-
+      await fetchCards(); // Refresh cards first
+      setRowSelection({}); // Then clear selection
       toast({
         title: "Success",
         description: "Selected cards have been deleted",
@@ -767,31 +771,42 @@ const Dashboard = () => {
         variant: "destructive",
       });
     }
-  }, [rowSelection, filteredCards, toast, fetchCards]);
+  }, [rowSelection, toast, fetchCards]);
+
+  const [lockedRowSelection, setLockedRowSelection] = useState<RowSelectionState>({});
 
   const handleArchiveSelected = useCallback(async () => {
+    const selectedIds = Object.keys(lockedRowSelection);
+    console.log("[Archive] Selected IDs:", selectedIds);
+    if (selectedIds.length === 0) {
+      toast({
+        title: "No Cards Selected",
+        description: "Please select at least one card to archive.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
-      if (selectedCardIds.length === 0) {
-        toast({
-          title: "No Cards Selected",
-          description: "Please select at least one card to archive.",
-          variant: "destructive",
-        });
-        return;
-      }
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      // Map the selected IDs to their document_ids using the full cards array
+      const documentIds = cards
+        .filter(card => selectedIds.includes(card.id))
+        .map(card => card.document_id);
+      console.log("[Archive] Document IDs to archive:", documentIds);
       const response = await fetch(`${apiBaseUrl}/archive-cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: selectedCardIds }),
+        body: JSON.stringify({ document_ids: documentIds }),
       });
+      const responseData = await response.json().catch(() => ({}));
+      console.log("[Archive] Backend response:", response.status, responseData);
       if (!response.ok) {
-        throw new Error("Failed to archive cards");
+        throw new Error(responseData.error || "Failed to archive cards");
       }
-      setRowSelection({});
-      setSelectedCardIds([]);
-      await fetchCards();
+      await fetchCards(); // Refresh cards first
+      setRowSelection({}); // Then clear selection
+      setLockedRowSelection({}); // Clear locked selection
       toast({
         title: "Success",
         description: "Selected cards have been archived",
@@ -800,65 +815,68 @@ const Dashboard = () => {
       console.error("Error archiving cards:", error);
       toast({
         title: "Error",
-        description: "Failed to archive cards",
+        description: error instanceof Error ? error.message : "Failed to archive cards",
         variant: "destructive",
       });
     }
-  }, [selectedCardIds, toast, fetchCards]);
+  }, [lockedRowSelection, toast, fetchCards, cards]);
 
   const handleExportSelected = useCallback(async () => {
+    const selectedIds = Object.keys(rowSelection);
+    if (selectedIds.length === 0) {
+      toast({
+        title: "No Cards Selected",
+        description: "Please select at least one card to export.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
-      if (selectedCardIds.length === 0) {
-        toast({
-          title: "No Cards Selected",
-          description: "Please select at least one card to export.",
-          variant: "destructive",
-        });
-        return;
-      }
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      // Map the selected IDs to their document_ids
+      const documentIds = filteredCards
+        .filter(card => selectedIds.includes(card.id))
+        .map(card => card.document_id);
+      console.log("[Export] Document IDs to export:", documentIds);
       const response = await fetch(`${apiBaseUrl}/mark-exported`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: selectedCardIds }),
+        body: JSON.stringify({ document_ids: documentIds }),
       });
       if (!response.ok) {
         throw new Error("Failed to mark cards as exported");
       }
-      // ... existing CSV export logic ...
-      setRowSelection({});
-      setSelectedCardIds([]);
-      await fetchCards();
+      await fetchCards(); // Refresh cards first
+      setRowSelection({}); // Then clear selection
       toast({
         title: "Export Successful",
-        description: `${selectedCardIds.length} ${
-          selectedCardIds.length === 1 ? "card" : "cards"
-        } exported successfully.`,
+        description: `${documentIds.length} ${documentIds.length === 1 ? "card" : "cards"} exported successfully.`,
         variant: "default",
       });
     } catch (error) {
       console.error("Error exporting cards:", error);
       toast({
         title: "Export Failed",
-        description:
-          "Something went wrong while exporting cards. Please try again.",
+        description: "Something went wrong while exporting cards. Please try again.",
         variant: "destructive",
       });
     }
-  }, [selectedCardIds, toast, fetchCards, selectedEvent, dataFieldsMap]);
+  }, [rowSelection, toast, fetchCards, selectedEvent, dataFieldsMap, filteredCards]);
 
   const handleMoveSelected = useCallback(async () => {
-    try {
-      const selectedIds = Object.keys(rowSelection).map((index) => {
-        const card = filteredCards[parseInt(index)];
-        return card.id;
+    const selectedIds = Object.keys(rowSelection);
+    if (selectedIds.length === 0) {
+      toast({
+        title: "No Cards Selected",
+        description: "Please select at least one card to move.",
+        variant: "destructive",
       });
-
+      return;
+    }
+    try {
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-
-      // Update each card's status to 'reviewed'
       for (const documentId of selectedIds) {
         const response = await fetch(
           `${apiBaseUrl}/save-review/${documentId}`,
@@ -872,15 +890,12 @@ const Dashboard = () => {
             }),
           }
         );
-
         if (!response.ok) {
           throw new Error("Failed to move cards");
         }
       }
-
-      setRowSelection({});
-      await fetchCards();
-
+      await fetchCards(); // Refresh cards first
+      setRowSelection({}); // Then clear selection
       toast({
         title: "Success",
         description: "Selected cards have been moved to Ready to Export",
@@ -893,7 +908,7 @@ const Dashboard = () => {
         variant: "destructive",
       });
     }
-  }, [rowSelection, filteredCards, toast, fetchCards]);
+  }, [rowSelection, toast, fetchCards]);
 
   // --- Event Name Management ---
   const handleEditEventName = () => {
@@ -1292,7 +1307,7 @@ const Dashboard = () => {
   // --- useEffect for card field preferences ---
   useEffect(() => {
     async function fetchSettings() {
-      if (!selectedEvent) return;
+      if (!selectedEvent || !selectedEvent.school_id) return;
       const user = (await supabase.auth.getUser()).data.user;
       if (!user) return;
       const { data, error } = await supabase
@@ -1349,6 +1364,13 @@ const Dashboard = () => {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [rowSelection]);
+
+  // Add this function:
+  const openBulkArchiveDialog = useCallback(() => {
+    console.log("[Archive Dialog] Opening with rowSelection:", rowSelection);
+    setLockedRowSelection(rowSelection);
+    setIsArchiveConfirmOpen(true);
   }, [rowSelection]);
 
   // --- JSX ---
@@ -1539,7 +1561,7 @@ const Dashboard = () => {
               handleArchiveSelected={handleArchiveSelected}
               handleMoveSelected={handleMoveSelected}
               handleDeleteSelected={handleDeleteSelected}
-              setIsArchiveConfirmOpen={setIsArchiveConfirmOpen}
+              setIsArchiveConfirmOpen={openBulkArchiveDialog}
               setIsMoveConfirmOpen={setIsMoveConfirmOpen}
               setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
               dataFieldsMap={dataFieldsMap}
@@ -1645,8 +1667,8 @@ const Dashboard = () => {
         <ArchiveConfirmDialog
           open={isArchiveConfirmOpen}
           onOpenChange={setIsArchiveConfirmOpen}
-          onConfirm={confirmArchiveAction}
-          count={selectedCardForReview ? 1 : Object.keys(rowSelection).length}
+          onConfirm={selectedCardForReview ? confirmArchiveAction : handleArchiveSelected}
+          count={selectedCardForReview ? 1 : Object.keys(lockedRowSelection).length}
           singleCard={!!selectedCardForReview}
         />
 
