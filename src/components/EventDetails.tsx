@@ -54,6 +54,7 @@ import {
   formatPhoneNumber,
   formatBirthday,
   formatDateOrTimeAgo,
+  escapeCsvValue,
 } from "@/lib/utils";
 import type { ProspectCard } from "@/types/card";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -196,9 +197,22 @@ const Dashboard = () => {
     useState<boolean>(false);
   const [manualEntryForm, setManualEntryForm] = useState({
     name: "",
+    preferred_first_name: "",
+    date_of_birth: "",
     email: "",
     cell: "",
-    date_of_birth: "",
+    permission_to_text: "",
+    address: "",
+    city: "",
+    state: "",
+    zip_code: "",
+    high_school: "",
+    class_rank: "",
+    students_in_class: "",
+    gpa: "",
+    student_type: "",
+    entry_term: "",
+    major: "",
   });
 
   // Settings/preferences
@@ -720,15 +734,11 @@ const Dashboard = () => {
 
   // Fields to show in the review panel
   const fieldsToShow = selectedCardForReview
-    ? cardFieldPrefs && Object.keys(cardFieldPrefs).length > 0
-      ? Object.keys(selectedCardForReview.fields).filter((fieldKey) => {
-          const actualName =
-            selectedCardForReview.fields[fieldKey]?.actual_field_name;
-          return cardFieldPrefs[actualName] !== false; // show if true or undefined
-        })
-      : reviewFieldOrder.filter(
-          (fieldKey) => selectedCardForReview.fields[fieldKey]
-        )
+    ? reviewFieldOrder.filter(
+        (fieldKey) =>
+          selectedCardForReview.fields[fieldKey] &&
+          (cardFieldPrefs?.[fieldKey] !== false)
+      )
     : [];
 
   // --- Row Selection and Card Actions ---
@@ -745,13 +755,17 @@ const Dashboard = () => {
       }
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      // Map selected row IDs to document_ids using the full cards array
+      const documentIds = cards
+        .filter(card => selectedIds.includes(card.id))
+        .map(card => card.document_id);
       const response = await fetch(`${apiBaseUrl}/delete-cards`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          document_ids: selectedIds,
+          document_ids: documentIds,
         }),
       });
       if (!response.ok) {
@@ -771,7 +785,7 @@ const Dashboard = () => {
         variant: "destructive",
       });
     }
-  }, [rowSelection, toast, fetchCards]);
+  }, [rowSelection, toast, fetchCards, cards]);
 
   const [lockedRowSelection, setLockedRowSelection] = useState<RowSelectionState>({});
 
@@ -847,6 +861,85 @@ const Dashboard = () => {
       });
       if (!response.ok) {
         throw new Error("Failed to mark cards as exported");
+      }
+      // --- CSV Download Logic ---
+      const selectedCards = filteredCards.filter(card => selectedIds.includes(card.id));
+      if (selectedCards.length > 0) {
+        const csvFields = [
+          "event_name",
+          "name",
+          "preferred_first_name",
+          "date_of_birth",
+          "email",
+          "cell",
+          "permission_to_text",
+          "address",
+          "city",
+          "state",
+          "zip_code",
+          "high_school",
+          "class_rank",
+          "students_in_class",
+          "gpa",
+          "student_type",
+          "entry_term",
+          "major"
+        ];
+        const csvHeaders = [
+          "Event Name",
+          "Name",
+          "Preferred Name",
+          "Birthday",
+          "Email",
+          "Phone Number",
+          "Permission to Text",
+          "Address",
+          "City",
+          "State",
+          "Zip Code",
+          "High School",
+          "Class Rank",
+          "Students in Class",
+          "GPA",
+          "Student Type",
+          "Entry Term",
+          "Major"
+        ];
+        const csvRows = [
+          csvHeaders.join(','),
+          ...selectedCards.map(card => {
+            return [
+              escapeCsvValue(selectedEvent?.name ?? ""),
+              escapeCsvValue(card.fields?.name?.value ?? ""),
+              escapeCsvValue(card.fields?.preferred_first_name?.value ?? ""),
+              escapeCsvValue(formatBirthday(card.fields?.date_of_birth?.value)),
+              escapeCsvValue(card.fields?.email?.value ?? ""),
+              escapeCsvValue(formatPhoneNumber(card.fields?.cell?.value)),
+              escapeCsvValue(card.fields?.permission_to_text?.value ?? ""),
+              escapeCsvValue(card.fields?.address?.value ?? ""),
+              escapeCsvValue(card.fields?.city?.value ?? ""),
+              escapeCsvValue(card.fields?.state?.value ?? ""),
+              escapeCsvValue(card.fields?.zip_code?.value ?? ""),
+              escapeCsvValue(card.fields?.high_school?.value ?? ""),
+              escapeCsvValue(card.fields?.class_rank?.value ?? ""),
+              escapeCsvValue(card.fields?.students_in_class?.value ?? ""),
+              escapeCsvValue(card.fields?.gpa?.value ?? ""),
+              escapeCsvValue(card.fields?.student_type?.value ?? ""),
+              escapeCsvValue(card.fields?.entry_term?.value ?? ""),
+              escapeCsvValue(card.fields?.major?.value ?? "")
+            ].join(',');
+          })
+        ];
+        const csvString = csvRows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cards_export.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       }
       await fetchCards(); // Refresh cards first
       setRowSelection({}); // Then clear selection
@@ -1221,21 +1314,32 @@ const Dashboard = () => {
       // Create manual card entry
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${apiBaseUrl}/cards/manual`, {
+      let response = await fetch(`${apiBaseUrl}/manual-entry`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           event_id: eventId,
+          school_id: selectedEvent?.school_id,
           fields: {
             name: { value: manualEntryForm.name, confidence: 1.0 },
+            preferred_first_name: { value: manualEntryForm.preferred_first_name, confidence: 1.0 },
+            date_of_birth: { value: manualEntryForm.date_of_birth, confidence: 1.0 },
             email: { value: manualEntryForm.email, confidence: 1.0 },
             cell: { value: manualEntryForm.cell, confidence: 1.0 },
-            date_of_birth: {
-              value: manualEntryForm.date_of_birth,
-              confidence: 1.0,
-            },
+            permission_to_text: { value: manualEntryForm.permission_to_text, confidence: 1.0 },
+            address: { value: manualEntryForm.address, confidence: 1.0 },
+            city: { value: manualEntryForm.city, confidence: 1.0 },
+            state: { value: manualEntryForm.state, confidence: 1.0 },
+            zip_code: { value: manualEntryForm.zip_code, confidence: 1.0 },
+            high_school: { value: manualEntryForm.high_school, confidence: 1.0 },
+            class_rank: { value: manualEntryForm.class_rank, confidence: 1.0 },
+            students_in_class: { value: manualEntryForm.students_in_class, confidence: 1.0 },
+            gpa: { value: manualEntryForm.gpa, confidence: 1.0 },
+            student_type: { value: manualEntryForm.student_type, confidence: 1.0 },
+            entry_term: { value: manualEntryForm.entry_term, confidence: 1.0 },
+            major: { value: manualEntryForm.major, confidence: 1.0 },
           },
         }),
       });
@@ -1259,9 +1363,22 @@ const Dashboard = () => {
       // Reset form and close modal
       setManualEntryForm({
         name: "",
+        preferred_first_name: "",
+        date_of_birth: "",
         email: "",
         cell: "",
-        date_of_birth: "",
+        permission_to_text: "",
+        address: "",
+        city: "",
+        state: "",
+        zip_code: "",
+        high_school: "",
+        class_rank: "",
+        students_in_class: "",
+        gpa: "",
+        student_type: "",
+        entry_term: "",
+        major: "",
       });
       setIsManualEntryModalOpen(false);
 

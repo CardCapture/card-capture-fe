@@ -96,11 +96,11 @@ const CardTable = ({
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={handleImportFile}>
                 <Upload className="w-4 h-4 mr-2" />
-                <span>Import File</span>
+                <span>Import Card(s)</span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={handleManualEntry}>
                 <UserPlus className="w-4 h-4 mr-2" />
-                <span>Record Name</span>
+                <span>Enter Manually</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
