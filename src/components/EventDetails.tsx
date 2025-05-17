@@ -818,6 +818,7 @@ const Dashboard = () => {
         description: error instanceof Error ? error.message : "Failed to archive cards",
         variant: "destructive",
       });
+      setIsArchiveConfirmOpen(false);
     }
   }, [lockedRowSelection, toast, fetchCards, cards]);
 
@@ -877,22 +878,17 @@ const Dashboard = () => {
     try {
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      for (const documentId of selectedIds) {
-        const response = await fetch(
-          `${apiBaseUrl}/save-review/${documentId}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              status: "reviewed",
-            }),
-          }
-        );
-        if (!response.ok) {
-          throw new Error("Failed to move cards");
-        }
+      // Map selected row IDs to document_ids using the full cards array
+      const documentIds = cards
+        .filter(card => selectedIds.includes(card.id))
+        .map(card => card.document_id);
+      const response = await fetch(`${apiBaseUrl}/move-cards`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document_ids: documentIds, status: "reviewed" }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to move cards");
       }
       await fetchCards(); // Refresh cards first
       setRowSelection({}); // Then clear selection
@@ -908,7 +904,7 @@ const Dashboard = () => {
         variant: "destructive",
       });
     }
-  }, [rowSelection, toast, fetchCards]);
+  }, [rowSelection, toast, fetchCards, cards]);
 
   // --- Event Name Management ---
   const handleEditEventName = () => {
