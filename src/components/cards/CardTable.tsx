@@ -104,7 +104,7 @@ const CardTable = ({
           </DropdownMenu>
         </div>
         {selectedTab === "ready_to_export" && (
-          <div className="flex items-center gap-3 text-xs text-gray-500 mt-4">
+          <div className={`flex items-center gap-3 text-xs text-gray-500 mt-4 ${Object.keys(rowSelection).length > 0 ? 'mb-4' : 'mb-0'}`}>
             <Switch
               id="hide-exported"
               checked={hideExported}
@@ -127,7 +127,7 @@ const CardTable = ({
           className="hidden"
         />
         {Object.keys(rowSelection).length > 0 ? (
-          <div className="bg-blue-50 border-b border-blue-200 shadow-sm sticky top-0 z-10 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-top-2">
+          <div className="bg-blue-50 border-b border-blue-200 shadow-sm sticky top-0 z-10 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-top-2 mb-0">
             <div className="w-full flex justify-between items-center px-4 py-2.5">
               <div className="flex items-center gap-2">
                 <input
@@ -206,7 +206,7 @@ const CardTable = ({
           </div>
         ) : null}
         {/* Table */}
-        <Table>
+        <Table className={Object.keys(rowSelection).length > 0 ? '' : 'mt-4'}>
           {Object.keys(rowSelection).length === 0 && (
             <TableHeader className="bg-gray-50 sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
