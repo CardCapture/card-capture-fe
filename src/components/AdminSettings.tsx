@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -315,72 +315,53 @@ const AdminSettings: React.FC = () => {
     default:
       heading = "Manage Subscription";
       content = (
-        <div className="flex justify-center items-center min-h-[60vh] w-full py-12">
-          <Card className="bg-white shadow-lg rounded-2xl max-w-2xl w-full mx-auto border border-gray-100">
-            <CardContent className="p-8">
-              {/* Section Header */}
-              <div className="flex items-center gap-3 mb-4">
-                <CreditCard className="w-8 h-8 text-blue-600" />
-                <div>
-                  <div className="text-2xl md:text-3xl font-bold text-gray-900">
-                    Manage Subscription
-                  </div>
-                  <div className="text-gray-500 text-base md:text-lg">
-                    Control your billing plan and payment details below.
-                  </div>
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle>Manage Subscription</CardTitle>
+            <CardDescription>
+              Control your billing plan and payment details below.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 px-6 py-4">
+            {schoolLoading ? (
+              <div className="text-muted-foreground text-sm py-8">Loading plan details...</div>
+            ) : schoolError ? (
+              <div className="text-red-500 text-sm py-8">{schoolError}</div>
+            ) : school ? (
+              <>
+                <div className="text-sm">
+                  <span className="font-medium capitalize">{school.pricing_tier} Plan</span>
+                  <span className="ml-2 inline-block rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                    {PRICING_DISPLAY[school.pricing_tier] || "N/A"}
+                  </span>
                 </div>
-              </div>
-              {/* Pricing Info Block */}
-              {schoolLoading ? (
-                <div className="my-10 text-gray-500 text-lg">
-                  Loading plan details...
-                </div>
-              ) : schoolError ? (
-                <div className="my-10 text-red-500 text-lg">{schoolError}</div>
-              ) : school ? (
-                <div className="mb-10">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-xl md:text-2xl font-semibold capitalize text-gray-800">
-                      {school.pricing_tier} Plan
-                    </span>
-                    <span className="bg-blue-50 text-blue-700 font-bold px-4 py-1 rounded-full text-lg md:text-xl shadow-sm border border-blue-100">
-                      {PRICING_DISPLAY[school.pricing_tier] || "N/A"}
-                    </span>
-                  </div>
-                  <div className="text-gray-600 text-base md:text-lg mb-4">
-                    You're currently on the{" "}
-                    <span className="font-semibold capitalize">
-                      {school.pricing_tier}
-                    </span>{" "}
-                    plan, billed annually.
-                  </div>
-                  {/* Call to Action */}
-                  <Button
-                    onClick={handleStripeCheckout}
-                    className="mt-2 w-full py-4 text-lg md:text-xl font-semibold flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg shadow-md transition"
-                    size="lg"
-                  >
-                    <CreditCard className="w-6 h-6 mr-2" />
-                    {/* TODO: Replace with logic to check if user is subscribed */}
-                    Subscribe with Stripe
-                  </Button>
-                </div>
-              ) : (
-                <div className="my-10 text-gray-500 text-lg">
-                  No school record found.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                <p className="text-sm text-muted-foreground">
+                  You're currently on the <strong className="capitalize">{school.pricing_tier}</strong> plan, billed annually.
+                </p>
+              </>
+            ) : (
+              <div className="text-muted-foreground text-sm py-8">No school record found.</div>
+            )}
+          </CardContent>
+          <CardFooter className="px-6 pb-4">
+            <Button
+              onClick={handleStripeCheckout}
+              className="w-full sm:w-auto"
+              size="default"
+              disabled={schoolLoading || !!schoolError || !school}
+            >
+              Subscribe with Stripe
+            </Button>
+          </CardFooter>
+        </Card>
       );
       break;
   }
 
   return (
-    <div className="flex min-h-screen w-full">
-      {/* Sidebar */}
-      <nav className="w-64 flex-shrink-0 flex flex-col bg-muted p-4 min-h-screen gap-2">
+    <div className="flex h-full min-h-screen w-full">
+      {/* Left nav */}
+      <div className="w-64 border-r bg-muted/50 px-2 py-6 flex flex-col gap-2">
         {NAV_ITEMS.map((item) => (
           <button
             key={item.key}
@@ -399,12 +380,14 @@ const AdminSettings: React.FC = () => {
             {item.label}
           </button>
         ))}
-      </nav>
+      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6">
-        <div className="max-w-5xl w-full">{content}</div>
-      </main>
+      {/* Main content area */}
+      <div className="flex-1 px-6 py-6 space-y-6">
+        <div className="max-w-xl w-full">
+          {content}
+        </div>
+      </div>
     </div>
   );
 };

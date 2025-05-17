@@ -1,422 +1,359 @@
-import React, { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabaseClient";
 import { Input } from "@/components/ui/input";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
-interface CardFields {
-  [key: string]: boolean;
+interface CardField {
+  name: string;
+  label: string;
+  enabled: boolean;
 }
 
-interface SettingsRow {
-  id: string;
-  user_id: string;
-  school_id: string;
-  preferences: {
-    card_fields?: CardFields;
-    [key: string]: unknown;
-  };
-}
+const CARD_FIELDS: CardField[] = [
+  { name: "name", label: "Name", enabled: true },
+  { name: "preferred_first_name", label: "Preferred First Name", enabled: true },
+  { name: "date_of_birth", label: "Date of Birth", enabled: true },
+  { name: "email", label: "Email", enabled: true },
+  { name: "cell", label: "Phone", enabled: true },
+  { name: "permission_to_text", label: "Permission to Text", enabled: true },
+  { name: "address", label: "Address", enabled: true },
+  { name: "city", label: "City", enabled: true },
+  { name: "state", label: "State", enabled: true },
+  { name: "zip_code", label: "ZIP Code", enabled: true },
+  { name: "high_school", label: "High School", enabled: true },
+  { name: "class_rank", label: "Class Rank", enabled: true },
+  { name: "students_in_class", label: "Students in Class", enabled: true },
+  { name: "gpa", label: "GPA", enabled: true },
+  { name: "student_type", label: "Student Type", enabled: true },
+  { name: "entry_term", label: "Entry Term", enabled: true },
+  { name: "major", label: "Major", enabled: true },
+];
 
-interface SftpConfig {
-  id?: string;
-  school_id: string;
+interface SFTPConfig {
   host: string;
-  port: number;
   username: string;
   password: string;
-  remote_path: string;
-  enabled: boolean;
-  last_sent_at?: string | null;
-  created_at?: string;
-  updated_at?: string;
+  upload_path: string;
 }
 
-export const SettingsPreferences: React.FC = () => {
+const SettingsPreferences: React.FC = () => {
   const { toast } = useToast();
-  const { session, user } = useAuth();
-  const [settings, setSettings] = useState<SettingsRow | null>(null);
-  const [cardFields, setCardFields] = useState<CardFields | null>(null);
+  const { session } = useAuth();
+  const [cardFields, setCardFields] = useState<Record<string, boolean>>({});
+  const [sftpConfig, setSftpConfig] = useState<SFTPConfig>({
+    host: "",
+    username: "",
+    password: "",
+    upload_path: "",
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // SFTP Config State
-  const [sftpConfig, setSftpConfig] = useState<SftpConfig | null>(null);
-  const [sftpLoading, setSftpLoading] = useState(true);
-  const [sftpSaving, setSftpSaving] = useState(false);
-  const [sftpError, setSftpError] = useState<string | null>(null);
-
-  // Fetch settings row for user + school
   useEffect(() => {
-    const fetchSettings = async () => {
+    fetchSettings();
+  }, [session]);
+
+  const fetchSettings = async () => {
+    if (!session?.user?.id) return;
+
+    try {
       setLoading(true);
-      setError(null);
-      try {
-        // Get school_id from profile
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("school_id")
-          .eq("id", user?.id)
-          .maybeSingle();
-        if (profileError) throw new Error("Failed to fetch profile");
-        if (!profile?.school_id)
-          throw new Error("No school ID found in profile");
-        // Fetch settings row
-        const { data, error: settingsError } = await supabase
-          .from("settings")
-          .select("*")
-          .eq("user_id", user?.id)
-          .eq("school_id", profile.school_id)
-          .maybeSingle();
-        if (settingsError) throw new Error("Failed to fetch settings");
-        if (!data) {
-          setSettings(null);
-          setCardFields(null);
-        } else {
-          setSettings(data as SettingsRow);
-          setCardFields(data.preferences?.card_fields || null);
-        }
-      } catch (err: unknown) {
-        const errorMsg =
-          err instanceof Error ? err.message : "Error fetching settings";
-        setError(errorMsg);
-        setSettings(null);
-        setCardFields(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (user?.id) fetchSettings();
-  }, [user?.id]);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", session.user.id)
+        .single();
 
-  // Fetch SFTP config for current school
-  useEffect(() => {
-    const fetchSftpConfig = async () => {
-      setSftpLoading(true);
-      setSftpError(null);
-      try {
-        // Get school_id from profile
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("school_id")
-          .eq("id", user?.id)
-          .maybeSingle();
-        if (profileError) throw new Error("Failed to fetch profile");
-        if (!profile?.school_id) throw new Error("No school ID found in profile");
-        // Fetch sftp config row
-        const { data, error: sftpError } = await supabase
-          .from("sftp_configs")
-          .select("*")
-          .eq("school_id", profile.school_id)
-          .maybeSingle();
-        if (sftpError) throw new Error("Failed to fetch SFTP config");
-        if (!data) {
-          setSftpConfig({
-            host: "",
-            port: 22,
-            username: "",
-            password: "",
-            remote_path: "",
-            enabled: false,
-            school_id: profile.school_id,
-          });
-        } else {
-          setSftpConfig(data as SftpConfig);
-        }
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : "Error fetching SFTP config";
-        setSftpError(errorMsg);
-        setSftpConfig(null);
-      } finally {
-        setSftpLoading(false);
+      if (!profile?.school_id) {
+        throw new Error("No school ID found");
       }
-    };
-    if (user?.id) fetchSftpConfig();
-  }, [user?.id]);
 
-  // Handle toggle
-  const handleToggle = (key: string) => {
-    if (!cardFields) return;
-    setCardFields({ ...cardFields, [key]: !cardFields[key] });
+      // Fetch card field preferences
+      const { data: settings } = await supabase
+        .from("settings")
+        .select("preferences")
+        .eq("user_id", session.user.id)
+        .eq("school_id", profile.school_id)
+        .single();
+
+      if (settings?.preferences?.card_fields) {
+        setCardFields(settings.preferences.card_fields);
+      } else {
+        // Initialize with all fields enabled
+        const initialFields = CARD_FIELDS.reduce((acc, field) => {
+          acc[field.name] = true;
+          return acc;
+        }, {} as Record<string, boolean>);
+        setCardFields(initialFields);
+      }
+
+      // Fetch SFTP config
+      const { data: sftpData } = await supabase
+        .from("sftp_configs")
+        .select("*")
+        .eq("school_id", profile.school_id)
+        .single();
+
+      if (sftpData) {
+        setSftpConfig({
+          host: sftpData.host || "",
+          username: sftpData.username || "",
+          password: sftpData.password || "",
+          upload_path: sftpData.upload_path || "",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Save handler
-  const handleSave = async () => {
-    if (!settings || !cardFields) return;
-    setSaving(true);
-    setError(null);
+  const saveCardFields = async () => {
+    if (!session?.user?.id) return;
+
     try {
-      const newPreferences = {
-        ...settings.preferences,
-        card_fields: cardFields,
-      };
-      const { error: updateError } = await supabase
+      setSaving(true);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", session.user.id)
+        .single();
+
+      if (!profile?.school_id) {
+        throw new Error("No school ID found");
+      }
+
+      const { error } = await supabase
         .from("settings")
-        .update({ preferences: newPreferences })
-        .eq("id", settings.id);
-      if (updateError) throw new Error("Failed to save preferences");
+        .upsert({
+          user_id: session.user.id,
+          school_id: profile.school_id,
+          preferences: {
+            card_fields: cardFields,
+          },
+        });
+
+      if (error) throw error;
+
       toast({
-        title: "Preferences saved",
-        description: "Your card field preferences have been updated.",
+        title: "Success",
+        description: "Card field preferences saved successfully.",
       });
-      setSettings({ ...settings, preferences: newPreferences });
-    } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : "Error saving preferences";
-      setError(errorMsg);
-      toast({ title: "Error", description: errorMsg, variant: "destructive" });
+    } catch (error) {
+      console.error("Error saving card fields:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save card field preferences. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  // SFTP Save handler
-  const handleSftpSave = async () => {
-    if (!sftpConfig) return;
-    setSftpSaving(true);
-    setSftpError(null);
+  const saveSftpConfig = async () => {
+    if (!session?.user?.id) return;
+
     try {
-      const now = new Date().toISOString();
-      // Omit id for upsert (let DB generate if new)
-      const { id, ...configToSave } = sftpConfig;
-      configToSave.updated_at = now;
+      setSaving(true);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", session.user.id)
+        .single();
 
-      // Validate required fields
-      ["host", "remote_path", "username", "password"].forEach(field => {
-        if (!configToSave[field]) {
-          throw new Error(`${field} is required`);
-        }
-      });
-      configToSave.port = Number(configToSave.port);
-      if (isNaN(configToSave.port) || configToSave.port < 1 || configToSave.port > 65535) {
-        throw new Error("Port must be a valid number between 1 and 65535");
-      }
-      if (typeof configToSave.enabled !== "boolean") {
-        configToSave.enabled = Boolean(configToSave.enabled);
+      if (!profile?.school_id) {
+        throw new Error("No school ID found");
       }
 
-      // Log the data we're trying to save
-      console.log('Attempting to save SFTP config:', configToSave);
-
-      const { data, error: upsertError } = await supabase
+      const { error } = await supabase
         .from("sftp_configs")
-        .upsert([configToSave], { 
-          onConflict: "school_id",
-          ignoreDuplicates: false 
-        })
-        .select();
+        .upsert({
+          school_id: profile.school_id,
+          ...sftpConfig,
+        });
 
-      if (upsertError) {
-        console.error('SFTP save error:', upsertError);
-        throw new Error(`Failed to save SFTP config: ${upsertError.message}`);
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "SFTP configuration saved successfully.",
+      });
+    } catch (error) {
+      console.error("Error saving SFTP config:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save SFTP configuration. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const testSftpConnection = async () => {
+    try {
+      setSaving(true);
+      const response = await fetch("/api/test-sftp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(sftpConfig),
+      });
+
+      if (!response.ok) {
+        throw new Error("Connection test failed");
       }
 
-      console.log('SFTP config saved successfully:', data);
       toast({
-        title: "SFTP Config Saved",
-        description: "Your Slate SFTP integration settings have been updated.",
+        title: "Success",
+        description: "SFTP connection test successful.",
       });
-      setSftpConfig({ ...sftpConfig, updated_at: now });
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Error saving SFTP config";
-      console.error('SFTP save error:', err);
-      setSftpError(errorMsg);
-      toast({ title: "Error", description: errorMsg, variant: "destructive" });
+    } catch (error) {
+      console.error("Error testing SFTP connection:", error);
+      toast({
+        title: "Error",
+        description: "Failed to test SFTP connection. Please check your credentials.",
+        variant: "destructive",
+      });
     } finally {
-      setSftpSaving(false);
+      setSaving(false);
     }
   };
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6 text-gray-500">
-          Loading account settings...
-        </CardContent>
-      </Card>
-    );
-  }
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="p-6 text-red-500">{error}</CardContent>
-      </Card>
-    );
-  }
-  if (!settings || !cardFields) {
-    return (
-      <Card>
-        <CardContent className="p-6 text-gray-500">
-          No Account Setting has been added so far.
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-muted-foreground">Loading settings...</div>
+      </div>
     );
   }
 
   return (
-    <Accordion type="multiple" defaultValue={[]}>
-      <AccordionItem value="card-fields">
-        <AccordionTrigger>Card Field Preferences</AccordionTrigger>
+    <Accordion type="single" collapsible className="space-y-4">
+      {/* Card Field Preferences */}
+      <AccordionItem value="card-fields" className="border rounded-lg">
+        <AccordionTrigger className="px-6 py-4 hover:no-underline">
+          <div className="flex flex-col items-start text-left">
+            <CardTitle className="text-xl">Card Field Preferences</CardTitle>
+            <CardDescription>
+              Choose which fields to capture when scanning cards.
+            </CardDescription>
+          </div>
+        </AccordionTrigger>
         <AccordionContent>
-          <Card className="max-h-[80vh] flex flex-col mb-4">
-            <CardHeader>
-              <CardTitle>Card Field Preferences</CardTitle>
-              <CardDescription>
-                Toggle which fields you want to display or use on cards. Changes are
-                saved per user and school.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto">
-              <div className="space-y-4">
-                {Object.keys(cardFields).map((key) => {
-                  // Format key: replace underscores with spaces and capitalize each word
-                  const label = key
-                    .split("_")
-                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                    .join(" ");
-                  return (
-                    <div
-                      key={key}
-                      className="flex items-center justify-between py-2 border-b last:border-b-0"
-                    >
-                      <Label htmlFor={`switch-${key}`}>{label}</Label>
-                      <Switch
-                        id={`switch-${key}`}
-                        checked={!!cardFields[key]}
-                        onCheckedChange={() => handleToggle(key)}
-                        disabled={saving}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-            <CardFooter className="justify-end">
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Saving..." : "Save Preferences"}
-              </Button>
-            </CardFooter>
-          </Card>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {CARD_FIELDS.map((field) => (
+                <div key={field.name} className="flex items-center space-x-2">
+                  <Switch
+                    id={field.name}
+                    checked={cardFields[field.name] ?? true}
+                    onCheckedChange={(checked) =>
+                      setCardFields((prev) => ({ ...prev, [field.name]: checked }))
+                    }
+                  />
+                  <Label htmlFor={field.name}>{field.label}</Label>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+          <CardFooter className="justify-end px-6 pb-4">
+            <Button onClick={saveCardFields} disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </CardFooter>
         </AccordionContent>
       </AccordionItem>
-      <AccordionItem value="sftp">
-        <AccordionTrigger>Slate Integration (SFTP)</AccordionTrigger>
+
+      {/* Slate Integration (SFTP) */}
+      <AccordionItem value="sftp" className="border rounded-lg">
+        <AccordionTrigger className="px-6 py-4 hover:no-underline">
+          <div className="flex flex-col items-start text-left">
+            <CardTitle className="text-xl">Slate Integration (SFTP)</CardTitle>
+            <CardDescription>
+              Enter your Slate SFTP credentials to enable export.
+            </CardDescription>
+          </div>
+        </AccordionTrigger>
         <AccordionContent>
-          <Card className="max-h-[80vh] flex flex-col">
-            <CardHeader>
-              <CardTitle>Slate Integration (SFTP)</CardTitle>
-              <CardDescription>
-                Configure SFTP credentials for Slate integration. These settings are saved per school.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto">
-              {sftpLoading ? (
-                <div className="text-gray-500">Loading SFTP config...</div>
-              ) : sftpError ? (
-                <div className="text-red-500">{sftpError}</div>
-              ) : sftpConfig ? (
-                <form
-                  onSubmit={e => {
-                    e.preventDefault();
-                    handleSftpSave();
-                  }}
-                  className="space-y-4"
-                >
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="sftp-host">Host</Label>
-                    <Input
-                      id="sftp-host"
-                      type="text"
-                      value={sftpConfig.host}
-                      onChange={e => setSftpConfig({ ...sftpConfig, host: e.target.value })}
-                      disabled={sftpSaving}
-                      required
-                      placeholder="e.g. ft.technolutions.net"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="sftp-port">Port</Label>
-                    <Input
-                      id="sftp-port"
-                      type="number"
-                      value={sftpConfig.port}
-                      onChange={e => setSftpConfig({ ...sftpConfig, port: Number(e.target.value) })}
-                      disabled={sftpSaving}
-                      required
-                      min={1}
-                      max={65535}
-                      placeholder="e.g. 22"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="sftp-username">Username</Label>
-                    <Input
-                      id="sftp-username"
-                      type="text"
-                      value={sftpConfig.username}
-                      onChange={e => setSftpConfig({ ...sftpConfig, username: e.target.value })}
-                      disabled={sftpSaving}
-                      required
-                      placeholder="e.g. cardcapture"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="sftp-password">Password</Label>
-                    <Input
-                      id="sftp-password"
-                      type="password"
-                      value={sftpConfig.password}
-                      onChange={e => setSftpConfig({ ...sftpConfig, password: e.target.value })}
-                      disabled={sftpSaving}
-                      required
-                      placeholder="Enter SFTP password"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="sftp-remote-path">Remote Path</Label>
-                    <Input
-                      id="sftp-remote-path"
-                      type="text"
-                      value={sftpConfig.remote_path}
-                      onChange={e => setSftpConfig({ ...sftpConfig, remote_path: e.target.value })}
-                      disabled={sftpSaving}
-                      required
-                      placeholder="e.g. /test/incoming/cardcapture"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <Label htmlFor="sftp-enabled">Enable SFTP Integration</Label>
-                    <Switch
-                      id="sftp-enabled"
-                      checked={sftpConfig.enabled}
-                      onCheckedChange={(checked) => setSftpConfig({ ...sftpConfig, enabled: checked })}
-                      disabled={sftpSaving}
-                    />
-                  </div>
-                  <CardFooter className="justify-end px-0 pb-0">
-                    <Button type="submit" disabled={sftpSaving}>
-                      {sftpSaving ? "Saving..." : "Save"}
-                    </Button>
-                  </CardFooter>
-                </form>
-              ) : (
-                <div className="text-gray-500">No SFTP config found.</div>
-              )}
-            </CardContent>
-          </Card>
+          <CardContent className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="host">Host</Label>
+              <Input
+                id="host"
+                value={sftpConfig.host}
+                onChange={(e) =>
+                  setSftpConfig((prev) => ({ ...prev, host: e.target.value }))
+                }
+                placeholder="ft.technolutions.net"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                value={sftpConfig.username}
+                onChange={(e) =>
+                  setSftpConfig((prev) => ({ ...prev, username: e.target.value }))
+                }
+                placeholder="your-username"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={sftpConfig.password}
+                onChange={(e) =>
+                  setSftpConfig((prev) => ({ ...prev, password: e.target.value }))
+                }
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="upload_path">Upload Path</Label>
+              <Input
+                id="upload_path"
+                value={sftpConfig.upload_path}
+                onChange={(e) =>
+                  setSftpConfig((prev) => ({ ...prev, upload_path: e.target.value }))
+                }
+                placeholder="/test/incoming/cardcapture"
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="justify-end space-x-2 px-6 pb-4">
+            <Button
+              variant="outline"
+              onClick={testSftpConnection}
+              disabled={saving}
+            >
+              Test Connection
+            </Button>
+            <Button onClick={saveSftpConfig} disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </CardFooter>
         </AccordionContent>
       </AccordionItem>
     </Accordion>
