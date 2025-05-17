@@ -1369,6 +1369,59 @@ const Dashboard = () => {
     setIsArchiveConfirmOpen(true);
   }, [rowSelection]);
 
+  const handleExportToSlate = useCallback(async () => {
+    const selectedIds = Object.keys(rowSelection);
+    if (!selectedEvent?.school_id) {
+      toast({
+        title: "No School ID",
+        description: "No school ID found for this event.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (selectedIds.length === 0) {
+      toast({
+        title: "No Cards Selected",
+        description: "Please select at least one card to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      // Gather the full card data for selected rows
+      const selectedRows = filteredCards.filter(card => selectedIds.includes(card.id));
+      const response = await fetch(`${apiBaseUrl}/export-to-slate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          school_id: selectedEvent.school_id,
+          rows: selectedRows,
+        }),
+      });
+      const result = await response.json();
+      if (response.ok) {
+        toast({
+          title: "Exported to Slate",
+          description: "Cards exported to Slate successfully.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Export Failed",
+          description: result.error || "Export to Slate failed.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Export Failed",
+        description: "Export to Slate failed.",
+        variant: "destructive",
+      });
+    }
+  }, [rowSelection, toast, selectedEvent, filteredCards]);
+
   // --- JSX ---
   return (
     <ErrorBoundary>
@@ -1567,6 +1620,7 @@ const Dashboard = () => {
               handleCaptureCard={handleCaptureCard}
               handleImportFile={handleImportFile}
               handleManualEntry={handleManualEntry}
+              handleExportToSlate={handleExportToSlate}
             />
           </div>
         </div>
