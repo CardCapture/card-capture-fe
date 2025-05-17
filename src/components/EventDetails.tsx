@@ -1560,186 +1560,190 @@ const Dashboard = () => {
         </div>
 
         {/* Header Section */}
-        <Card className="mb-6">
-          <CardContent className="flex flex-col md:flex-row items-start justify-between gap-4 p-6">
-            <div className="flex flex-col text-left w-full md:w-auto">
-              <h1 className="text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2">
-                {isEditingEventName ? (
-                  <>
-                    <input
-                      className="border rounded px-2 py-1 text-lg font-semibold w-64 max-w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={eventNameInput}
-                      onChange={(e) => setEventNameInput(e.target.value)}
-                      disabled={eventNameLoading}
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSaveEventName();
-                        if (e.key === "Escape") handleCancelEditEventName();
-                      }}
-                    />
-                    <button
-                      className="ml-1 text-green-600 hover:text-green-800 disabled:opacity-50"
-                      onClick={handleSaveEventName}
-                      disabled={eventNameLoading || !eventNameInput.trim()}
-                      aria-label="Save event name"
-                    >
-                      {eventNameLoading ? (
-                        <Loader2 className="animate-spin w-5 h-5" />
-                      ) : (
-                        <Check className="w-5 h-5" />
-                      )}
-                    </button>
-                    <button
-                      className="ml-1 text-gray-500 hover:text-red-600"
-                      onClick={handleCancelEditEventName}
-                      disabled={eventNameLoading}
-                      aria-label="Cancel edit"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span>
-                      {selectedEvent ? selectedEvent.name : "All Events"}
-                    </span>
-                    <button
-                      className="ml-1 text-gray-400 hover:text-blue-600"
-                      onClick={handleEditEventName}
-                      aria-label="Edit event name"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                  </>
+        <div className="container max-w-6xl mx-auto px-4 py-6">
+          <Card className="mb-6">
+            <CardContent className="flex flex-col md:flex-row items-start justify-between gap-4 p-6">
+              <div className="flex flex-col text-left w-full md:w-auto">
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2">
+                  {isEditingEventName ? (
+                    <>
+                      <input
+                        className="border rounded px-2 py-1 text-lg font-semibold w-64 max-w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={eventNameInput}
+                        onChange={(e) => setEventNameInput(e.target.value)}
+                        disabled={eventNameLoading}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveEventName();
+                          if (e.key === "Escape") handleCancelEditEventName();
+                        }}
+                      />
+                      <button
+                        className="ml-1 text-green-600 hover:text-green-800 disabled:opacity-50"
+                        onClick={handleSaveEventName}
+                        disabled={eventNameLoading || !eventNameInput.trim()}
+                        aria-label="Save event name"
+                      >
+                        {eventNameLoading ? (
+                          <Loader2 className="animate-spin w-5 h-5" />
+                        ) : (
+                          <Check className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        className="ml-1 text-gray-500 hover:text-red-600"
+                        onClick={handleCancelEditEventName}
+                        disabled={eventNameLoading}
+                        aria-label="Cancel edit"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span>
+                        {selectedEvent ? selectedEvent.name : "All Events"}
+                      </span>
+                      <button
+                        className="ml-1 text-gray-400 hover:text-blue-600"
+                        onClick={handleEditEventName}
+                        aria-label="Edit event name"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                </h1>
+                {eventNameError && (
+                  <div className="text-sm text-red-600 mt-1">
+                    {eventNameError}
+                  </div>
                 )}
-              </h1>
-              {eventNameError && (
-                <div className="text-sm text-red-600 mt-1">
-                  {eventNameError}
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2 mt-2 md:mt-0">
-              <Badge
-                variant="outline"
-                className="inline-flex items-center text-indigo-700 border-indigo-200 bg-indigo-50"
-              >
-                <Info className="w-4 h-4 mr-1 text-indigo-500" />
-                Need Review: {getStatusCount("needs_human_review")}
-              </Badge>
-              <Badge
-                variant="outline"
-                className="inline-flex items-center text-green-700 border-green-200 bg-green-50"
-              >
-                <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
-                Ready for Export: {getStatusCount("reviewed")}
-              </Badge>
-              <Badge
-                variant="outline"
-                className="inline-flex items-center text-slate-700 border-slate-200 bg-slate-50"
-              >
-                <Download className="w-4 h-4 mr-1 text-slate-500" />
-                Exported: {getStatusCount("exported")}
-              </Badge>
-              <Badge
-                variant="outline"
-                className="inline-flex items-center text-gray-600 border-gray-200 bg-gray-50"
-              >
-                <Archive className="w-4 h-4 mr-1 text-gray-500" />
-                Archived: {getStatusCount("archived")}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2 mt-2 md:mt-0">
+                <Badge
+                  variant="outline"
+                  className="inline-flex items-center text-indigo-700 border-indigo-200 bg-indigo-50"
+                >
+                  <Info className="w-4 h-4 mr-1 text-indigo-500" />
+                  Need Review: {getStatusCount("needs_human_review")}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="inline-flex items-center text-green-700 border-green-200 bg-green-50"
+                >
+                  <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
+                  Ready for Export: {getStatusCount("reviewed")}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="inline-flex items-center text-slate-700 border-slate-200 bg-slate-50"
+                >
+                  <Download className="w-4 h-4 mr-1 text-slate-500" />
+                  Exported: {getStatusCount("exported")}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="inline-flex items-center text-gray-600 border-gray-200 bg-gray-50"
+                >
+                  <Archive className="w-4 h-4 mr-1 text-gray-500" />
+                  Archived: {getStatusCount("archived")}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-          <div className="px-6 py-5">
-            <div className="flex justify-between items-center mb-6 border-b">
-              <div className="flex gap-6">
-                <button
-                  onClick={() => setSelectedTab("needs_human_review")}
-                  className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
-                    selectedTab === "needs_human_review"
-                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  Needs Review
-                  <Badge
-                    variant="outline"
-                    className="ml-2 text-indigo-700 border-indigo-200 bg-white"
+        <div className="container max-w-6xl mx-auto px-4 py-6">
+          <Card className="overflow-hidden">
+            <CardContent className="p-6">
+              {/* Tabs */}
+              <div className="flex justify-between items-center mb-6 border-b">
+                <div className="flex gap-6">
+                  <button
+                    onClick={() => setSelectedTab("needs_human_review")}
+                    className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
+                      selectedTab === "needs_human_review"
+                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
                   >
-                    {getStatusCount("needs_human_review")}
-                  </Badge>
-                </button>
-                <button
-                  onClick={() => setSelectedTab("ready_to_export")}
-                  className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
-                    selectedTab === "ready_to_export"
-                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  Ready to Export
-                  <Badge
-                    variant="outline"
-                    className="ml-2 text-blue-700 border-blue-200 bg-white"
+                    Needs Review
+                    <Badge
+                      variant="outline"
+                      className="ml-2 text-indigo-700 border-indigo-200 bg-white"
+                    >
+                      {getStatusCount("needs_human_review")}
+                    </Badge>
+                  </button>
+                  <button
+                    onClick={() => setSelectedTab("ready_to_export")}
+                    className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
+                      selectedTab === "ready_to_export"
+                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
                   >
-                    {getStatusCount("reviewed")}
-                  </Badge>
-                </button>
+                    Ready to Export
+                    <Badge
+                      variant="outline"
+                      className="ml-2 text-blue-700 border-blue-200 bg-white"
+                    >
+                      {getStatusCount("reviewed")}
+                    </Badge>
+                  </button>
+                </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setSelectedTab("archived")}
+                    className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
+                      selectedTab === "archived"
+                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    Archived
+                    <Badge
+                      variant="outline"
+                      className="ml-2 text-gray-600 border-gray-200 bg-white"
+                    >
+                      {getStatusCount("archived")}
+                    </Badge>
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSelectedTab("archived")}
-                  className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
-                    selectedTab === "archived"
-                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  Archived
-                  <Badge
-                    variant="outline"
-                    className="ml-2 text-gray-600 border-gray-200 bg-white"
-                  >
-                    {getStatusCount("archived")}
-                  </Badge>
-                </button>
-              </div>
-            </div>
-
-            <CardTable
-              table={table}
-              rowSelection={rowSelection}
-              handleRowClick={handleRowClick}
-              selectedTab={selectedTab}
-              filteredCards={filteredCards}
-              getStatusCount={getStatusCount}
-              hideExported={hideExported}
-              setHideExported={setHideExported}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              debouncedSearch={debouncedSearch}
-              isUploading={isUploading}
-              handleExportSelected={handleExportSelected}
-              handleArchiveSelected={handleArchiveSelected}
-              handleMoveSelected={handleMoveSelected}
-              handleDeleteSelected={handleDeleteSelected}
-              setIsArchiveConfirmOpen={openBulkArchiveDialog}
-              setIsMoveConfirmOpen={setIsMoveConfirmOpen}
-              setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
-              dataFieldsMap={dataFieldsMap}
-              reviewFieldOrder={reviewFieldOrder}
-              fileInputRef={fileInputRef}
-              handleFileSelect={handleFileSelect}
-              handleCaptureCard={handleCaptureCard}
-              handleImportFile={handleImportFile}
-              handleManualEntry={handleManualEntry}
-              handleExportToSlate={handleExportToSlate}
-            />
-          </div>
+              <CardTable
+                table={table}
+                rowSelection={rowSelection}
+                handleRowClick={handleRowClick}
+                selectedTab={selectedTab}
+                filteredCards={filteredCards}
+                getStatusCount={getStatusCount}
+                hideExported={hideExported}
+                setHideExported={setHideExported}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                debouncedSearch={debouncedSearch}
+                isUploading={isUploading}
+                handleExportSelected={handleExportSelected}
+                handleArchiveSelected={handleArchiveSelected}
+                handleMoveSelected={handleMoveSelected}
+                handleDeleteSelected={handleDeleteSelected}
+                setIsArchiveConfirmOpen={openBulkArchiveDialog}
+                setIsMoveConfirmOpen={setIsMoveConfirmOpen}
+                setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
+                dataFieldsMap={dataFieldsMap}
+                reviewFieldOrder={reviewFieldOrder}
+                fileInputRef={fileInputRef}
+                handleFileSelect={handleFileSelect}
+                handleCaptureCard={handleCaptureCard}
+                handleImportFile={handleImportFile}
+                handleManualEntry={handleManualEntry}
+                handleExportToSlate={handleExportToSlate}
+              />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Review Modal Dialog */}
