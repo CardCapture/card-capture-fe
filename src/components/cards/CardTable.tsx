@@ -22,6 +22,7 @@ import {
   Camera,
   Upload,
   UserPlus,
+  ChevronDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -60,6 +61,7 @@ const CardTable = ({
   handleCaptureCard,
   handleImportFile,
   handleManualEntry,
+  handleExportToSlate,
 }) => {
   // Render the table and toolbar as in the current file
   // ...
@@ -171,25 +173,40 @@ const CardTable = ({
                   </>
                 ) : (
                   <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleExportSelected}
-                      className="text-gray-700 hover:text-gray-900 gap-1.5"
-                      disabled={isUploading}
-                    >
-                      {isUploading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Exporting...
-                        </>
-                      ) : (
-                        <>
-                          <Download className="h-4 w-4" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-700 hover:text-gray-900 gap-1.5 flex items-center"
+                          disabled={isUploading}
+                          type="button"
+                          aria-label="Export options"
+                          onClick={handleExportSelected}
+                        >
+                          {isUploading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Exporting...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="h-4 w-4" />
+                              Export
+                              <ChevronDown className="ml-1 h-4 w-4" />
+                            </>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onSelect={handleExportSelected}>
                           Export as CSV
-                        </>
-                      )}
-                    </Button>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={handleExportToSlate}>
+                          Export to Slate
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                       variant="ghost"
                       size="sm"

@@ -61,7 +61,7 @@ interface SchoolRecord {
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
 
 const AdminSettings: React.FC = () => {
-  const [active, setActive] = useState("subscription");
+  const [active, setActive] = useState("account");
 
   // User management state
   const [users, setUsers] = useState<UserProfile[]>([]);
