@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { ProspectCard } from "@/types/card";
 
 export function useCardTableActions(
@@ -15,6 +15,14 @@ export function useCardTableActions(
   const [rowSelection, setRowSelection] = useState({});
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
 
+  useEffect(() => {
+    const newSelectedIds = Object.keys(rowSelection).map(index => {
+      const card = filteredCards[parseInt(index)];
+      return card?.id;
+    }).filter(Boolean);
+    setSelectedCardIds(newSelectedIds);
+  }, [rowSelection, filteredCards]);
+
   const handleArchiveSelected = useCallback(async () => {
     try {
       if (selectedCardIds.length === 0) {
@@ -25,22 +33,27 @@ export function useCardTableActions(
         });
         return;
       }
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+      console.log('Archiving cards with IDs:', selectedCardIds);
+
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${apiBaseUrl}/archive-cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ document_ids: selectedCardIds }),
       });
+
       if (!response.ok) {
         throw new Error("Failed to archive cards");
       }
+
       setRowSelection({});
       setSelectedCardIds([]);
       await fetchCards();
+      
       toast({
         title: "Success",
-        description: "Selected cards have been archived",
+        description: `${selectedCardIds.length} card${selectedCardIds.length === 1 ? '' : 's'} have been archived`,
       });
     } catch (error) {
       console.error("Error archiving cards:", error);
