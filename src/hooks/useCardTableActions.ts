@@ -16,12 +16,10 @@ export function useCardTableActions(
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const newSelectedIds = Object.keys(rowSelection).map(index => {
-      const card = filteredCards[parseInt(index)];
-      return card?.id;
-    }).filter(Boolean);
+    const newSelectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    console.log('Selected card IDs:', newSelectedIds);
     setSelectedCardIds(newSelectedIds);
-  }, [rowSelection, filteredCards]);
+  }, [rowSelection]);
 
   const handleArchiveSelected = useCallback(async () => {
     try {
@@ -108,29 +106,30 @@ export function useCardTableActions(
 
   const handleDeleteSelected = useCallback(async () => {
     try {
-      const selectedIds = Object.keys(rowSelection).map((index) => {
-        const card = filteredCards[parseInt(index)];
-        return card.id;
-      });
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      if (selectedCardIds.length === 0) {
+        toast({
+          title: "No Cards Selected",
+          description: "Please select at least one card to delete.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${apiBaseUrl}/delete-cards`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          document_ids: selectedIds,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document_ids: selectedCardIds }),
       });
       if (!response.ok) {
         throw new Error("Failed to delete cards");
       }
       setRowSelection({});
+      setSelectedCardIds([]);
       await fetchCards();
       toast({
         title: "Success",
-        description: "Selected cards have been deleted",
+        description: `${selectedCardIds.length} card${selectedCardIds.length === 1 ? '' : 's'} have been deleted`,
       });
     } catch (error) {
       console.error("Error deleting cards:", error);
@@ -140,38 +139,36 @@ export function useCardTableActions(
         variant: "destructive",
       });
     }
-  }, [rowSelection, filteredCards, toast, fetchCards]);
+  }, [selectedCardIds, toast, fetchCards]);
 
   const handleMoveSelected = useCallback(async () => {
     try {
-      const selectedIds = Object.keys(rowSelection).map((index) => {
-        const card = filteredCards[parseInt(index)];
-        return card.id;
-      });
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      for (const documentId of selectedIds) {
-        const response = await fetch(
-          `${apiBaseUrl}/save-review/${documentId}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              status: "reviewed",
-            }),
-          }
-        );
+      if (selectedCardIds.length === 0) {
+        toast({
+          title: "No Cards Selected",
+          description: "Please select at least one card to move.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      for (const documentId of selectedCardIds) {
+        const response = await fetch(`${apiBaseUrl}/save-review/${documentId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "reviewed" }),
+        });
         if (!response.ok) {
           throw new Error("Failed to move cards");
         }
       }
       setRowSelection({});
+      setSelectedCardIds([]);
       await fetchCards();
       toast({
         title: "Success",
-        description: "Selected cards have been moved to Ready to Export",
+        description: `${selectedCardIds.length} card${selectedCardIds.length === 1 ? '' : 's'} have been moved to Ready to Export`,
       });
     } catch (error) {
       console.error("Error moving cards:", error);
@@ -181,7 +178,7 @@ export function useCardTableActions(
         variant: "destructive",
       });
     }
-  }, [rowSelection, filteredCards, toast, fetchCards]);
+  }, [selectedCardIds, toast, fetchCards]);
 
   const downloadCSV = useCallback(
     async (table) => {
