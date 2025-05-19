@@ -253,6 +253,10 @@ const Dashboard = () => {
     }, 300);
   }, []);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10); // Default page size
+
   // --- Filtered Cards ---
   const filteredCards = useMemo(() => {
     if (!cards) return [];
@@ -310,6 +314,19 @@ const Dashboard = () => {
       }
     });
   }, [cards, selectedTab, selectedEvent, hideExported, debouncedSearchQuery]);
+
+  // --- Pagination Logic ---
+  const totalCards = filteredCards.length;
+  const totalPages = Math.max(1, Math.ceil(totalCards / pageSize));
+  const paginatedCards = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCards.slice(start, start + pageSize);
+  }, [filteredCards, currentPage, pageSize]);
+
+  // Reset to first page when filters/search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredCards]);
 
   // Now, AFTER filteredCards is defined, define cardTableActions
   const cardTableActions = useCardTableActions(
@@ -408,12 +425,14 @@ const Dashboard = () => {
   // Add this after filteredCards is defined and before JSX return
   useEffect(() => {
     setRowSelection((prev) => {
-      const validIds = new Set(filteredCards.map(card => card.id));
+      const validIds = new Set(filteredCards.map((card) => card.id));
       const next = Object.fromEntries(
         Object.entries(prev).filter(([id]) => validIds.has(id))
       );
       // Only update if changed
-      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+      return Object.keys(next).length === Object.keys(prev).length
+        ? prev
+        : next;
     });
   }, [filteredCards]);
 
@@ -737,7 +756,7 @@ const Dashboard = () => {
     ? reviewFieldOrder.filter(
         (fieldKey) =>
           selectedCardForReview.fields[fieldKey] &&
-          (cardFieldPrefs?.[fieldKey] !== false)
+          cardFieldPrefs?.[fieldKey] !== false
       )
     : [];
 
@@ -757,8 +776,8 @@ const Dashboard = () => {
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       // Map selected row IDs to document_ids using the full cards array
       const documentIds = cards
-        .filter(card => selectedIds.includes(card.id))
-        .map(card => card.document_id);
+        .filter((card) => selectedIds.includes(card.id))
+        .map((card) => card.document_id);
       const response = await fetch(`${apiBaseUrl}/delete-cards`, {
         method: "POST",
         headers: {
@@ -787,7 +806,8 @@ const Dashboard = () => {
     }
   }, [rowSelection, toast, fetchCards, cards]);
 
-  const [lockedRowSelection, setLockedRowSelection] = useState<RowSelectionState>({});
+  const [lockedRowSelection, setLockedRowSelection] =
+    useState<RowSelectionState>({});
 
   const handleArchiveSelected = useCallback(async () => {
     const selectedIds = Object.keys(lockedRowSelection);
@@ -805,8 +825,8 @@ const Dashboard = () => {
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       // Map the selected IDs to their document_ids using the full cards array
       const documentIds = cards
-        .filter(card => selectedIds.includes(card.id))
-        .map(card => card.document_id);
+        .filter((card) => selectedIds.includes(card.id))
+        .map((card) => card.document_id);
       console.log("[Archive] Document IDs to archive:", documentIds);
       const response = await fetch(`${apiBaseUrl}/archive-cards`, {
         method: "POST",
@@ -829,7 +849,8 @@ const Dashboard = () => {
       console.error("Error archiving cards:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to archive cards",
+        description:
+          error instanceof Error ? error.message : "Failed to archive cards",
         variant: "destructive",
       });
       setIsArchiveConfirmOpen(false);
@@ -851,8 +872,8 @@ const Dashboard = () => {
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       // Map the selected IDs to their document_ids
       const documentIds = filteredCards
-        .filter(card => selectedIds.includes(card.id))
-        .map(card => card.document_id);
+        .filter((card) => selectedIds.includes(card.id))
+        .map((card) => card.document_id);
       console.log("[Export] Document IDs to export:", documentIds);
       const response = await fetch(`${apiBaseUrl}/mark-exported`, {
         method: "POST",
@@ -863,7 +884,9 @@ const Dashboard = () => {
         throw new Error("Failed to mark cards as exported");
       }
       // --- CSV Download Logic ---
-      const selectedCards = filteredCards.filter(card => selectedIds.includes(card.id));
+      const selectedCards = filteredCards.filter((card) =>
+        selectedIds.includes(card.id)
+      );
       if (selectedCards.length > 0) {
         const csvFields = [
           "event_name",
@@ -883,7 +906,7 @@ const Dashboard = () => {
           "gpa",
           "student_type",
           "entry_term",
-          "major"
+          "major",
         ];
         const csvHeaders = [
           "Event Name",
@@ -903,11 +926,11 @@ const Dashboard = () => {
           "GPA",
           "Student Type",
           "Entry Term",
-          "Major"
+          "Major",
         ];
         const csvRows = [
-          csvHeaders.join(','),
-          ...selectedCards.map(card => {
+          csvHeaders.join(","),
+          ...selectedCards.map((card) => {
             return [
               escapeCsvValue(selectedEvent?.name ?? ""),
               escapeCsvValue(card.fields?.name?.value ?? ""),
@@ -926,16 +949,16 @@ const Dashboard = () => {
               escapeCsvValue(card.fields?.gpa?.value ?? ""),
               escapeCsvValue(card.fields?.student_type?.value ?? ""),
               escapeCsvValue(card.fields?.entry_term?.value ?? ""),
-              escapeCsvValue(card.fields?.major?.value ?? "")
-            ].join(',');
-          })
+              escapeCsvValue(card.fields?.major?.value ?? ""),
+            ].join(",");
+          }),
         ];
-        const csvString = csvRows.join('\n');
-        const blob = new Blob([csvString], { type: 'text/csv' });
+        const csvString = csvRows.join("\n");
+        const blob = new Blob([csvString], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
-        a.download = 'cards_export.csv';
+        a.download = "cards_export.csv";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -945,18 +968,28 @@ const Dashboard = () => {
       setRowSelection({}); // Then clear selection
       toast({
         title: "Export Successful",
-        description: `${documentIds.length} ${documentIds.length === 1 ? "card" : "cards"} exported successfully.`,
+        description: `${documentIds.length} ${
+          documentIds.length === 1 ? "card" : "cards"
+        } exported successfully.`,
         variant: "default",
       });
     } catch (error) {
       console.error("Error exporting cards:", error);
       toast({
         title: "Export Failed",
-        description: "Something went wrong while exporting cards. Please try again.",
+        description:
+          "Something went wrong while exporting cards. Please try again.",
         variant: "destructive",
       });
     }
-  }, [rowSelection, toast, fetchCards, selectedEvent, dataFieldsMap, filteredCards]);
+  }, [
+    rowSelection,
+    toast,
+    fetchCards,
+    selectedEvent,
+    dataFieldsMap,
+    filteredCards,
+  ]);
 
   const handleMoveSelected = useCallback(async () => {
     const selectedIds = Object.keys(rowSelection);
@@ -973,8 +1006,8 @@ const Dashboard = () => {
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       // Map selected row IDs to document_ids using the full cards array
       const documentIds = cards
-        .filter(card => selectedIds.includes(card.id))
-        .map(card => card.document_id);
+        .filter((card) => selectedIds.includes(card.id))
+        .map((card) => card.document_id);
       const response = await fetch(`${apiBaseUrl}/move-cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1324,20 +1357,38 @@ const Dashboard = () => {
           school_id: selectedEvent?.school_id,
           fields: {
             name: { value: manualEntryForm.name, confidence: 1.0 },
-            preferred_first_name: { value: manualEntryForm.preferred_first_name, confidence: 1.0 },
-            date_of_birth: { value: manualEntryForm.date_of_birth, confidence: 1.0 },
+            preferred_first_name: {
+              value: manualEntryForm.preferred_first_name,
+              confidence: 1.0,
+            },
+            date_of_birth: {
+              value: manualEntryForm.date_of_birth,
+              confidence: 1.0,
+            },
             email: { value: manualEntryForm.email, confidence: 1.0 },
             cell: { value: manualEntryForm.cell, confidence: 1.0 },
-            permission_to_text: { value: manualEntryForm.permission_to_text, confidence: 1.0 },
+            permission_to_text: {
+              value: manualEntryForm.permission_to_text,
+              confidence: 1.0,
+            },
             address: { value: manualEntryForm.address, confidence: 1.0 },
             city: { value: manualEntryForm.city, confidence: 1.0 },
             state: { value: manualEntryForm.state, confidence: 1.0 },
             zip_code: { value: manualEntryForm.zip_code, confidence: 1.0 },
-            high_school: { value: manualEntryForm.high_school, confidence: 1.0 },
+            high_school: {
+              value: manualEntryForm.high_school,
+              confidence: 1.0,
+            },
             class_rank: { value: manualEntryForm.class_rank, confidence: 1.0 },
-            students_in_class: { value: manualEntryForm.students_in_class, confidence: 1.0 },
+            students_in_class: {
+              value: manualEntryForm.students_in_class,
+              confidence: 1.0,
+            },
             gpa: { value: manualEntryForm.gpa, confidence: 1.0 },
-            student_type: { value: manualEntryForm.student_type, confidence: 1.0 },
+            student_type: {
+              value: manualEntryForm.student_type,
+              confidence: 1.0,
+            },
             entry_term: { value: manualEntryForm.entry_term, confidence: 1.0 },
             major: { value: manualEntryForm.major, confidence: 1.0 },
           },
@@ -1505,9 +1556,12 @@ const Dashboard = () => {
       return;
     }
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       // Gather the full card data for selected rows
-      const selectedRows = filteredCards.filter(card => selectedIds.includes(card.id));
+      const selectedRows = filteredCards.filter((card) =>
+        selectedIds.includes(card.id)
+      );
       const response = await fetch(`${apiBaseUrl}/export-to-slate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1719,6 +1773,12 @@ const Dashboard = () => {
                 handleRowClick={handleRowClick}
                 selectedTab={selectedTab}
                 filteredCards={filteredCards}
+                paginatedCards={paginatedCards}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setCurrentPage={setCurrentPage}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
                 getStatusCount={getStatusCount}
                 hideExported={hideExported}
                 setHideExported={setHideExported}
@@ -1838,8 +1898,12 @@ const Dashboard = () => {
         <ArchiveConfirmDialog
           open={isArchiveConfirmOpen}
           onOpenChange={setIsArchiveConfirmOpen}
-          onConfirm={selectedCardForReview ? confirmArchiveAction : handleArchiveSelected}
-          count={selectedCardForReview ? 1 : Object.keys(lockedRowSelection).length}
+          onConfirm={
+            selectedCardForReview ? confirmArchiveAction : handleArchiveSelected
+          }
+          count={
+            selectedCardForReview ? 1 : Object.keys(lockedRowSelection).length
+          }
           singleCard={!!selectedCardForReview}
         />
 

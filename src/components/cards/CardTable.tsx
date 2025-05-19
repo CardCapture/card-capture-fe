@@ -40,6 +40,12 @@ const CardTable = ({
   handleRowClick,
   selectedTab,
   filteredCards,
+  paginatedCards,
+  currentPage,
+  totalPages,
+  setCurrentPage,
+  pageSize,
+  setPageSize,
   getStatusCount,
   hideExported,
   setHideExported,
@@ -106,7 +112,11 @@ const CardTable = ({
           </DropdownMenu>
         </div>
         {selectedTab === "ready_to_export" && (
-          <div className={`flex items-center gap-3 text-xs text-gray-500 mt-4 ${Object.keys(rowSelection).length > 0 ? 'mb-4' : 'mb-0'}`}>
+          <div
+            className={`flex items-center gap-3 text-xs text-gray-500 mt-4 ${
+              Object.keys(rowSelection).length > 0 ? "mb-4" : "mb-0"
+            }`}
+          >
             <Switch
               id="hide-exported"
               checked={hideExported}
@@ -223,7 +233,7 @@ const CardTable = ({
           </div>
         ) : null}
         {/* Table */}
-        <Table className={Object.keys(rowSelection).length > 0 ? '' : 'mt-4'}>
+        <Table className={Object.keys(rowSelection).length > 0 ? "" : "mt-4"}>
           {Object.keys(rowSelection).length === 0 && (
             <TableHeader className="bg-gray-50 sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -254,27 +264,34 @@ const CardTable = ({
             </TableHeader>
           )}
           <TableBody>
-            {table.getRowModel().rows.length > 0 ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  className="hover:bg-gray-100 cursor-pointer"
-                  onClick={() => handleRowClick(row.original)}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className="px-4 py-3 whitespace-nowrap text-sm text-gray-700"
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+            {paginatedCards.length > 0 ? (
+              paginatedCards.map((row) => {
+                // Find the row in table.getRowModel().rows by id
+                const tableRow = table
+                  .getRowModel()
+                  .rows.find((r) => r.id === row.id);
+                if (!tableRow) return null;
+                return (
+                  <TableRow
+                    key={tableRow.id}
+                    data-state={tableRow.getIsSelected() && "selected"}
+                    className="hover:bg-gray-100 cursor-pointer"
+                    onClick={() => handleRowClick(tableRow.original)}
+                  >
+                    {tableRow.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className="px-4 py-3 whitespace-nowrap text-sm text-gray-700"
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={13} className="h-24">
@@ -313,6 +330,57 @@ const CardTable = ({
             )}
           </TableBody>
         </Table>
+        {/* Pagination Controls */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-2 mt-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              Showing{" "}
+              {paginatedCards.length === 0
+                ? 0
+                : (currentPage - 1) * pageSize + 1}
+              -{Math.min(currentPage * pageSize, filteredCards.length)} of{" "}
+              {filteredCards.length} cards
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="page-size" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="page-size"
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="border rounded px-2 py-1 text-sm"
+            >
+              {[10, 20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+            >
+              Prev
+            </Button>
+            <span className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setCurrentPage(Math.min(totalPages, currentPage + 1))
+              }
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
