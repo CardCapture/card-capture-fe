@@ -31,6 +31,13 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { flexRender } from "@tanstack/react-table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Add any additional imports as needed
 
@@ -331,50 +338,36 @@ const CardTable = ({
           </TableBody>
         </Table>
         {/* Pagination Controls */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-2 mt-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              Showing{" "}
-              {paginatedCards.length === 0
-                ? 0
-                : (currentPage - 1) * pageSize + 1}
-              -{Math.min(currentPage * pageSize, filteredCards.length)} of{" "}
-              {filteredCards.length} cards
-            </span>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t px-6 py-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Rows per page:</span>
+            <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+              <SelectTrigger className="w-20 h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="flex items-center gap-2">
-            <label htmlFor="page-size" className="text-sm text-gray-600">
-              Rows per page:
-            </label>
-            <select
-              id="page-size"
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className="border rounded px-2 py-1 text-sm"
-            >
-              {[10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <Button
-              variant="ghost"
-              size="sm"
+
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Page {currentPage} of {totalPages}</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
             >
               Prev
             </Button>
-            <span className="text-sm text-gray-600">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              variant="ghost"
+            <Button 
+              variant="outline" 
               size="sm"
-              onClick={() =>
-                setCurrentPage(Math.min(totalPages, currentPage + 1))
-              }
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
             >
               Next
