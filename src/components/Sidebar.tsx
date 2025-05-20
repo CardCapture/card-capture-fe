@@ -15,7 +15,7 @@ export default function Sidebar() {
     { href: '/scan', label: 'Scan', icon: <Camera /> },
   ]
   const bottomItems = [
-    { href: '/settings', label: 'Settings', icon: <Cog /> },
+    { href: '/settings/account-settings', label: 'Settings', icon: <Cog /> },
   ]
 
   return (

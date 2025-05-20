@@ -12,26 +12,40 @@ import { Button } from "@/components/ui/button";
 import { InviteUserDialog } from "./InviteUserDialog";
 import { EditUserModal } from "./EditUserModal";
 import { useAuth } from "@/contexts/AuthContext";
-import { User, CreditCard, Settings } from "lucide-react";
+import { User, CreditCard, Settings, ListFilter, Users, Database } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { supabase } from "@/lib/supabaseClient";
 import SettingsPreferences from "./SettingsPreferences";
+import { Link, useNavigate, useLocation, Navigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 
 const NAV_ITEMS = [
   {
-    key: "account",
+    id: "account-settings",
     label: "Account Settings",
     icon: <Settings className="w-5 h-5 mr-2" />,
   },
   {
-    key: "users",
-    label: "Manage Users",
-    icon: <span className="mr-2">👥</span>,
+    id: "user-management",
+    label: "User Management",
+    icon: <Users className="w-5 h-5 mr-2" />,
   },
   {
-    key: "subscription",
-    label: "Manage Subscription",
-    icon: <span className="mr-2">💳</span>,
+    id: "subscription",
+    label: "Subscription",
+    icon: <CreditCard className="w-5 h-5 mr-2" />,
+  },
+  {
+    id: "field-preferences",
+    label: "Field Preferences",
+    icon: <ListFilter className="w-5 h-5 mr-2" />,
+  },
+  {
+    id: "integrations",
+    label: "Integrations",
+    icon: <Database className="w-5 h-5 mr-2" />,
   },
 ];
 
@@ -54,14 +68,33 @@ interface UserProfile {
 interface SchoolRecord {
   id: string;
   name: string;
-  pricing_tier: string;
-  stripe_price_id: string;
+  email: string;
+  stripe_customer_id: string | null;
+  created_at: string;
+}
+
+interface SFTPConfig {
+  host: string;
+  username: string;
+  password: string;
+  upload_path: string;
 }
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
 
 const AdminSettings: React.FC = () => {
-  const [active, setActive] = useState("account");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  const { session } = useAuth();
+
+  // Get the active tab from the URL
+  const activeTab = location.pathname.split('/').pop() || 'account-settings';
+
+  // If we're at /settings, redirect to /settings/account-settings
+  if (location.pathname === '/settings') {
+    return <Navigate to="/settings/account-settings" replace />;
+  }
 
   // User management state
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -69,12 +102,130 @@ const AdminSettings: React.FC = () => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const { session, user } = useAuth();
 
   // School state for subscription tab
   const [school, setSchool] = useState<SchoolRecord | null>(null);
   const [schoolLoading, setSchoolLoading] = useState(false);
   const [schoolError, setSchoolError] = useState<string | null>(null);
+
+  // SFTP state
+  const [sftpConfig, setSftpConfig] = useState<SFTPConfig>({
+    host: "",
+    username: "",
+    password: "",
+    upload_path: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  // SFTP functions
+  const saveSftpConfig = async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      setSaving(true);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", session.user.id)
+        .single();
+
+      if (!profile?.school_id) {
+        throw new Error("No school ID found");
+      }
+
+      const { error } = await supabase
+        .from("sftp_configs")
+        .upsert({
+          school_id: profile.school_id,
+          ...sftpConfig,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "SFTP configuration saved successfully.",
+      });
+    } catch (error) {
+      console.error("Error saving SFTP config:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save SFTP configuration. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const testSftpConnection = async () => {
+    try {
+      setSaving(true);
+      const response = await fetch("/api/test-sftp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(sftpConfig),
+      });
+
+      if (!response.ok) {
+        throw new Error("Connection test failed");
+      }
+
+      toast({
+        title: "Success",
+        description: "SFTP connection test successful.",
+      });
+    } catch (error) {
+      console.error("Error testing SFTP connection:", error);
+      toast({
+        title: "Error",
+        description: "Failed to test SFTP connection. Please check your credentials.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Fetch SFTP config
+  useEffect(() => {
+    const fetchSftpConfig = async () => {
+      if (!session?.user?.id) return;
+
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("school_id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (!profile?.school_id) {
+          throw new Error("No school ID found");
+        }
+
+        const { data: sftpData } = await supabase
+          .from("sftp_configs")
+          .select("*")
+          .eq("school_id", profile.school_id)
+          .single();
+
+        if (sftpData) {
+          setSftpConfig({
+            host: sftpData.host || "",
+            username: sftpData.username || "",
+            password: sftpData.password || "",
+            upload_path: sftpData.upload_path || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching SFTP config:", error);
+      }
+    };
+
+    fetchSftpConfig();
+  }, [session]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -98,9 +249,9 @@ const AdminSettings: React.FC = () => {
   // Fetch school record for subscription tab
   useEffect(() => {
     const fetchSchool = async () => {
-      if (active !== "subscription" || !session?.user?.id) {
+      if (activeTab !== "subscription" || !session?.user?.id) {
         console.log("Debug - Not fetching school:", {
-          active,
+          activeTab,
           userId: session?.user?.id,
         });
         return;
@@ -159,14 +310,14 @@ const AdminSettings: React.FC = () => {
     };
     fetchSchool();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, session]);
+  }, [activeTab, session]);
 
   useEffect(() => {
-    if (active === "users" && session?.access_token) {
+    if (activeTab === "user-management" && session?.access_token) {
       fetchUsers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, session]);
+  }, [activeTab, session]);
 
   const handleRowClick = (user: UserProfile) => {
     setSelectedUser(user);
@@ -175,8 +326,8 @@ const AdminSettings: React.FC = () => {
 
   // Stripe Checkout handler
   const handleStripeCheckout = async () => {
-    if (!school?.stripe_price_id) {
-      alert("No Stripe price ID found for your school.");
+    if (!school?.stripe_customer_id) {
+      alert("No Stripe customer ID found for your school.");
       return;
     }
     const stripe = await stripePromise;
@@ -186,7 +337,7 @@ const AdminSettings: React.FC = () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        price_id: school.stripe_price_id,
+        customer_id: school.stripe_customer_id,
         success_url: window.location.origin + "/settings?checkout=success",
         cancel_url: window.location.origin + "/settings?checkout=cancel",
         customer_email: session?.user?.email,
@@ -200,15 +351,75 @@ const AdminSettings: React.FC = () => {
     }
   };
 
+  // Update the navigation handler
+  const handleTabChange = (tabId: string) => {
+    navigate(`/settings/${tabId}`);
+  };
+
   // Dynamic heading and content based on active menu
   let heading = "";
   let content = null;
-  switch (active) {
-    case "account":
+  switch (activeTab) {
+    case "account-settings":
       heading = "Account Settings";
-      content = <SettingsPreferences />;
+      content = (
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Information</CardTitle>
+            <CardDescription>
+              Update your account settings and preferences.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="school_name">School Name</Label>
+              <Input
+                id="school_name"
+                value={school?.name || ""}
+                onChange={(e) => setSchool({ ...school, name: e.target.value })}
+                placeholder="Enter your school name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="school_email">School Email</Label>
+              <Input
+                id="school_email"
+                type="email"
+                value={school?.email || ""}
+                onChange={(e) => setSchool({ ...school, email: e.target.value })}
+                placeholder="Enter your school email"
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button onClick={() => {}} disabled={schoolLoading}>
+              {schoolLoading ? "Saving..." : "Save Changes"}
+            </Button>
+          </CardFooter>
+        </Card>
+      );
       break;
-    case "users":
+    case "field-preferences":
+      heading = "Field Preferences";
+      content = (
+        <Card className="bg-white shadow-sm rounded-xl p-0">
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+              <div>
+                <div className="text-2xl font-semibold">Field Preferences</div>
+                <div className="text-muted-foreground text-sm mb-4">
+                  Configure which fields appear during review and which are required
+                </div>
+              </div>
+              <Button asChild>
+                <Link to="/settings/field-preferences/manage">Manage Fields</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+      break;
+    case "user-management":
       heading = "Manage Users";
       content = (
         <Card className="bg-white shadow-sm rounded-xl p-0">
@@ -312,82 +523,172 @@ const AdminSettings: React.FC = () => {
       );
       break;
     case "subscription":
-    default:
-      heading = "Manage Subscription";
+      heading = "Subscription";
       content = (
-        <Card className="max-w-md w-full">
+        <Card className="bg-white shadow-sm rounded-xl p-0">
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+              <div>
+                <div className="text-2xl font-semibold">Subscription Details</div>
+                <div className="text-muted-foreground text-sm mb-4">
+                  Manage your billing plan and payment details
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {schoolLoading ? (
+                <div className="text-muted-foreground text-sm py-8">Loading plan details...</div>
+              ) : schoolError ? (
+                <div className="text-red-500 text-sm py-8">{schoolError}</div>
+              ) : school ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <p className="font-medium capitalize">{school.name} Plan</p>
+                      <p className="text-sm text-muted-foreground">
+                        {PRICING_DISPLAY[school.name] || "N/A"}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleStripeCheckout}
+                      size="default"
+                      disabled={schoolLoading || !!schoolError || !school}
+                    >
+                      Manage Subscription
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    You're currently on the <strong className="capitalize">{school.name}</strong> plan, billed annually.
+                  </p>
+                </div>
+              ) : (
+                <div className="text-muted-foreground text-sm py-8">No school record found.</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      );
+      break;
+    case "integrations":
+      heading = "Integrations";
+      content = (
+        <Card>
           <CardHeader>
-            <CardTitle>Manage Subscription</CardTitle>
+            <CardTitle>Slate Integration (SFTP)</CardTitle>
             <CardDescription>
-              Control your billing plan and payment details below.
+              Enter your Slate SFTP credentials to enable export.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2 px-6 py-4">
-            {schoolLoading ? (
-              <div className="text-muted-foreground text-sm py-8">Loading plan details...</div>
-            ) : schoolError ? (
-              <div className="text-red-500 text-sm py-8">{schoolError}</div>
-            ) : school ? (
-              <>
-                <div className="text-sm">
-                  <span className="font-medium capitalize">{school.pricing_tier} Plan</span>
-                  <span className="ml-2 inline-block rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-                    {PRICING_DISPLAY[school.pricing_tier] || "N/A"}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  You're currently on the <strong className="capitalize">{school.pricing_tier}</strong> plan, billed annually.
-                </p>
-              </>
-            ) : (
-              <div className="text-muted-foreground text-sm py-8">No school record found.</div>
-            )}
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="host">Host</Label>
+              <Input
+                id="host"
+                value={sftpConfig.host}
+                onChange={(e) =>
+                  setSftpConfig((prev) => ({ ...prev, host: e.target.value }))
+                }
+                placeholder="ft.technolutions.net"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                value={sftpConfig.username}
+                onChange={(e) =>
+                  setSftpConfig((prev) => ({ ...prev, username: e.target.value }))
+                }
+                placeholder="your-username"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={sftpConfig.password}
+                onChange={(e) =>
+                  setSftpConfig((prev) => ({ ...prev, password: e.target.value }))
+                }
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="upload_path">Upload Path</Label>
+              <Input
+                id="upload_path"
+                value={sftpConfig.upload_path}
+                onChange={(e) =>
+                  setSftpConfig((prev) => ({ ...prev, upload_path: e.target.value }))
+                }
+                placeholder="/test/incoming/cardcapture"
+              />
+            </div>
           </CardContent>
-          <CardFooter className="px-6 pb-4">
+          <CardFooter className="justify-end space-x-2">
             <Button
-              onClick={handleStripeCheckout}
-              className="w-full sm:w-auto"
-              size="default"
-              disabled={schoolLoading || !!schoolError || !school}
+              variant="outline"
+              onClick={testSftpConnection}
+              disabled={saving}
             >
-              Subscribe with Stripe
+              Test Connection
+            </Button>
+            <Button onClick={saveSftpConfig} disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
             </Button>
           </CardFooter>
         </Card>
       );
       break;
+    default:
+      heading = "Account Settings";
+      content = <SettingsPreferences />;
+      break;
   }
 
   return (
-    <div className="flex h-full min-h-screen w-full">
-      {/* Left nav */}
-      <div className="w-64 border-r bg-muted/50 px-2 py-6 flex flex-col gap-2">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => setActive(item.key)}
-            className={`
-              flex items-center w-full px-4 py-2 rounded-lg transition font-medium
-              ${
-                active === item.key
-                  ? "bg-blue-100 text-blue-800 font-semibold"
-                  : "hover:bg-muted/70 text-gray-700"
-              }
-            `}
-            aria-current={active === item.key ? "page" : undefined}
-          >
-            {item.icon}
-            {item.label}
-          </button>
-        ))}
-      </div>
+    <div className="container mx-auto py-8">
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* Navigation */}
+        <div className="w-full md:w-64 space-y-1">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => handleTabChange(item.id)}
+              className={`w-full flex items-center px-4 py-2 text-sm rounded-md transition-colors ${
+                activeTab === item.id
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted"
+              }`}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
 
-      {/* Main content area */}
-      <div className="flex-1 px-6 py-6 space-y-6">
-        <div className="max-w-xl w-full">
+        {/* Content */}
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold mb-6">{heading}</h1>
           {content}
         </div>
       </div>
+
+      {/* Modals */}
+      <InviteUserDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        onSuccess={fetchUsers}
+      />
+      {selectedUser && (
+        <EditUserModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          user={selectedUser}
+          onSuccess={fetchUsers}
+        />
+      )}
     </div>
   );
 };
