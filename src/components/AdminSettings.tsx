@@ -20,6 +20,8 @@ import { Link, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { updateSchoolCardFields } from "@/lib/api";
+import { CardFieldPreferences } from "@/components/CardFieldPreferences";
 
 const NAV_ITEMS = [
   {
@@ -82,6 +84,44 @@ interface SFTPConfig {
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
 
+// Add canonical field definitions
+const CANONICAL_CARD_FIELDS = [
+  'name',
+  'preferred_first_name',
+  'date_of_birth',
+  'email',
+  'cell',
+  'permission_to_text',
+  'address',
+  'city',
+  'state',
+  'zip_code',
+  'high_school',
+  'class_rank',
+  'students_in_class',
+  'gpa',
+  'student_type',
+  'entry_term',
+  'major',
+  'city_state',
+];
+
+interface CardField {
+  key: string;
+  label: string;
+  visible: boolean;
+  required: boolean;
+}
+
+interface CardFieldValue {
+  enabled: boolean;
+  required: boolean;
+}
+
+interface CardFields {
+  [key: string]: CardFieldValue;
+}
+
 const AdminSettings: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -116,6 +156,10 @@ const AdminSettings: React.FC = () => {
     upload_path: "",
   });
   const [saving, setSaving] = useState(false);
+
+  // Field preferences state
+  const [fields, setFields] = useState<CardField[]>([]);
+  const [loadingFields, setLoadingFields] = useState(true);
 
   // SFTP functions
   const saveSftpConfig = async () => {
@@ -249,7 +293,7 @@ const AdminSettings: React.FC = () => {
   // Fetch school record for subscription tab
   useEffect(() => {
     const fetchSchool = async () => {
-      if (activeTab !== "subscription" || !session?.user?.id) {
+      if ((activeTab !== "subscription" && activeTab !== "field-preferences") || !session?.user?.id) {
         console.log("Debug - Not fetching school:", {
           activeTab,
           userId: session?.user?.id,
@@ -356,6 +400,190 @@ const AdminSettings: React.FC = () => {
     navigate(`/settings/${tabId}`);
   };
 
+  // Add loadFieldPreferences function
+  const loadFieldPreferences = async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      console.log('Loading field preferences for user:', session.user.id);
+      const { data: settings, error } = await supabase
+        .from('settings')
+        .select('preferences, created_at')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      if (!settings || settings.length === 0) {
+        console.log('No settings found, initializing with defaults');
+        setFields([]);
+        return;
+      }
+
+      console.log('Settings data:', settings[0]);
+      let cardFields: CardFields = {};
+      if (settings[0]?.preferences && settings[0]?.preferences.card_fields) {
+        // Only keep canonical fields, and add any missing ones with defaults
+        for (const field of CANONICAL_CARD_FIELDS) {
+          cardFields[field] = settings[0]?.preferences.card_fields[field] || { enabled: true, required: false };
+        }
+      } else {
+        // If no settings, initialize all canonical fields
+        for (const field of CANONICAL_CARD_FIELDS) {
+          cardFields[field] = { enabled: true, required: false };
+        }
+      }
+      console.log('Card fields:', cardFields);
+
+      const formattedFields = Object.entries(cardFields).map(([key, value]: [string, any]) => ({
+        key,
+        label: key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        visible: value.enabled,
+        required: value.required
+      }));
+
+      console.log('Formatted fields:', formattedFields);
+      setFields(formattedFields);
+    } catch (error) {
+      console.error('Error loading field preferences:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      toast({
+        title: 'Error',
+        description: `Failed to load field preferences: ${error.message || 'Unknown error'}`,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingFields(false);
+    }
+  };
+
+  // Add handleSave function
+  const handleSave = async (updatedFields: CardField[]) => {
+    if (!session?.user?.id) {
+      console.error('No user session found');
+      return;
+    }
+
+    console.log('Starting save process with fields:', updatedFields);
+
+    try {
+      // Only save canonical fields
+      const cardFieldsToSave: CardFields = {};
+      for (const field of CANONICAL_CARD_FIELDS) {
+        const found = updatedFields.find(f => f.key === field);
+        if (found) {
+          cardFieldsToSave[field] = {
+            enabled: found.visible,
+            required: found.required,
+          };
+        } else {
+          cardFieldsToSave[field] = { enabled: true, required: false };
+        }
+      }
+
+      console.log('Formatted card fields to save:', cardFieldsToSave);
+      
+      // First verify the current settings
+      const { data: currentSettings } = await supabase
+        .from('settings')
+        .select('preferences')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      console.log('Current settings from database:', currentSettings);
+
+      const currentCardFields = (currentSettings?.[0]?.preferences?.card_fields || {}) as CardFields;
+      console.log('Current card fields:', currentCardFields);
+
+      // Save to settings table
+      console.log('Saving to settings table...');
+      const { data: savedData, error } = await supabase
+        .from('settings')
+        .upsert([
+          {
+            user_id: session.user.id,
+            school_id: session.user.app_metadata?.school_id,
+            preferences: {
+              ...currentSettings?.[0]?.preferences,
+              card_fields: cardFieldsToSave,
+            },
+            created_at: new Date().toISOString(),
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.error('Supabase error saving settings:', error);
+        throw error;
+      }
+
+      console.log('Settings saved successfully:', savedData);
+
+      // Also update the school's card fields
+      const schoolId = session.user.app_metadata?.school_id;
+      console.log('School ID from metadata:', schoolId);
+
+      // Try to get school_id from profiles table
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('school_id')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+          throw profileError;
+        }
+
+        if (!profile?.school_id) {
+          console.error('No school ID found in app_metadata or profiles table');
+          throw new Error('No school ID found');
+        }
+
+        console.log('School ID from profile:', profile.school_id);
+        await updateSchoolCardFields(profile.school_id, cardFieldsToSave, session);
+        console.log('Successfully updated school card fields');
+
+        toast({
+          title: 'Success',
+          description: 'Field preferences saved successfully.',
+        });
+      } catch (error) {
+        console.error('Error updating school card fields:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update school card fields. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error saving field preferences:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save field preferences. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Add useEffect for loading field preferences
+  useEffect(() => {
+    if (session?.user?.id && activeTab === 'field-preferences') {
+      loadFieldPreferences();
+    }
+  }, [session, activeTab]);
+
   // Dynamic heading and content based on active menu
   let heading = "";
   let content = null;
@@ -402,21 +630,20 @@ const AdminSettings: React.FC = () => {
     case "field-preferences":
       heading = "Field Preferences";
       content = (
-        <Card className="bg-white shadow-sm rounded-xl p-0">
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
-              <div>
-                <div className="text-2xl font-semibold">Field Preferences</div>
-                <div className="text-muted-foreground text-sm mb-4">
-                  Configure which fields appear during review and which are required
-                </div>
-              </div>
-              <Button asChild>
-                <Link to="/settings/field-preferences/manage">Manage Fields</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              {loadingFields ? (
+                <div>Loading field preferences...</div>
+              ) : (
+                <CardFieldPreferences
+                  fields={fields}
+                  onSave={handleSave}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
       );
       break;
     case "user-management":

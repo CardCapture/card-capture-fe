@@ -27,9 +27,9 @@ export function determineCardStatus(card: ProspectCard): CardStatus | null {
     return null;
   }
 
-  // If the card has been explicitly archived, respect that state
-  if (card.review_status === 'archived') {
-    return 'archived';
+  // Check review_status first - this is the source of truth
+  if (card.review_status) {
+    return card.review_status;
   }
 
   // If not archived but exported, show as exported
@@ -40,11 +40,6 @@ export function determineCardStatus(card: ProspectCard): CardStatus | null {
   // Check if any fields need review
   if (card.fields && hasFieldsNeedingReview(card.fields)) {
     return 'needs_human_review';
-  }
-
-  // Return the review_status if it's set
-  if (card.review_status) {
-    return card.review_status;
   }
 
   // Default to needs review if we can't determine the status

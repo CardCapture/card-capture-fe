@@ -11,7 +11,6 @@ import LoginPage from './pages/LoginPage';
 import TermsPage from './pages/TermsPage';
 import Dashboard from './components/EventDetails';
 import EventsHome from './components/EventsHome';
-import { SettingsPage } from './pages/SettingsPage';
 import AdminSettings from './components/AdminSettings';
 import NotFound from './pages/NotFound';
 import ScanPage from './pages/ScanPage';
@@ -51,7 +50,6 @@ function App() {
               <Route path="/settings/subscription" element={<AdminSettings />} />
               <Route path="/settings/field-preferences" element={<AdminSettings />} />
               <Route path="/settings/integrations" element={<AdminSettings />} />
-              <Route path="/settings/field-preferences/manage" element={<SettingsPage />} />
               <Route path="/scan" element={<ScanPage />} />
               <Route path="/users" element={<UserManagement />} />
             </Route>
