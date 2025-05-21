@@ -255,9 +255,22 @@ const Dashboard = () => {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10); // Default page size
+  const [pageSize, setPageSize] = useState(25); // Default page size
 
   // --- Filtered Cards ---
+  useEffect(() => {
+    if (cards) {
+      console.log('All cards review_status:', cards.map(card => ({id: card.id, review_status: card.review_status})));
+      console.log(
+        'Archived cards event_id:',
+        cards.filter(card => card.review_status === 'archived').map(card => ({
+          id: card.id,
+          event_id: card.event_id
+        })),
+        'Selected event id:', selectedEvent?.id
+      );
+    }
+  }, [cards, selectedEvent]);
   const filteredCards = useMemo(() => {
     if (!cards) return [];
 
@@ -269,8 +282,8 @@ const Dashboard = () => {
 
       const currentStatus = determineCardStatus(card);
 
-      // Apply hideExported filter if enabled
-      if (hideExported && card.exported_at) {
+      // Only apply hideExported in the ready_to_export tab
+      if (selectedTab === "ready_to_export" && hideExported && card.exported_at) {
         return false;
       }
 

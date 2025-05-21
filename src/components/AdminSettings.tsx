@@ -631,9 +631,6 @@ const AdminSettings: React.FC = () => {
       heading = "Field Preferences";
       content = (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Field Preferences</h2>
-          </div>
           <Card>
             <CardContent className="pt-6">
               {loadingFields ? (

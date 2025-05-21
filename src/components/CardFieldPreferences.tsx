@@ -44,7 +44,6 @@ export function CardFieldPreferences({ fields: initialFields, onSave }: CardFiel
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Card Field Preferences</CardTitle>
         <CardDescription>
           Choose which fields appear during review and which are required.
         </CardDescription>

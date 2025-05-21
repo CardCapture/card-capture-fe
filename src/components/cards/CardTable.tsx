@@ -76,6 +76,15 @@ const CardTable = ({
   handleManualEntry,
   handleExportToSlate,
 }) => {
+  // Debug pagination and filtering
+  console.log('CardTable debug:', {
+    filteredCards,
+    paginatedCards,
+    currentPage,
+    pageSize,
+    paginatedCardsLength: paginatedCards.length,
+    filteredCardsLength: filteredCards.length
+  });
   // Render the table and toolbar as in the current file
   // ...
   return (
@@ -346,9 +355,9 @@ const CardTable = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="25">25</SelectItem>
                 <SelectItem value="50">50</SelectItem>
+                <SelectItem value="75">75</SelectItem>
                 <SelectItem value="100">100</SelectItem>
               </SelectContent>
             </Select>
