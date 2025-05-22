@@ -283,7 +283,7 @@ const Dashboard = () => {
       const currentStatus = determineCardStatus(card);
 
       // Only apply hideExported in the ready_to_export tab
-      if (selectedTab === "ready_to_export" && hideExported && card.exported_at) {
+      if (selectedTab === "ready_to_export" && hideExported && currentStatus === "exported") {
         return false;
       }
 
@@ -903,7 +903,8 @@ const Dashboard = () => {
       if (selectedCards.length > 0) {
         const csvFields = [
           "event_name",
-          "name",
+          "first_name",
+          "last_name",
           "preferred_first_name",
           "date_of_birth",
           "email",
@@ -923,7 +924,8 @@ const Dashboard = () => {
         ];
         const csvHeaders = [
           "Event Name",
-          "Name",
+          "First Name",
+          "Last Name",
           "Preferred Name",
           "Birthday",
           "Email",
@@ -944,9 +946,14 @@ const Dashboard = () => {
         const csvRows = [
           csvHeaders.join(","),
           ...selectedCards.map((card) => {
+            const fullName = card.fields?.name?.value ?? "";
+            const nameParts = fullName.split(" ");
+            const firstName = nameParts[0] || "";
+            const lastName = nameParts.slice(1).join(" ") || "";
             return [
               escapeCsvValue(selectedEvent?.name ?? ""),
-              escapeCsvValue(card.fields?.name?.value ?? ""),
+              escapeCsvValue(firstName),
+              escapeCsvValue(lastName),
               escapeCsvValue(card.fields?.preferred_first_name?.value ?? ""),
               escapeCsvValue(formatBirthday(card.fields?.date_of_birth?.value)),
               escapeCsvValue(card.fields?.email?.value ?? ""),
@@ -1574,7 +1581,10 @@ const Dashboard = () => {
       // Gather the full card data for selected rows
       const selectedRows = filteredCards.filter((card) =>
         selectedIds.includes(card.id)
-      );
+      ).map(card => ({
+        ...card,
+        event_name: selectedEvent?.name || "" // Add event name to each row
+      }));
       const response = await fetch(`${apiBaseUrl}/export-to-slate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
