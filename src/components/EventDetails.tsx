@@ -502,7 +502,12 @@ const Dashboard = () => {
       setSelectedCardForReview(card);
       selectedCardIdRef.current = card.id;
       imageKeyRef.current = `image-${card.id}-${Date.now()}`;
-      // imageUrlRef.current = card.image_path || '';
+      // Initialize formData with the card's field values
+      const initialFormData: Record<string, string> = {};
+      Object.entries(card.fields).forEach(([fieldKey, fieldData]) => {
+        initialFormData[fieldKey] = fieldData.value || '';
+      });
+      setFormData(initialFormData);
       setIsReviewModalOpen(true);
       setReviewModalState(true);
     },

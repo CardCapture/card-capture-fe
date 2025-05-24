@@ -60,6 +60,31 @@ export function useCardsOverride(eventId?: string) {
         // Debug log the raw card data
         console.log('Raw card data:', card);
         
+        // Ensure all expected fields are present
+        const fields = card.fields || {};
+        const expectedFields = [
+          'name', 'preferred_first_name', 'date_of_birth', 'email', 'cell',
+          'permission_to_text', 'address', 'city', 'state', 'zip_code',
+          'high_school', 'class_rank', 'students_in_class', 'gpa',
+          'student_type', 'entry_term', 'major'
+        ];
+        
+        // Add missing fields with default values
+        expectedFields.forEach(field => {
+          if (!fields[field]) {
+            fields[field] = {
+              value: '',
+              required: false,
+              enabled: true,
+              review_confidence: 0.0,
+              requires_human_review: false,
+              review_notes: '',
+              confidence: 0.0,
+              bounding_box: []
+            };
+          }
+        });
+        
         const mappedCard = {
           ...card,
           id: card.document_id || card.id || `unknown-${Math.random().toString(36).substring(7)}`,
@@ -68,7 +93,7 @@ export function useCardsOverride(eventId?: string) {
           createdAt: card.created_at || card.uploaded_at || new Date().toISOString(),
           updatedAt: card.updated_at || card.reviewed_at,
           exported_at: card.exported_at || null,
-          fields: card.fields || {},
+          fields: fields,
           missingFields: card.missing_fields || [],
           image_path: card.image_path,
           event_id: card.event_id
