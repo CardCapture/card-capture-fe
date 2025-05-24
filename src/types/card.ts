@@ -21,6 +21,7 @@ export interface ProspectCard {
   id: string; // Legacy field, same as document_id
   document_id: string; // Primary identifier for the card
   review_status: CardStatus; // Status from the backend
+  status: string; // Current status of the card (active, archived, etc.)
   createdAt: string; // mapped from created_at or uploaded_at
   updatedAt?: string; // mapped from reviewed_at
   deleted_at?: string | null; // When the card was deleted

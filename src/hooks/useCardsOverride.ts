@@ -159,13 +159,23 @@ export function useCardsOverride(eventId?: string) {
                     ...card,
                     ...payload.new,
                     fields: payload.new.fields || card.fields,
-                    review_status: payload.new.review_status,
+                    review_status: payload.new.review_status || card.review_status,
+                    status: payload.new.status || card.status,
                     exported_at: payload.new.exported_at,
                     reviewed_at: payload.new.reviewed_at,
                     event_id: payload.new.event_id || card.event_id
                   }
                 : card
             );
+            
+            // Log the status change for debugging
+            console.log('Card status update:', {
+              cardId: payload.new.document_id,
+              oldStatus: payload.old?.status,
+              newStatus: payload.new.status,
+              oldReviewStatus: payload.old?.review_status,
+              newReviewStatus: payload.new.review_status
+            });
             
             // Only update if the card actually changed
             const hasChanges = JSON.stringify(updatedCards) !== JSON.stringify(prevCards);
@@ -178,6 +188,7 @@ export function useCardsOverride(eventId?: string) {
               id: payload.new.document_id,
               document_id: payload.new.document_id,
               review_status: payload.new.review_status || 'needs_human_review',
+              status: payload.new.status || 'active',
               createdAt: payload.new.created_at || new Date().toISOString(),
               updatedAt: payload.new.updated_at || payload.new.reviewed_at,
               exported_at: payload.new.exported_at || null,
