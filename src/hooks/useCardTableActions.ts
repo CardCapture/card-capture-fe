@@ -130,15 +130,14 @@ export function useCardTableActions(
         return;
       }
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      for (const documentId of idsToMove) {
-        const response = await fetch(`${apiBaseUrl}/save-review/${documentId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "reviewed" }),
-        });
-        if (!response.ok) {
-          throw new Error("Failed to move cards");
-        }
+      // Send a single batch request to move all cards at once
+      const response = await fetch(`${apiBaseUrl}/move-cards`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document_ids: idsToMove, status: "reviewed" }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to move cards");
       }
       await fetchCards();
       toast({
