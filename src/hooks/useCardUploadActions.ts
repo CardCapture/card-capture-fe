@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import type { Event } from "@/types/event";
 
 export function useCardUploadActions(
@@ -17,11 +17,11 @@ export function useCardUploadActions(
     action?: React.ReactNode;
     duration?: number;
     className?: string;
-  }) => void
+  }) => void,
+  fileInputRef: React.RefObject<HTMLInputElement>
 ) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const startUploadProcess = useCallback(
     async (file: File) => {
@@ -91,7 +91,6 @@ export function useCardUploadActions(
     setIsUploading,
     uploadProgress,
     setUploadProgress,
-    fileInputRef,
     handleCaptureCard,
     handleImportFile,
     handleFileSelect,

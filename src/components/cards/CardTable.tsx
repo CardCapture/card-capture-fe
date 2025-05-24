@@ -38,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "@/components/ui/use-toast";
 
 // Add any additional imports as needed
 
@@ -87,6 +88,19 @@ const CardTable = ({
   });
   // Render the table and toolbar as in the current file
   // ...
+  const handleArchiveClick = () => {
+    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    if (selectedIds.length === 0) {
+      toast({
+        title: "No Cards Selected",
+        description: "Please select at least one card to archive.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsArchiveConfirmOpen(true);
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
       <div className="px-6 py-5">
@@ -181,7 +195,10 @@ const CardTable = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setIsMoveConfirmOpen(true)}
+                      onClick={() => {
+                        const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+                        handleMoveSelected(selectedIds);
+                      }}
                       className="text-gray-700 hover:text-gray-900 gap-1.5"
                     >
                       <CheckCircle className="h-4 w-4" />
@@ -190,7 +207,10 @@ const CardTable = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setIsDeleteConfirmOpen(true)}
+                      onClick={() => {
+                        const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+                        handleDeleteSelected(selectedIds);
+                      }}
                       className="text-red-600 hover:text-red-700 gap-1.5"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -236,7 +256,7 @@ const CardTable = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setIsArchiveConfirmOpen(true)}
+                      onClick={handleArchiveClick}
                       className="text-gray-700 hover:text-gray-900 gap-1.5"
                     >
                       <Archive className="h-4 w-4" />

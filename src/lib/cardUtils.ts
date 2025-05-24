@@ -27,14 +27,14 @@ export function determineCardStatus(card: ProspectCard): CardStatus | null {
     return null;
   }
 
-  // Check if any fields need review first
-  if (card.fields && hasFieldsNeedingReview(card.fields)) {
-    return 'needs_human_review';
-  }
-
-  // Check review_status next - this is the source of truth
+  // Check review_status first - this is the source of truth
   if (card.review_status) {
     return card.review_status;
+  }
+
+  // Check if any fields need review next
+  if (card.fields && hasFieldsNeedingReview(card.fields)) {
+    return 'needs_human_review';
   }
 
   // If not archived but exported, show as exported

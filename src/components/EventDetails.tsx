@@ -234,13 +234,24 @@ const Dashboard = () => {
 
   // --- Custom Hooks ---
   const zoomState = useZoom();
-  const reviewModal = useCardReviewModal(
+  const { handleFileSelect, handleCaptureCard, handleImportFile } = useCardUploadActions(
+    selectedEvent,
+    uploadCard,
+    fetchCards,
+    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
+    fileInputRef
+  );
+  const { handleReviewSave } = useCardReviewModal(
     cards,
     reviewFieldOrder,
     fetchCards,
-    (args) =>
-      toast({ ...args, variant: args.variant as "default" | "destructive" }),
+    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
     dataFieldsMap
+  );
+  const { handleManualEntry, handleManualEntryChange, handleManualEntrySubmit } = useManualEntryModal(
+    eventId,
+    fetchCards,
+    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" })
   );
 
   // --- Callbacks ---
@@ -271,12 +282,18 @@ const Dashboard = () => {
       );
     }
   }, [cards, selectedEvent]);
+
   const filteredCards = useMemo(() => {
     if (!cards) return [];
 
     return cards.filter((card) => {
       // Always filter by event if eventId is provided
       if (selectedEvent && card.event_id !== selectedEvent.id) {
+        return false;
+      }
+
+      // Exclude archived cards from all tabs except the archived tab
+      if (selectedTab !== "archived" && card.review_status === "archived") {
         return false;
       }
 
@@ -321,12 +338,21 @@ const Dashboard = () => {
         case "exported":
           return currentStatus === "exported";
         case "archived":
-          return currentStatus === "archived";
+          return card.review_status === "archived";
         default:
           return true;
       }
     });
   }, [cards, selectedTab, selectedEvent, hideExported, debouncedSearchQuery]);
+
+  // Now that filteredCards is defined, we can use it in useCardTableActions
+  const { handleExportSelected, handleMoveSelected, handleArchiveSelected, handleDeleteSelected, downloadCSV } = useCardTableActions(
+    filteredCards,
+    fetchCards,
+    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
+    selectedEvent,
+    dataFieldsMap
+  );
 
   // --- Pagination Logic ---
   const totalCards = filteredCards.length;
@@ -340,30 +366,6 @@ const Dashboard = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [filteredCards]);
-
-  // Now, AFTER filteredCards is defined, define cardTableActions
-  const cardTableActions = useCardTableActions(
-    filteredCards,
-    fetchCards,
-    (args) =>
-      toast({ ...args, variant: args.variant as "default" | "destructive" }),
-    selectedEvent,
-    dataFieldsMap
-  );
-
-  // Manual Entry Modal
-  const manualEntry = useManualEntryModal(eventId, fetchCards, (args) =>
-    toast({ ...args, variant: args.variant as "default" | "destructive" })
-  );
-
-  // Card Upload
-  const cardUpload = useCardUploadActions(
-    selectedEvent,
-    uploadCard,
-    fetchCards,
-    (args) =>
-      toast({ ...args, variant: args.variant as "default" | "destructive" })
-  );
 
   // Review Progress
   const reviewProgress = useMemo(() => {
@@ -448,6 +450,12 @@ const Dashboard = () => {
         : next;
     });
   }, [filteredCards]);
+
+  // Add effect to update selected card IDs when row selection changes
+  useEffect(() => {
+    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    console.log('Selected card IDs:', selectedIds);
+  }, [rowSelection]);
 
   // --- Callbacks & Effects ---
   const handleFieldReview = useCallback(
@@ -779,699 +787,34 @@ const Dashboard = () => {
     : [];
 
   // --- Row Selection and Card Actions ---
-  const handleDeleteSelected = useCallback(async () => {
-    try {
-      const selectedIds = Object.keys(rowSelection);
-      if (selectedIds.length === 0) {
-        toast({
-          title: "No Cards Selected",
-          description: "Please select at least one card to delete.",
-          variant: "destructive",
-        });
-        return;
-      }
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      // Map selected row IDs to document_ids using the full cards array
-      const documentIds = cards
-        .filter((card) => selectedIds.includes(card.id))
-        .map((card) => card.document_id);
-      const response = await fetch(`${apiBaseUrl}/delete-cards`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          document_ids: documentIds,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to delete cards");
-      }
-      await fetchCards(); // Refresh cards first
-      setRowSelection({}); // Then clear selection
-      toast({
-        title: "Success",
-        description: "Selected cards have been deleted",
-      });
-    } catch (error) {
-      console.error("Error deleting cards:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete cards",
-        variant: "destructive",
-      });
-    }
-  }, [rowSelection, toast, fetchCards, cards]);
-
-  const [lockedRowSelection, setLockedRowSelection] =
-    useState<RowSelectionState>({});
-
-  const handleArchiveSelected = useCallback(async () => {
-    const selectedIds = Object.keys(lockedRowSelection);
-    console.log("[Archive] Selected IDs:", selectedIds);
-    if (selectedIds.length === 0) {
-      toast({
-        title: "No Cards Selected",
-        description: "Please select at least one card to archive.",
-        variant: "destructive",
-      });
-      return;
-    }
-    try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      // Map the selected IDs to their document_ids using the full cards array
-      const documentIds = cards
-        .filter((card) => selectedIds.includes(card.id))
-        .map((card) => card.document_id);
-      console.log("[Archive] Document IDs to archive:", documentIds);
-      const response = await fetch(`${apiBaseUrl}/archive-cards`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: documentIds }),
-      });
-      const responseData = await response.json().catch(() => ({}));
-      console.log("[Archive] Backend response:", response.status, responseData);
-      if (!response.ok) {
-        throw new Error(responseData.error || "Failed to archive cards");
-      }
-      await fetchCards(); // Refresh cards first
-      setRowSelection({}); // Then clear selection
-      setLockedRowSelection({}); // Clear locked selection
-      toast({
-        title: "Success",
-        description: "Selected cards have been archived",
-      });
-    } catch (error) {
-      console.error("Error archiving cards:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to archive cards",
-        variant: "destructive",
-      });
-      setIsArchiveConfirmOpen(false);
-    }
-  }, [lockedRowSelection, toast, fetchCards, cards]);
-
-  const handleExportSelected = useCallback(async () => {
-    const selectedIds = Object.keys(rowSelection);
-    if (selectedIds.length === 0) {
-      toast({
-        title: "No Cards Selected",
-        description: "Please select at least one card to export.",
-        variant: "destructive",
-      });
-      return;
-    }
-    try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      // Map the selected IDs to their document_ids
-      const documentIds = filteredCards
-        .filter((card) => selectedIds.includes(card.id))
-        .map((card) => card.document_id);
-      console.log("[Export] Document IDs to export:", documentIds);
-      const response = await fetch(`${apiBaseUrl}/mark-exported`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: documentIds }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to mark cards as exported");
-      }
-      // --- CSV Download Logic ---
-      const selectedCards = filteredCards.filter((card) =>
-        selectedIds.includes(card.id)
-      );
-      if (selectedCards.length > 0) {
-        const csvFields = [
-          "event_name",
-          "first_name",
-          "last_name",
-          "preferred_first_name",
-          "date_of_birth",
-          "email",
-          "cell",
-          "permission_to_text",
-          "address",
-          "city",
-          "state",
-          "zip_code",
-          "high_school",
-          "class_rank",
-          "students_in_class",
-          "gpa",
-          "student_type",
-          "entry_term",
-          "major",
-        ];
-        const csvHeaders = [
-          "Event Name",
-          "First Name",
-          "Last Name",
-          "Preferred Name",
-          "Birthday",
-          "Email",
-          "Phone Number",
-          "Permission to Text",
-          "Address",
-          "City",
-          "State",
-          "Zip Code",
-          "High School",
-          "Class Rank",
-          "Students in Class",
-          "GPA",
-          "Student Type",
-          "Entry Term",
-          "Major",
-        ];
-        const csvRows = [
-          csvHeaders.join(","),
-          ...selectedCards.map((card) => {
-            const fullName = card.fields?.name?.value ?? "";
-            const nameParts = fullName.split(" ");
-            const firstName = nameParts[0] || "";
-            const lastName = nameParts.slice(1).join(" ") || "";
-            return [
-              escapeCsvValue(selectedEvent?.name ?? ""),
-              escapeCsvValue(firstName),
-              escapeCsvValue(lastName),
-              escapeCsvValue(card.fields?.preferred_first_name?.value ?? ""),
-              escapeCsvValue(formatBirthday(card.fields?.date_of_birth?.value)),
-              escapeCsvValue(card.fields?.email?.value ?? ""),
-              escapeCsvValue(formatPhoneNumber(card.fields?.cell?.value)),
-              escapeCsvValue(card.fields?.permission_to_text?.value ?? ""),
-              escapeCsvValue(card.fields?.address?.value ?? ""),
-              escapeCsvValue(card.fields?.city?.value ?? ""),
-              escapeCsvValue(card.fields?.state?.value ?? ""),
-              escapeCsvValue(card.fields?.zip_code?.value ?? ""),
-              escapeCsvValue(card.fields?.high_school?.value ?? ""),
-              escapeCsvValue(card.fields?.class_rank?.value ?? ""),
-              escapeCsvValue(card.fields?.students_in_class?.value ?? ""),
-              escapeCsvValue(card.fields?.gpa?.value ?? ""),
-              escapeCsvValue(card.fields?.student_type?.value ?? ""),
-              escapeCsvValue(card.fields?.entry_term?.value ?? ""),
-              escapeCsvValue(card.fields?.major?.value ?? ""),
-            ].join(",");
-          }),
-        ];
-        const csvString = csvRows.join("\n");
-        const blob = new Blob([csvString], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "cards_export.csv";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
-      await fetchCards(); // Refresh cards first
-      setRowSelection({}); // Then clear selection
-      toast({
-        title: "Export Successful",
-        description: `${documentIds.length} ${
-          documentIds.length === 1 ? "card" : "cards"
-        } exported successfully.`,
-        variant: "default",
-      });
-    } catch (error) {
-      console.error("Error exporting cards:", error);
-      toast({
-        title: "Export Failed",
-        description:
-          "Something went wrong while exporting cards. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [
-    rowSelection,
-    toast,
-    fetchCards,
-    selectedEvent,
-    dataFieldsMap,
-    filteredCards,
-  ]);
-
-  const handleMoveSelected = useCallback(async () => {
-    const selectedIds = Object.keys(rowSelection);
-    if (selectedIds.length === 0) {
-      toast({
-        title: "No Cards Selected",
-        description: "Please select at least one card to move.",
-        variant: "destructive",
-      });
-      return;
-    }
-    try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      // Map selected row IDs to document_ids using the full cards array
-      const documentIds = cards
-        .filter((card) => selectedIds.includes(card.id))
-        .map((card) => card.document_id);
-      const response = await fetch(`${apiBaseUrl}/move-cards`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: documentIds, status: "reviewed" }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to move cards");
-      }
-      await fetchCards(); // Refresh cards first
-      setRowSelection({}); // Then clear selection
-      toast({
-        title: "Success",
-        description: "Selected cards have been moved to Ready to Export",
-      });
-    } catch (error) {
-      console.error("Error moving cards:", error);
-      toast({
-        title: "Error",
-        description: "Failed to move cards",
-        variant: "destructive",
-      });
-    }
-  }, [rowSelection, toast, fetchCards, cards]);
-
-  // --- Event Name Management ---
-  const handleEditEventName = () => {
-    setIsEditingEventName(true);
-    setEventNameInput(selectedEvent?.name || "");
-    setEventNameError(null);
-  };
-
-  const handleCancelEditEventName = () => {
-    setIsEditingEventName(false);
-    setEventNameInput(selectedEvent?.name || "");
-    setEventNameError(null);
-  };
-
-  const handleSaveEventName = async () => {
-    if (!selectedEvent || !eventNameInput.trim()) return;
-    setEventNameLoading(true);
-    setEventNameError(null);
-    try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const response = await fetch(`${apiBaseUrl}/events/${selectedEvent.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ name: eventNameInput.trim() }),
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to update event name");
-      }
-      toast({
-        title: "Event name updated",
-        description: "The event name was updated successfully.",
-      });
-      setIsEditingEventName(false);
-      setSelectedEvent((ev) =>
-        ev ? { ...ev, name: eventNameInput.trim() } : ev
-      );
-      fetchEvents();
-    } catch (error: unknown) {
-      setEventNameError(
-        error instanceof Error ? error.message : "Failed to update event name"
-      );
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to update event name",
-        variant: "destructive",
-      });
-    } finally {
-      setEventNameLoading(false);
+  const handleArchiveCard = () => {
+    if (selectedCardForReview) {
+      setIsArchiveConfirmOpen(true);
     }
   };
 
-  // --- Card Importing ---
-  const handleImportFile = () => {
-    // Trigger file input click
-    fileInputRef.current?.click();
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      startUploadProcess(file);
-    }
-    if (event.target) event.target.value = "";
-  };
-
-  const handleCaptureCard = () => {
-    // Implementation would open the camera modal
-    toast({
-      title: "Capture Card",
-      description: "Camera capture functionality would be triggered here",
-    });
-    // We would typically open a camera modal here, similar to ScanFab
-  };
-
-  const startUploadProcess = useCallback(
-    async (file: File) => {
-      if (!selectedEvent?.id) {
-        toast({
-          title: "Event Required",
-          description: "Please select an event before uploading a card.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setIsUploading(true);
-      setUploadProgress(0);
-
-      try {
-        // Define the onUploadStart callback to show the toast
-        const onUploadStart = () => {
-          toast({
-            title: "Card Processing",
-            description:
-              "Your card is being processed. You can continue scanning more cards.",
-            variant: "default",
-            duration: 4000,
-            className:
-              "bg-white border-green-200 shadow-md rounded-lg animate-in fade-in-0 slide-in-from-top-2",
-            action: (
-              <div className="flex items-center justify-center h-6 w-6 rounded-full bg-green-100 text-green-600">
-                <CheckCircle className="h-4 w-4" />
-              </div>
-            ),
-          });
-        };
-
-        // Use the new uploadCard hook with the callback
-        const data = await uploadCard(
-          file,
-          selectedEvent.id,
-          selectedEvent.school_id,
-          onUploadStart
-        );
-
-        // Handle successful upload
-        setUploadProgress(100);
-        setTimeout(() => {
-          setIsUploading(false);
-          setUploadProgress(0);
-        }, 200);
-
-        // Fetch updated cards list
-        await fetchCards();
-      } catch (error) {
-        setIsUploading(false);
-        setUploadProgress(0);
-      }
-    },
-    [selectedEvent, uploadCard, fetchCards, toast]
-  );
-
-  // --- Review Actions ---
-  const handleModalOpenChange = useCallback(
-    (open: boolean) => {
-      // Set the review modal state first
-      setReviewModalState(open);
-
-      // Use a small timeout to ensure the state is updated before changing the modal state
-      if (!open) {
-        // Reset zoom when modal closes
-        setZoom(0.47);
-        setTimeout(() => {
-          setIsReviewModalOpen(open);
-        }, 50);
-      } else {
-        setIsReviewModalOpen(open);
-      }
-    },
-    [setReviewModalState]
-  );
-
-  const handleReviewSave = async () => {
-    if (!selectedCardForReview) return;
-
-    setIsSaving(true);
-    try {
-      toast({
-        title: "Saving Changes",
-        description: "Updating card information...",
-        variant: "default",
-      });
-
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-
-      // Prepare the updated fields
-      const updatedFields = Object.fromEntries(
-        Object.entries(selectedCardForReview.fields).map(([key, field]) => [
-          key,
-          {
-            ...field,
-            value: formData[key] || field.value,
-            reviewed: true,
-            requires_human_review: false,
-            review_notes: "Manually reviewed",
-          },
-        ])
-      );
-
-      // Check if all fields have been reviewed
-      const allFieldsReviewed = Object.values(updatedFields).every(
-        (field) =>
-          field.reviewed === true && field.requires_human_review === false
-      );
-
-      // Save all field updates at once
-      const response = await fetch(
-        `${apiBaseUrl}/save-review/${selectedCardForReview.id}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fields: updatedFields,
-            status: allFieldsReviewed ? "reviewed" : "needs_human_review",
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to save changes");
-      }
-
-      const result = await response.json();
-
-      // Update UI based on the response
-      await fetchCards();
+  const confirmArchiveAction = () => {
+    if (selectedCardForReview) {
+      handleArchiveSelected([selectedCardForReview.id]);
       setIsReviewModalOpen(false);
       setSelectedCardForReview(null);
-      toast({
-        title: "Review Complete",
-        description: allFieldsReviewed
-          ? "All fields have been reviewed and saved."
-          : "Changes saved successfully.",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error("Error saving review:", error);
-      toast({
-        title: "Save Failed",
-        description: "Unable to save your changes. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleArchiveCard = useCallback(() => {
-    if (!selectedCardForReview) return;
-    // Set the archive confirm modal open
-    setIsArchiveConfirmOpen(true);
-  }, [selectedCardForReview]);
-
-  const confirmArchiveAction = useCallback(async () => {
-    if (!selectedCardForReview) return;
-
-    try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${apiBaseUrl}/archive-cards`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: [selectedCardForReview.id] }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error || `Failed to archive card (${response.status})`
-        );
+    } else {
+      const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+      if (selectedIds.length > 0) {
+        handleArchiveSelected(selectedIds);
+      } else {
+        toast({
+          title: "No Cards Selected",
+          description: "Please select at least one card to archive.",
+          variant: "destructive",
+        });
       }
-
-      // Close both modals
-      setIsArchiveConfirmOpen(false);
-      setIsReviewModalOpen(false);
-      setReviewModalState(false);
-
-      // Refresh the cards list
-      await fetchCards();
-
-      toast({
-        title: "Card Archived",
-        description: "Card has been successfully archived",
-        variant: "default",
-      });
-    } catch (error: unknown) {
-      console.error("Error archiving card:", error);
-      toast({
-        title: "Archive Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to archive card. Please try again.",
-        variant: "destructive",
-      });
-      setIsArchiveConfirmOpen(false);
     }
-  }, [selectedCardForReview, fetchCards, toast, setReviewModalState]);
-
-  // --- Manual Entry ---
-  const handleManualEntry = () => {
-    setIsManualEntryModalOpen(true);
+    setIsArchiveConfirmOpen(false);
   };
 
-  const handleManualEntryChange = (field: string, value: string) => {
-    setManualEntryForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleManualEntrySubmit = async () => {
-    if (!manualEntryForm.name) {
-      toast({
-        title: "Name Required",
-        description: "Please enter at least a name for the contact",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Create manual card entry
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      let response = await fetch(`${apiBaseUrl}/manual-entry`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          event_id: eventId,
-          school_id: selectedEvent?.school_id,
-          fields: {
-            name: { value: manualEntryForm.name, confidence: 1.0 },
-            preferred_first_name: {
-              value: manualEntryForm.preferred_first_name,
-              confidence: 1.0,
-            },
-            date_of_birth: {
-              value: manualEntryForm.date_of_birth,
-              confidence: 1.0,
-            },
-            email: { value: manualEntryForm.email, confidence: 1.0 },
-            cell: { value: manualEntryForm.cell, confidence: 1.0 },
-            permission_to_text: {
-              value: manualEntryForm.permission_to_text,
-              confidence: 1.0,
-            },
-            address: { value: manualEntryForm.address, confidence: 1.0 },
-            city: { value: manualEntryForm.city, confidence: 1.0 },
-            state: { value: manualEntryForm.state, confidence: 1.0 },
-            zip_code: { value: manualEntryForm.zip_code, confidence: 1.0 },
-            high_school: {
-              value: manualEntryForm.high_school,
-              confidence: 1.0,
-            },
-            class_rank: { value: manualEntryForm.class_rank, confidence: 1.0 },
-            students_in_class: {
-              value: manualEntryForm.students_in_class,
-              confidence: 1.0,
-            },
-            gpa: { value: manualEntryForm.gpa, confidence: 1.0 },
-            student_type: {
-              value: manualEntryForm.student_type,
-              confidence: 1.0,
-            },
-            entry_term: { value: manualEntryForm.entry_term, confidence: 1.0 },
-            major: { value: manualEntryForm.major, confidence: 1.0 },
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create manual entry");
-      }
-
-      toast({
-        description: (
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-            <span className="text-sm font-medium">
-              Contact added successfully
-            </span>
-          </div>
-        ),
-        duration: 3000,
-      });
-
-      // Reset form and close modal
-      setManualEntryForm({
-        name: "",
-        preferred_first_name: "",
-        date_of_birth: "",
-        email: "",
-        cell: "",
-        permission_to_text: "",
-        address: "",
-        city: "",
-        state: "",
-        zip_code: "",
-        high_school: "",
-        class_rank: "",
-        students_in_class: "",
-        gpa: "",
-        student_type: "",
-        entry_term: "",
-        major: "",
-      });
-      setIsManualEntryModalOpen(false);
-
-      // Refresh cards list
-      fetchCards();
-    } catch (error: unknown) {
-      console.error("Manual entry failed:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to create manual entry",
-        variant: "destructive",
-      });
-    }
-  };
+  // Replace handleExportToSlate with handleExportSelected
+  const handleExportToSlate = handleExportSelected;
 
   // --- Zoom Functions ---
   const zoomIn = useCallback(() => setZoom((z) => Math.min(z * 1.2, 2)), []);
@@ -1543,85 +886,88 @@ const Dashboard = () => {
     updateImageUrl();
   }, [selectedCardForReview?.image_path, getSignedImageUrl]);
 
-  // --- Keyboard event listener ---
+  // --- useEffect for keyboard shortcuts ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && Object.keys(rowSelection).length > 0) {
-        setRowSelection({});
+      if (e.key === "Escape") {
+        setIsReviewModalOpen(false);
+        setSelectedCardForReview(null);
       }
     };
-
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [rowSelection]);
+  }, []);
 
-  // Add this function:
+  // Replace openBulkArchiveDialog to just open the dialog
   const openBulkArchiveDialog = useCallback(() => {
-    console.log("[Archive Dialog] Opening with rowSelection:", rowSelection);
-    setLockedRowSelection(rowSelection);
     setIsArchiveConfirmOpen(true);
-  }, [rowSelection]);
+  }, []);
 
-  const handleExportToSlate = useCallback(async () => {
-    const selectedIds = Object.keys(rowSelection);
-    if (!selectedEvent?.school_id) {
-      toast({
-        title: "No School ID",
-        description: "No school ID found for this event.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (selectedIds.length === 0) {
-      toast({
-        title: "No Cards Selected",
-        description: "Please select at least one card to export.",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Restore missing event name editing handlers
+  const handleEditEventName = () => {
+    setIsEditingEventName(true);
+    setEventNameInput(selectedEvent?.name || "");
+    setEventNameError(null);
+  };
+
+  const handleCancelEditEventName = () => {
+    setIsEditingEventName(false);
+    setEventNameInput(selectedEvent?.name || "");
+    setEventNameError(null);
+  };
+
+  const handleSaveEventName = async () => {
+    if (!selectedEvent || !eventNameInput.trim()) return;
+    setEventNameLoading(true);
+    setEventNameError(null);
     try {
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      // Gather the full card data for selected rows
-      const selectedRows = filteredCards.filter((card) =>
-        selectedIds.includes(card.id)
-      ).map(card => ({
-        ...card,
-        event_name: selectedEvent?.name || "" // Add event name to each row
-      }));
-      const response = await fetch(`${apiBaseUrl}/export-to-slate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          school_id: selectedEvent.school_id,
-          rows: selectedRows,
-        }),
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const response = await fetch(`${apiBaseUrl}/events/${selectedEvent.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ name: eventNameInput.trim() }),
       });
-      const result = await response.json();
-      if (response.ok) {
-        toast({
-          title: "Exported to Slate",
-          description: "Cards exported to Slate successfully.",
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "Export Failed",
-          description: result.error || "Export to Slate failed.",
-          variant: "destructive",
-        });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update event name");
       }
-    } catch (err) {
       toast({
-        title: "Export Failed",
-        description: "Export to Slate failed.",
+        title: "Event name updated",
+        description: "The event name was updated successfully.",
+      });
+      setIsEditingEventName(false);
+      setSelectedEvent((ev) =>
+        ev ? { ...ev, name: eventNameInput.trim() } : ev
+      );
+      fetchEvents();
+    } catch (error) {
+      setEventNameError(
+        error instanceof Error ? error.message : "Failed to update event name"
+      );
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to update event name",
         variant: "destructive",
       });
+    } finally {
+      setEventNameLoading(false);
     }
-  }, [rowSelection, toast, selectedEvent, filteredCards]);
+  };
 
   // --- JSX ---
+  useEffect(() => {
+    console.log("Cards after fetch:", cards);
+  }, [cards]);
+
   return (
     <ErrorBoundary>
       <div className="w-full p-4 md:p-8 relative pb-20">
@@ -1816,8 +1162,14 @@ const Dashboard = () => {
                 isUploading={isUploading}
                 handleExportSelected={handleExportSelected}
                 handleArchiveSelected={handleArchiveSelected}
-                handleMoveSelected={handleMoveSelected}
-                handleDeleteSelected={handleDeleteSelected}
+                handleMoveSelected={() => {
+                  const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+                  handleMoveSelected(selectedIds);
+                }}
+                handleDeleteSelected={() => {
+                  const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+                  handleDeleteSelected(selectedIds);
+                }}
                 setIsArchiveConfirmOpen={openBulkArchiveDialog}
                 setIsMoveConfirmOpen={setIsMoveConfirmOpen}
                 setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
@@ -1835,7 +1187,7 @@ const Dashboard = () => {
         </div>
 
         {/* Review Modal Dialog */}
-        <Dialog open={isReviewModalOpen} onOpenChange={handleModalOpenChange}>
+        <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
           <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-7xl w-[calc(100%-4rem)] h-[calc(100vh-8rem)] rounded-lg overflow-hidden flex flex-col p-0">
             <DialogHeader className="flex-shrink-0">
               <div className="flex justify-between items-center px-6 pt-6 pb-4 border-b">
@@ -1926,12 +1278,8 @@ const Dashboard = () => {
         <ArchiveConfirmDialog
           open={isArchiveConfirmOpen}
           onOpenChange={setIsArchiveConfirmOpen}
-          onConfirm={
-            selectedCardForReview ? confirmArchiveAction : handleArchiveSelected
-          }
-          count={
-            selectedCardForReview ? 1 : Object.keys(lockedRowSelection).length
-          }
+          onConfirm={confirmArchiveAction}
+          count={selectedCardForReview ? 1 : Object.keys(rowSelection).length}
           singleCard={!!selectedCardForReview}
         />
 
@@ -1939,7 +1287,10 @@ const Dashboard = () => {
         <MoveConfirmDialog
           open={isMoveConfirmOpen}
           onOpenChange={setIsMoveConfirmOpen}
-          onConfirm={handleMoveSelected}
+          onConfirm={() => {
+            const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+            handleMoveSelected(selectedIds);
+          }}
           count={Object.keys(rowSelection).length}
         />
 
@@ -1947,7 +1298,10 @@ const Dashboard = () => {
         <DeleteConfirmDialog
           open={isDeleteConfirmOpen}
           onOpenChange={setIsDeleteConfirmOpen}
-          onConfirm={handleDeleteSelected}
+          onConfirm={() => {
+            const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+            handleDeleteSelected(selectedIds);
+          }}
           count={Object.keys(rowSelection).length}
         />
 

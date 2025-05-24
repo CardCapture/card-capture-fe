@@ -12,18 +12,9 @@ export function useCardTableActions(
   selectedEvent: { name: string } | null,
   dataFieldsMap: Map<string, string>
 ) {
-  const [rowSelection, setRowSelection] = useState({});
-  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    const newSelectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-    console.log('Selected card IDs:', newSelectedIds);
-    setSelectedCardIds(newSelectedIds);
-  }, [rowSelection]);
-
-  const handleArchiveSelected = useCallback(async () => {
+  const handleArchiveSelected = useCallback(async (idsToArchive: string[]) => {
     try {
-      if (selectedCardIds.length === 0) {
+      if (!idsToArchive || idsToArchive.length === 0) {
         toast({
           title: "No Cards Selected",
           description: "Please select at least one card to archive.",
@@ -31,27 +22,23 @@ export function useCardTableActions(
         });
         return;
       }
-
-      console.log('Archiving cards with IDs:', selectedCardIds);
-
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${apiBaseUrl}/archive-cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: selectedCardIds }),
+        body: JSON.stringify({ 
+          document_ids: idsToArchive,
+          status: "archived",
+          review_status: "archived"
+        }),
       });
-
       if (!response.ok) {
         throw new Error("Failed to archive cards");
       }
-
-      setRowSelection({});
-      setSelectedCardIds([]);
       await fetchCards();
-      
       toast({
         title: "Success",
-        description: `${selectedCardIds.length} card${selectedCardIds.length === 1 ? '' : 's'} have been archived`,
+        description: `${idsToArchive.length} card${idsToArchive.length === 1 ? '' : 's'} have been archived`,
       });
     } catch (error) {
       console.error("Error archiving cards:", error);
@@ -61,11 +48,11 @@ export function useCardTableActions(
         variant: "destructive",
       });
     }
-  }, [selectedCardIds, toast, fetchCards]);
+  }, [toast, fetchCards]);
 
-  const handleExportSelected = useCallback(async () => {
+  const handleExportSelected = useCallback(async (idsToExport: string[]) => {
     try {
-      if (selectedCardIds.length === 0) {
+      if (!idsToExport || idsToExport.length === 0) {
         toast({
           title: "No Cards Selected",
           description: "Please select at least one card to export.",
@@ -73,40 +60,34 @@ export function useCardTableActions(
         });
         return;
       }
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${apiBaseUrl}/mark-exported`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: selectedCardIds }),
+        body: JSON.stringify({ document_ids: idsToExport }),
       });
       if (!response.ok) {
         throw new Error("Failed to mark cards as exported");
       }
-      setRowSelection({});
-      setSelectedCardIds([]);
       await fetchCards();
       toast({
         title: "Export Successful",
-        description: `${selectedCardIds.length} ${
-          selectedCardIds.length === 1 ? "card" : "cards"
-        } exported successfully.`,
+        description: `${idsToExport.length} ${idsToExport.length === 1 ? "card" : "cards"} exported successfully.`,
         variant: "default",
       });
     } catch (error) {
       console.error("Error exporting cards:", error);
       toast({
         title: "Export Failed",
-        description:
-          "Something went wrong while exporting cards. Please try again.",
+        description: "Something went wrong while exporting cards. Please try again.",
         variant: "destructive",
       });
     }
-  }, [selectedCardIds, toast, fetchCards, selectedEvent, dataFieldsMap]);
+  }, [toast, fetchCards, selectedEvent, dataFieldsMap]);
 
-  const handleDeleteSelected = useCallback(async () => {
+  const handleDeleteSelected = useCallback(async (idsToDelete: string[]) => {
     try {
-      if (selectedCardIds.length === 0) {
+      if (!idsToDelete || idsToDelete.length === 0) {
         toast({
           title: "No Cards Selected",
           description: "Please select at least one card to delete.",
@@ -114,22 +95,19 @@ export function useCardTableActions(
         });
         return;
       }
-
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${apiBaseUrl}/delete-cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: selectedCardIds }),
+        body: JSON.stringify({ document_ids: idsToDelete }),
       });
       if (!response.ok) {
         throw new Error("Failed to delete cards");
       }
-      setRowSelection({});
-      setSelectedCardIds([]);
       await fetchCards();
       toast({
         title: "Success",
-        description: `${selectedCardIds.length} card${selectedCardIds.length === 1 ? '' : 's'} have been deleted`,
+        description: `${idsToDelete.length} card${idsToDelete.length === 1 ? '' : 's'} have been deleted`,
       });
     } catch (error) {
       console.error("Error deleting cards:", error);
@@ -139,11 +117,11 @@ export function useCardTableActions(
         variant: "destructive",
       });
     }
-  }, [selectedCardIds, toast, fetchCards]);
+  }, [toast, fetchCards]);
 
-  const handleMoveSelected = useCallback(async () => {
+  const handleMoveSelected = useCallback(async (idsToMove: string[]) => {
     try {
-      if (selectedCardIds.length === 0) {
+      if (!idsToMove || idsToMove.length === 0) {
         toast({
           title: "No Cards Selected",
           description: "Please select at least one card to move.",
@@ -151,9 +129,8 @@ export function useCardTableActions(
         });
         return;
       }
-
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      for (const documentId of selectedCardIds) {
+      for (const documentId of idsToMove) {
         const response = await fetch(`${apiBaseUrl}/save-review/${documentId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -163,12 +140,10 @@ export function useCardTableActions(
           throw new Error("Failed to move cards");
         }
       }
-      setRowSelection({});
-      setSelectedCardIds([]);
       await fetchCards();
       toast({
         title: "Success",
-        description: `${selectedCardIds.length} card${selectedCardIds.length === 1 ? '' : 's'} have been moved to Ready to Export`,
+        description: `${idsToMove.length} card${idsToMove.length === 1 ? '' : 's'} have been moved to Ready to Export`,
       });
     } catch (error) {
       console.error("Error moving cards:", error);
@@ -178,15 +153,12 @@ export function useCardTableActions(
         variant: "destructive",
       });
     }
-  }, [selectedCardIds, toast, fetchCards]);
+  }, [toast, fetchCards]);
 
   const downloadCSV = useCallback(
-    async (table) => {
+    async (selectedIds: string[], table) => {
       try {
-        const selectedRows = table
-          .getRowModel()
-          .rows.filter((row) => rowSelection[row.id]);
-        if (selectedRows.length === 0) {
+        if (!selectedIds || selectedIds.length === 0) {
           toast({
             title: "No Cards Selected",
             description: "Please select at least one card to export.",
@@ -194,7 +166,6 @@ export function useCardTableActions(
           });
           return;
         }
-        const selectedIds = selectedRows.map((row) => row.original.id);
         toast({
           title: "Exporting Cards",
           description: "Processing your export request...",
@@ -214,6 +185,10 @@ export function useCardTableActions(
               `Failed to mark cards as exported (${response.status})`
           );
         }
+        // Find the selected rows in the table by ID
+        const selectedRows = table
+          .getRowModel()
+          .rows.filter((row) => selectedIds.includes(row.original.id));
         const headers = ["Event", ...Array.from(dataFieldsMap.values())];
         const csvContent = [
           headers.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","),
@@ -243,7 +218,6 @@ export function useCardTableActions(
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        setRowSelection({});
         await fetchCards();
         toast({
           title: "Export Successful",
@@ -263,14 +237,10 @@ export function useCardTableActions(
         });
       }
     },
-    [rowSelection, dataFieldsMap, toast, fetchCards, selectedEvent]
+    [dataFieldsMap, toast, fetchCards, selectedEvent]
   );
 
   return {
-    rowSelection,
-    setRowSelection,
-    selectedCardIds,
-    setSelectedCardIds,
     handleArchiveSelected,
     handleExportSelected,
     handleDeleteSelected,
