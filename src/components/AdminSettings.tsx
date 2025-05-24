@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import {
   Table,
@@ -127,6 +127,7 @@ const AdminSettings: React.FC = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { session } = useAuth();
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Get the active tab from the URL
   const activeTab = location.pathname.split('/').pop() || 'account-settings';
@@ -160,6 +161,13 @@ const AdminSettings: React.FC = () => {
   // Field preferences state
   const [fields, setFields] = useState<CardField[]>([]);
   const [loadingFields, setLoadingFields] = useState(true);
+
+  // Scroll to top when fields are updated after a save (field-preferences tab only)
+  useEffect(() => {
+    if (activeTab === "field-preferences" && contentRef.current) {
+      contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [fields, activeTab]);
 
   // SFTP functions
   const saveSftpConfig = async () => {
@@ -555,6 +563,10 @@ const AdminSettings: React.FC = () => {
         await updateSchoolCardFields(profile.school_id, cardFieldsToSave, session);
         console.log('Successfully updated school card fields');
 
+        // Update local fields state so Save button disables and scroll to top
+        setFields(updatedFields);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
         toast({
           title: 'Success',
           description: 'Field preferences saved successfully.',
@@ -896,7 +908,11 @@ const AdminSettings: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className="flex-1">
+        <div
+          className="flex-1"
+          ref={contentRef}
+          style={{ maxHeight: "80vh", overflowY: "auto" }}
+        >
           <h1 className="text-2xl font-bold mb-6">{heading}</h1>
           {content}
         </div>
