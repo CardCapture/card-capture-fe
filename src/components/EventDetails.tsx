@@ -444,7 +444,7 @@ const Dashboard = () => {
   // Add this after filteredCards is defined and before JSX return
   useEffect(() => {
     setRowSelection((prev) => {
-      const validIds = new Set(filteredCards.map((card) => card.id));
+      const validIds = new Set(paginatedCards.map((card) => card.id));
       const next = Object.fromEntries(
         Object.entries(prev).filter(([id]) => validIds.has(id))
       );
@@ -453,13 +453,19 @@ const Dashboard = () => {
         ? prev
         : next;
     });
-  }, [filteredCards]);
+  }, [paginatedCards]);
 
   // Add effect to update selected card IDs when row selection changes
   useEffect(() => {
     const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    console.log('=== Row Selection Debug ===');
+    console.log('rowSelection state:', rowSelection);
     console.log('Selected card IDs:', selectedIds);
-  }, [rowSelection]);
+    console.log('paginatedCards length:', paginatedCards.length);
+    console.log('paginatedCards IDs:', paginatedCards.map(card => card.id));
+    console.log('filteredCards length:', filteredCards.length);
+    console.log('Current page:', currentPage, 'Page size:', pageSize);
+  }, [rowSelection, paginatedCards, filteredCards, currentPage, pageSize]);
 
   // --- Callbacks & Effects ---
   const handleRowClick = useCallback(
@@ -688,7 +694,7 @@ const Dashboard = () => {
 
   // Table instance
   const table = useReactTable({
-    data: filteredCards,
+    data: paginatedCards,
     columns,
     state: {
       sorting,

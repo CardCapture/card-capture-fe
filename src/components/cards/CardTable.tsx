@@ -99,11 +99,21 @@ const CardTable = ({
 
   const handleExportClick = () => {
     const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    console.log('=== CSV Export Debug ===');
+    console.log('rowSelection:', rowSelection);
+    console.log('selectedIds from rowSelection:', selectedIds);
+    console.log('paginatedCards:', paginatedCards.map(card => ({ id: card.id, name: card.fields?.name?.value })));
+    console.log('table.getRowModel().rows:', table.getRowModel().rows.map(row => ({ id: row.id, original: row.original.id })));
+    console.log('Calling downloadCSV with selectedIds:', selectedIds);
     downloadCSV(selectedIds, table);
   };
 
   const handleExportToSlateClick = () => {
     const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    console.log('=== Slate Export Debug ===');
+    console.log('rowSelection:', rowSelection);
+    console.log('selectedIds from rowSelection:', selectedIds);
+    console.log('Calling handleExportToSlate with selectedIds:', selectedIds);
     handleExportToSlate(selectedIds);
   };
 
@@ -306,33 +316,26 @@ const CardTable = ({
           )}
           <TableBody>
             {paginatedCards.length > 0 ? (
-              paginatedCards.map((row) => {
-                // Find the row in table.getRowModel().rows by id
-                const tableRow = table
-                  .getRowModel()
-                  .rows.find((r) => r.id === row.id);
-                if (!tableRow) return null;
-                return (
-                  <TableRow
-                    key={tableRow.id}
-                    data-state={tableRow.getIsSelected() && "selected"}
-                    className="hover:bg-gray-100 cursor-pointer"
-                    onClick={() => handleRowClick(tableRow.original)}
-                  >
-                    {tableRow.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className="px-4 py-3 whitespace-nowrap text-sm text-gray-700"
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                );
-              })
+              table.getRowModel().rows.map((tableRow) => (
+                <TableRow
+                  key={tableRow.id}
+                  data-state={tableRow.getIsSelected() && "selected"}
+                  className="hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleRowClick(tableRow.original)}
+                >
+                  {tableRow.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className="px-4 py-3 whitespace-nowrap text-sm text-gray-700"
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
             ) : (
               <TableRow>
                 <TableCell colSpan={13} className="h-24">

@@ -165,6 +165,11 @@ export function useCardTableActions(
           });
           return;
         }
+        
+        console.log('=== downloadCSV Debug ===');
+        console.log('selectedIds:', selectedIds);
+        console.log('filteredCards length:', filteredCards.length);
+        
         toast({
           title: "Exporting Cards",
           description: "Processing your export request...",
@@ -184,16 +189,17 @@ export function useCardTableActions(
               `Failed to mark cards as exported (${response.status})`
           );
         }
-        // Find the selected rows in the table by ID
-        const selectedRows = table
-          .getRowModel()
-          .rows.filter((row) => selectedIds.includes(row.original.id));
+        
+        // Find the selected cards from filteredCards instead of table rows
+        const selectedCards = filteredCards.filter((card) => selectedIds.includes(card.id));
+        console.log('selectedCards found:', selectedCards.length);
+        
         const headers = ["Event", ...Array.from(dataFieldsMap.values())];
         const csvContent = [
           headers.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","),
-          ...selectedRows.map((row) => {
+          ...selectedCards.map((card) => {
             const eventName = String(selectedEvent?.name || "Unknown Event");
-            const fields = row.original.fields as Record<
+            const fields = card.fields as Record<
               string,
               { value: string }
             >;
@@ -236,7 +242,7 @@ export function useCardTableActions(
         });
       }
     },
-    [dataFieldsMap, toast, fetchCards, selectedEvent]
+    [dataFieldsMap, toast, fetchCards, selectedEvent, filteredCards]
   );
 
   return {
