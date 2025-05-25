@@ -62,6 +62,7 @@ const CardTable = ({
   debouncedSearch,
   isUploading,
   handleExportSelected,
+  downloadCSV,
   handleArchiveSelected,
   handleMoveSelected,
   handleDeleteSelected,
@@ -91,14 +92,19 @@ const CardTable = ({
   const handleArchiveClick = () => {
     const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
     if (selectedIds.length === 0) {
-      toast({
-        title: "No Cards Selected",
-        description: "Please select at least one card to archive.",
-        variant: "destructive",
-      });
-      return;
+      return; // No cards selected, do nothing
     }
     setIsArchiveConfirmOpen(true);
+  };
+
+  const handleExportClick = () => {
+    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    downloadCSV(selectedIds, table);
+  };
+
+  const handleExportToSlateClick = () => {
+    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    handleExportToSlate(selectedIds);
   };
 
   return (
@@ -228,7 +234,6 @@ const CardTable = ({
                           disabled={isUploading}
                           type="button"
                           aria-label="Export options"
-                          onClick={handleExportSelected}
                         >
                           {isUploading ? (
                             <>
@@ -245,10 +250,10 @@ const CardTable = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
-                        <DropdownMenuItem onSelect={handleExportSelected}>
+                        <DropdownMenuItem onSelect={handleExportClick}>
                           Export as CSV
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={handleExportToSlate}>
+                        <DropdownMenuItem onSelect={handleExportToSlateClick}>
                           Export to Slate
                         </DropdownMenuItem>
                       </DropdownMenuContent>

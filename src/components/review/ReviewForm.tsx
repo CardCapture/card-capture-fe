@@ -109,7 +109,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                       }`}
                     />
                   )}
-                  {showIcon && selectedTab === "needs_human_review" && (
+                  {showIcon && (
                     <TooltipProvider delayDuration={100}>
                       <Tooltip>
                         <TooltipTrigger asChild>

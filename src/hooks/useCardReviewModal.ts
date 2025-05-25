@@ -12,6 +12,7 @@ export function useCardReviewModal(
   const [selectedCardForReview, setSelectedCardForReview] =
     useState<ProspectCard | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const localCardRef = useRef<ProspectCard | null>(null);
   const selectedCardIdRef = useRef<string | null>(null);
   const imageKeyRef = useRef<string>(`image-${Date.now()}`);
@@ -86,7 +87,9 @@ export function useCardReviewModal(
   }, [selectedCardForReview, reviewFieldOrder]);
 
   const handleReviewSave = async () => {
-    if (!selectedCardForReview) return;
+    if (!selectedCardForReview || isSaving) return;
+    
+    setIsSaving(true);
     try {
       toast({
         title: "Saving Changes",
@@ -112,7 +115,7 @@ export function useCardReviewModal(
           field.reviewed === true && field.requires_human_review === false
       );
       const response = await fetch(
-        `${apiBaseUrl}/save-review/${selectedCardForReview.id}`,
+        `${apiBaseUrl}/save-review/${selectedCardForReview.document_id}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -143,6 +146,8 @@ export function useCardReviewModal(
         description: message,
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -160,5 +165,7 @@ export function useCardReviewModal(
     selectedCardIdRef,
     imageKeyRef,
     fieldsWithToastRef,
+    isSaving,
+    setIsSaving,
   };
 }

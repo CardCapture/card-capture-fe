@@ -156,16 +156,9 @@ const Dashboard = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  // Upload/processing state
+  // Upload state
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
-
-  // Review modal state
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
-  const [selectedCardForReview, setSelectedCardForReview] =
-    useState<ProspectCard | null>(null);
-  const [formData, setFormData] = useState<Record<string, string>>({});
-  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Confirmation dialogs
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] =
@@ -222,12 +215,8 @@ const Dashboard = () => {
   > | null>(null);
 
   // --- Refs ---
-  const selectedCardIdRef = useRef<string | null>(null);
-  const imageKeyRef = useRef<string>(`image-${Date.now()}`);
   const imageUrlRef = useRef<string>("");
-  const localCardRef = useRef<ProspectCard | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout>();
-  const fieldsWithToastRef = useRef<Set<string>>(new Set());
   const eventsRef = useRef<{ fetchEvents: () => Promise<void> } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevHideExported = useRef(hideExported);
@@ -241,7 +230,22 @@ const Dashboard = () => {
     (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
     fileInputRef
   );
-  const { handleReviewSave } = useCardReviewModal(
+  const { 
+    isReviewModalOpen,
+    setIsReviewModalOpen,
+    selectedCardForReview,
+    setSelectedCardForReview,
+    formData,
+    setFormData,
+    handleFieldReview,
+    handleReviewSave,
+    handleFormChange,
+    localCardRef,
+    selectedCardIdRef,
+    imageKeyRef,
+    fieldsWithToastRef,
+    isSaving,
+  } = useCardReviewModal(
     cards,
     reviewFieldOrder,
     fetchCards,
@@ -458,51 +462,6 @@ const Dashboard = () => {
   }, [rowSelection]);
 
   // --- Callbacks & Effects ---
-  const handleFieldReview = useCallback(
-    (fieldKey: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (!selectedCardForReview) return;
-
-      // Update the local state immediately
-      const updatedCard = { ...selectedCardForReview };
-      const currentValue =
-        formData[fieldKey] ??
-        selectedCardForReview.fields[fieldKey]?.value ??
-        "";
-
-      // Update the field in the local copy
-      if (updatedCard.fields[fieldKey]) {
-        updatedCard.fields[fieldKey] = {
-          ...updatedCard.fields[fieldKey],
-          value: currentValue,
-          reviewed: true,
-          requires_human_review: false,
-          review_notes: "Manually Reviewed",
-        };
-      }
-
-      // Update the local state
-      setSelectedCardForReview(updatedCard);
-      localCardRef.current = updatedCard;
-
-      // Update the formData to reflect the reviewed state
-      setFormData((prev) => ({
-        ...prev,
-        [fieldKey]: currentValue,
-      }));
-
-      // Show success toast
-      toast({
-        title: "Field Reviewed",
-        description: `${
-          dataFieldsMap.get(fieldKey) || fieldKey
-        } has been marked as reviewed.`,
-        variant: "default",
-      });
-    },
-    [selectedCardForReview, formData, toast, dataFieldsMap]
-  );
-
   const handleRowClick = useCallback(
     (card: ProspectCard) => {
       // Store a local copy of the card that won't be affected by updates
@@ -521,35 +480,6 @@ const Dashboard = () => {
     },
     [setReviewModalState]
   );
-
-  const handleFormChange = (field: string, value: string) => {
-    // Update form data
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Update local card state
-    if (selectedCardForReview) {
-      setSelectedCardForReview((prev) => {
-        if (!prev) return prev;
-        const updatedFields = { ...prev.fields };
-        if (updatedFields[field]) {
-          updatedFields[field] = {
-            ...updatedFields[field],
-            value,
-            reviewed: true,
-            requires_human_review: false,
-            review_notes: "Manually reviewed",
-          };
-        }
-        return {
-          ...prev,
-          fields: updatedFields,
-        };
-      });
-    }
-  };
 
   // Reset the fields with toast when the modal is closed
   useEffect(() => {
@@ -626,9 +556,9 @@ const Dashboard = () => {
         ),
       },
       {
-        accessorKey: "createdAt",
+        accessorKey: "created_at",
         header: "Date added",
-        cell: ({ row }) => formatDateOrTimeAgo(row.original.createdAt),
+        cell: ({ row }) => formatDateOrTimeAgo(row.original.created_at),
         enableSorting: true,
       },
       {
@@ -1161,6 +1091,7 @@ const Dashboard = () => {
                 debouncedSearch={debouncedSearch}
                 isUploading={isUploading}
                 handleExportSelected={handleExportSelected}
+                downloadCSV={downloadCSV}
                 handleArchiveSelected={handleArchiveSelected}
                 handleMoveSelected={() => {
                   const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);

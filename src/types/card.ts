@@ -49,4 +49,7 @@ export interface FieldData {
   review_notes: string;
   confidence: number;
   bounding_box: number[][];
+  reviewed?: boolean;
+  source?: string;
+  actual_field_name?: string;
 }
