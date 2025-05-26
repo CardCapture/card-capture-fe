@@ -176,7 +176,7 @@ const Dashboard = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   // Image and zoom
-  const [zoom, setZoom] = useState(0.47);
+  const [zoom, setZoom] = useState(0.85);
   const [imageUrlState, setImageUrlState] = useState("");
 
   // Event editing
@@ -503,6 +503,13 @@ const Dashboard = () => {
     }
   }, [isReviewModalOpen, fieldsWithToastRef]);
 
+  // Reset zoom level when modal is closed
+  useEffect(() => {
+    if (!isReviewModalOpen) {
+      setZoom(0.85); // Reset to default zoom level
+    }
+  }, [isReviewModalOpen]);
+
   // Add an effect to update the selected card when cards are refreshed
   useEffect(() => {
     if (selectedCardIdRef.current && cards.length > 0) {
@@ -752,8 +759,8 @@ const Dashboard = () => {
   };
 
   // --- Zoom Functions ---
-  const zoomIn = useCallback(() => setZoom((z) => Math.min(z * 1.2, 2)), []);
-  const zoomOut = useCallback(() => setZoom((z) => Math.max(z / 1.2, 0.5)), []);
+  const zoomIn = useCallback(() => setZoom((z) => Math.min(z * 1.2, 3)), []);
+  const zoomOut = useCallback(() => setZoom((z) => Math.max(z / 1.2, 0.3)), []);
 
   // --- Event Name Editing ---
   const handleEditEventName = () => {

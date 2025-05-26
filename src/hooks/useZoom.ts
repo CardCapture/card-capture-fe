@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
 
 export function useZoom(
-  initialZoom: number = 0.47,
-  minZoom: number = 0.47,
-  maxZoom: number = 2
+  initialZoom: number = 0.85,
+  minZoom: number = 0.3,
+  maxZoom: number = 3
 ) {
   const [zoom, setZoom] = useState(initialZoom);
 

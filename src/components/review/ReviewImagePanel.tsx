@@ -143,6 +143,8 @@ const ReviewImagePanel = ({
 
   // Reset pan when image changes
   useEffect(() => {
+    // With items-start alignment and top center transform origin,
+    // the image should naturally show the top
     setPan({ x: 0, y: 0 });
   }, [selectedCardId]);
 
@@ -208,7 +210,7 @@ const ReviewImagePanel = ({
         }}
       >
         <div
-          className="w-full h-full flex items-center justify-center"
+          className="w-full h-full flex items-start justify-center"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px)`,
             transition: draggingRef.current
@@ -225,7 +227,7 @@ const ReviewImagePanel = ({
               draggable={false}
               style={{
                 transform: `scale(${internalZoom * externalZoom})`,
-                transformOrigin: "center center",
+                transformOrigin: "top center",
                 transition: draggingRef.current ? "none" : "transform 0.2s",
                 maxWidth: "100%",
                 maxHeight: "100%",
