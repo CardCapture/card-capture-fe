@@ -1,0 +1,28 @@
+name: Test Workflow
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test basic workflow
+        run: |
+          echo "🎉 GitHub Actions is working!"
+          echo "Branch: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Repository: ${{ github.repository }}"
+
+      - name: Check files
+        run: |
+          echo "Checking if our deployment files exist..."
+          ls -la firebase.json .firebaserc deploy.sh || echo "Some files missing"
+
+      - name: Node.js version
+        run: node --version
