@@ -596,6 +596,7 @@ const DashboardCopy = () => {
           <CardContent className="p-4 sm:p-6">
             {/* Mobile-responsive Tabs */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b">
+              {/* Main Tabs - Left side */}
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 w-full sm:w-auto">
                 <button
                   onClick={() => setSelectedTab('upcoming')}
@@ -623,6 +624,10 @@ const DashboardCopy = () => {
                     {completedEvents.length}
                   </Badge>
                 </button>
+              </div>
+              
+              {/* Archived Tab - Right side */}
+              <div className="w-full sm:w-auto mt-2 sm:mt-0">
                 <button
                   onClick={() => setSelectedTab('archived')}
                   className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
