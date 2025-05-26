@@ -4,9 +4,20 @@ import React, { createContext, useState, useEffect, useContext, ReactNode } from
 import { Session, User, SignInWithPasswordCredentials } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 
+// Enhanced types for permissions
+interface UserProfile {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: ('admin' | 'recruiter' | 'reviewer')[];
+  school_id: string;
+}
+
 interface AuthContextProps {
   session: Session | null;
   user: User | null;
+  profile: UserProfile | null;
   loading: boolean;
   signOut: () => Promise<void>;
   // --- Add Function Signature ---
@@ -19,7 +30,39 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Fetch user profile when session changes
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!session?.user?.id) {
+        setProfile(null);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, email, first_name, last_name, role, school_id')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching user profile:', error);
+          setProfile(null);
+          return;
+        }
+
+        setProfile(data);
+      } catch (error) {
+        console.error('Error in fetchProfile:', error);
+        setProfile(null);
+      }
+    };
+
+    fetchProfile();
+  }, [session]);
 
   useEffect(() => {
     setLoading(true);
@@ -49,6 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signOut = async () => {
      const { error } = await supabase.auth.signOut();
      if (error) { console.error("Error signing out:", error); }
+     setProfile(null);
   };
 
   // --- Add Function Implementation ---
@@ -66,6 +110,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const value = {
     session,
     user,
+    profile,
     loading,
     signOut,
     signInWithPassword, // <-- Add function to context value
@@ -85,3 +130,6 @@ export const useAuth = (): AuthContextProps => {
   }
   return context;
 };
+
+// Export types for use in other components
+export type { UserProfile };

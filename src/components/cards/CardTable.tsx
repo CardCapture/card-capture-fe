@@ -78,7 +78,7 @@ const CardTable = ({
   // const bulkSelection = useBulkSelection(filteredCards);
   
   // Use our new bulk actions hook  
-  const bulkActions = useBulkActions(fetchCards, toast, bulkSelection.clearSelection);
+  const bulkActions = useBulkActions(fetchCards, bulkSelection.clearSelection);
   
   // Use the card table actions hook for export functionality
   const { handleExportToSlate } = useCardTableActions(

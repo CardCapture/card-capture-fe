@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from '@/lib/toast';
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, Check, Crown, Camera, Eye } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,13 +24,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const editUserSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  role: z.enum(["user", "admin"], {
-    required_error: "Please select a role",
-  }),
+  roles: z.array(z.enum(["admin", "recruiter", "reviewer"])).min(1, "At least one role is required"),
 });
 
 type EditUserFormValues = z.infer<typeof editUserSchema>;
@@ -40,7 +45,7 @@ interface UserToEdit {
   email: string;
   first_name: string;
   last_name: string;
-  role: string;
+  role: ('admin' | 'recruiter' | 'reviewer')[];
 }
 
 interface EditUserModalProps {
@@ -49,6 +54,27 @@ interface EditUserModalProps {
   user: UserToEdit | null;
   onSuccess?: () => void;
 }
+
+const roleOptions = [
+  { 
+    value: "admin", 
+    label: "Admin", 
+    description: "Full system access",
+    icon: Crown
+  },
+  { 
+    value: "recruiter", 
+    label: "Recruiter", 
+    description: "Scan & manage events",
+    icon: Camera
+  },
+  { 
+    value: "reviewer", 
+    label: "Reviewer", 
+    description: "Review card data",
+    icon: Eye
+  },
+];
 
 export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,7 +87,7 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
     defaultValues: {
       firstName: user?.first_name || "",
       lastName: user?.last_name || "",
-      role: (user?.role as "user" | "admin") || "user",
+      roles: user?.role || [],
     },
   });
 
@@ -71,7 +97,7 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
       form.reset({
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.role as "user" | "admin",
+        roles: user.role || [],
       });
     }
   }, [user, form]);
@@ -89,7 +115,7 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
           body: JSON.stringify({
             first_name: data.firstName,
             last_name: data.lastName,
-            role: data.role,
+            role: data.roles, // Send as roles array
           }),
           headers: {
             "Content-Type": "application/json",
@@ -196,21 +222,71 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
                 </FormItem>
                 <FormField
                   control={form.control}
-                  name="role"
+                  name="roles"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Role</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a role" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Roles</FormLabel>
+                      <div className="grid grid-cols-3 gap-3">
+                        {roleOptions.map((role) => {
+                          const isSelected = field.value?.includes(role.value as any) || false;
+                          const IconComponent = role.icon;
+                          
+                          return (
+                            <div
+                              key={role.value}
+                              onClick={() => {
+                                const currentRoles = field.value || [];
+                                
+                                if (role.value === 'admin') {
+                                  // If clicking admin, either select only admin or deselect admin
+                                  if (currentRoles.includes('admin')) {
+                                    // Deselect admin, keep others if any
+                                    field.onChange(currentRoles.filter(r => r !== 'admin'));
+                                  } else {
+                                    // Select only admin, deselect recruiter/reviewer
+                                    field.onChange(['admin']);
+                                  }
+                                } else {
+                                  // If clicking recruiter or reviewer
+                                  if (currentRoles.includes('admin')) {
+                                    // If admin is selected, replace with the clicked role
+                                    field.onChange([role.value]);
+                                  } else {
+                                    // Normal toggle behavior for recruiter/reviewer
+                                    if (currentRoles.includes(role.value as any)) {
+                                      field.onChange(currentRoles.filter(r => r !== role.value));
+                                    } else {
+                                      field.onChange([...currentRoles, role.value]);
+                                    }
+                                  }
+                                }
+                              }}
+                              className={cn(
+                                "relative cursor-pointer rounded-lg border-2 p-3 text-center transition-all hover:border-blue-300",
+                                isSelected
+                                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                              )}
+                            >
+                              {isSelected && (
+                                <div className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white">
+                                  <Check className="h-3 w-3" />
+                                </div>
+                              )}
+                              <div className="flex flex-col items-center space-y-2">
+                                <IconComponent className={cn(
+                                  "h-5 w-5",
+                                  isSelected ? "text-blue-600" : "text-gray-500"
+                                )} />
+                                <div>
+                                  <div className="text-sm font-medium">{role.label}</div>
+                                  <div className="text-xs text-muted-foreground">{role.description}</div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -232,10 +308,6 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
                 </div>
               </form>
             </Form>
-            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </DialogPrimitive.Close>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
@@ -246,7 +318,7 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
             <AlertDialogTitle>Delete User</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete <strong>{user?.first_name} {user?.last_name}</strong>? 
-              This action cannot be undone and will permanently remove the user from the system.
+              This action cannot be undone and will permanently remove their account and all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -254,7 +326,7 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-red-600 hover:bg-red-700"
             >
               {isDeleting ? "Deleting..." : "Delete User"}
             </AlertDialogAction>

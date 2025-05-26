@@ -50,8 +50,15 @@ export function useBulkActions(
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to ${action} cards (${response.status})`);
+        let errorMessage = `Failed to ${action} cards (${response.status})`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.error || errorMessage;
+        } catch (jsonError) {
+          // If response.json() fails, use the default error message
+          console.warn('Failed to parse error response as JSON:', jsonError);
+        }
+        throw new Error(errorMessage);
       }
       
       const responseData = await response.json();

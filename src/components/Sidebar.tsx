@@ -5,18 +5,22 @@ import { cn } from '@/lib/utils'
 import { useLocation, Link } from 'react-router-dom'
 import { CCLogo } from './CCLogo'
 import { UserDropdown } from './UserDropdown'
+import { useRole } from '@/hooks/useRole'
 
 export default function Sidebar() {
   const [expanded, setExpanded] = useState(false)
   const location = useLocation()
+  const { canAccessScanPage, canAccessEventsPage, canAccessSettings } = useRole()
 
+  // Filter navigation items based on permissions
   const navItems = [
-    { href: '/events', label: 'Events', icon: <CalendarDays /> },
-    { href: '/scan', label: 'Scan', icon: <Camera /> },
-  ]
+    { href: '/events', label: 'Events', icon: <CalendarDays />, canAccess: canAccessEventsPage },
+    { href: '/scan', label: 'Scan', icon: <Camera />, canAccess: canAccessScanPage },
+  ].filter(item => item.canAccess)
+
   const bottomItems = [
-    { href: '/settings/account-settings', label: 'Settings', icon: <Cog /> },
-  ]
+    { href: '/settings/account-settings', label: 'Settings', icon: <Cog />, canAccess: canAccessSettings },
+  ].filter(item => item.canAccess)
 
   return (
     <aside

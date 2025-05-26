@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom
 import { Toaster } from './components/ui/toaster';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleProtectedRoute from './components/RoleProtectedRoute';
 import LandingLayout from './components/LandingLayout';
 import AppLayout from './components/AppLayout';
 import HomePage from './pages/HomePage';
@@ -45,13 +46,45 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/events" element={<EventsHome />} />
               <Route path="/events/:eventId" element={<Dashboard />} />
-              <Route path="/settings/account-settings" element={<AdminSettings />} />
-              <Route path="/settings/user-management" element={<AdminSettings />} />
-              <Route path="/settings/subscription" element={<AdminSettings />} />
-              <Route path="/settings/field-preferences" element={<AdminSettings />} />
-              <Route path="/settings/integrations" element={<AdminSettings />} />
-              <Route path="/scan" element={<ScanPage />} />
-              <Route path="/users" element={<UserManagement />} />
+              
+              {/* Role-protected routes */}
+              <Route path="/scan" element={
+                <RoleProtectedRoute requiredPermission="canAccessScanPage">
+                  <ScanPage />
+                </RoleProtectedRoute>
+              } />
+              
+              <Route path="/settings/account-settings" element={
+                <RoleProtectedRoute requiredPermission="canAccessSettings">
+                  <AdminSettings />
+                </RoleProtectedRoute>
+              } />
+              <Route path="/settings/user-management" element={
+                <RoleProtectedRoute requiredPermission="canAccessSettings">
+                  <AdminSettings />
+                </RoleProtectedRoute>
+              } />
+              <Route path="/settings/subscription" element={
+                <RoleProtectedRoute requiredPermission="canAccessSettings">
+                  <AdminSettings />
+                </RoleProtectedRoute>
+              } />
+              <Route path="/settings/field-preferences" element={
+                <RoleProtectedRoute requiredPermission="canAccessSettings">
+                  <AdminSettings />
+                </RoleProtectedRoute>
+              } />
+              <Route path="/settings/integrations" element={
+                <RoleProtectedRoute requiredPermission="canAccessSettings">
+                  <AdminSettings />
+                </RoleProtectedRoute>
+              } />
+              
+              <Route path="/users" element={
+                <RoleProtectedRoute requiredPermission="canManageUsers">
+                  <UserManagement />
+                </RoleProtectedRoute>
+              } />
             </Route>
           </Route>
 
