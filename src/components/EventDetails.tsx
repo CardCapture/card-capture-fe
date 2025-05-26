@@ -714,8 +714,10 @@ const Dashboard = () => {
 
   const confirmArchiveAction = () => {
     if (selectedCardForReview) {
-      handleArchiveCard();
+      // Archive the single card from the review modal
+      handleArchiveSelected([selectedCardForReview.document_id]);
     } else {
+      // Archive multiple selected cards from the table
       const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
       if (selectedIds.length > 0) {
         handleArchiveSelected(selectedIds);
@@ -893,63 +895,63 @@ const Dashboard = () => {
               {/* Event Name Section */}
               <div className="flex flex-col text-left w-full">
                 <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2 flex-wrap">
-                  {isEditingEventName ? (
-                    <>
-                      <input
+                {isEditingEventName ? (
+                  <>
+                    <input
                         className="border rounded px-2 py-1 text-base sm:text-lg font-semibold w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={eventNameInput}
-                        onChange={(e) => setEventNameInput(e.target.value)}
-                        disabled={eventNameLoading}
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveEventName();
-                          if (e.key === "Escape") handleCancelEditEventName();
-                        }}
-                      />
+                      value={eventNameInput}
+                      onChange={(e) => setEventNameInput(e.target.value)}
+                      disabled={eventNameLoading}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveEventName();
+                        if (e.key === "Escape") handleCancelEditEventName();
+                      }}
+                    />
                       <div className="flex items-center gap-1">
-                        <button
+                    <button
                           className="text-green-600 hover:text-green-800 disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                          onClick={handleSaveEventName}
-                          disabled={eventNameLoading || !eventNameInput.trim()}
-                          aria-label="Save event name"
-                        >
-                          {eventNameLoading ? (
-                            <Loader2 className="animate-spin w-5 h-5" />
-                          ) : (
-                            <Check className="w-5 h-5" />
-                          )}
-                        </button>
-                        <button
+                      onClick={handleSaveEventName}
+                      disabled={eventNameLoading || !eventNameInput.trim()}
+                      aria-label="Save event name"
+                    >
+                      {eventNameLoading ? (
+                        <Loader2 className="animate-spin w-5 h-5" />
+                      ) : (
+                        <Check className="w-5 h-5" />
+                      )}
+                    </button>
+                    <button
                           className="text-gray-500 hover:text-red-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                          onClick={handleCancelEditEventName}
-                          disabled={eventNameLoading}
-                          aria-label="Cancel edit"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
+                      onClick={handleCancelEditEventName}
+                      disabled={eventNameLoading}
+                      aria-label="Cancel edit"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
                       </div>
-                    </>
-                  ) : (
-                    <>
+                  </>
+                ) : (
+                  <>
                       <span className="break-words">
-                        {selectedEvent ? selectedEvent.name : "All Events"}
-                      </span>
-                      <button
+                      {selectedEvent ? selectedEvent.name : "All Events"}
+                    </span>
+                    <button
                         className="text-gray-400 hover:text-blue-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                        onClick={handleEditEventName}
-                        aria-label="Edit event name"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
-                </h1>
-                {eventNameError && (
-                  <div className="text-sm text-red-600 mt-1">
-                    {eventNameError}
-                  </div>
+                      onClick={handleEditEventName}
+                      aria-label="Edit event name"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  </>
                 )}
-              </div>
+              </h1>
+              {eventNameError && (
+                <div className="text-sm text-red-600 mt-1">
+                  {eventNameError}
+                </div>
+              )}
+            </div>
               
               {/* Status Badges - Mobile Responsive Grid */}
               <div className="flex flex-wrap items-center gap-2">
@@ -957,25 +959,25 @@ const Dashboard = () => {
                   <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
                   <span className="hidden sm:inline">Need Review:</span>
                   <span>{getStatusCount("needs_human_review")}</span>
-                </Badge>
+              </Badge>
                 <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
                   <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
                   <span className="hidden sm:inline">Ready:</span>
                   <span>{getStatusCount("reviewed")}</span>
-                </Badge>
+              </Badge>
                 <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
                   <Download className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
                   <span className="hidden sm:inline">Exported:</span>
                   <span>{getStatusCount("exported")}</span>
-                </Badge>
+              </Badge>
                 <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
                   <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                   <span className="hidden sm:inline">Archived:</span>
                   <span>{getStatusCount("archived")}</span>
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
         </div>
 
         {/* Main Content - Mobile Responsive */}
@@ -986,60 +988,60 @@ const Dashboard = () => {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b">
                 {/* Main Tabs - Left side */}
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 w-full sm:w-auto">
-                  <button
-                    onClick={() => setSelectedTab("needs_human_review")}
+                <button
+                  onClick={() => setSelectedTab("needs_human_review")}
                     className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                      selectedTab === "needs_human_review"
-                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
+                    selectedTab === "needs_human_review"
+                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
                     <span>Needs Review</span>
-                    <Badge
-                      variant="outline"
+                  <Badge
+                    variant="outline"
                       className="ml-2 text-indigo-700 border-indigo-200 bg-white text-xs"
-                    >
-                      {getStatusCount("needs_human_review")}
-                    </Badge>
-                  </button>
-                  <button
-                    onClick={() => setSelectedTab("ready_to_export")}
-                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                      selectedTab === "ready_to_export"
-                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
                   >
+                    {getStatusCount("needs_human_review")}
+                  </Badge>
+                </button>
+                <button
+                  onClick={() => setSelectedTab("ready_to_export")}
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
+                    selectedTab === "ready_to_export"
+                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
                     <span>Ready to Export</span>
-                    <Badge
-                      variant="outline"
+                  <Badge
+                    variant="outline"
                       className="ml-2 text-blue-700 border-blue-200 bg-white text-xs"
-                    >
-                      {getStatusCount("reviewed")}
-                    </Badge>
-                  </button>
-                </div>
+                  >
+                    {getStatusCount("reviewed")}
+                  </Badge>
+                </button>
+              </div>
                 
                 {/* Archived Tab - Right side */}
                 <div className="w-full sm:w-auto mt-2 sm:mt-0">
-                  <button
-                    onClick={() => setSelectedTab("archived")}
+                <button
+                  onClick={() => setSelectedTab("archived")}
                     className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                      selectedTab === "archived"
-                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
+                    selectedTab === "archived"
+                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
                     <span>Archived</span>
-                    <Badge
-                      variant="outline"
+                  <Badge
+                    variant="outline"
                       className="ml-2 text-gray-600 border-gray-200 bg-white text-xs"
-                    >
-                      {getStatusCount("archived")}
-                    </Badge>
-                  </button>
-                </div>
+                  >
+                    {getStatusCount("archived")}
+                  </Badge>
+                </button>
               </div>
+            </div>
               <CardTable
                 table={table}
                 handleRowClick={handleRowClick}
@@ -1135,8 +1137,8 @@ const Dashboard = () => {
                   selectedTab={selectedTab}
                   dataFieldsMap={dataFieldsMap}
                 />
-              </div>
-            </div>
+                            </div>
+                          </div>
             <DialogFooter className="px-4 sm:px-6 py-3 border-t flex-shrink-0">
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:justify-end">
                 <Button
