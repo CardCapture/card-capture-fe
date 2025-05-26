@@ -34,8 +34,8 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
 }) => {
   console.log({ fieldsToShow });
   return (
-    <div className="bg-gray-50 rounded-lg p-4 overflow-y-auto">
-      <div className="space-y-4">
+    <div className="bg-gray-50 rounded-lg p-3 sm:p-4 overflow-y-auto">
+      <div className="space-y-3 sm:space-y-4">
         {selectedCardForReview ? (
           fieldsToShow.map((fieldKey) => {
             const fieldData = selectedCardForReview.fields?.[fieldKey];
@@ -57,11 +57,11 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             return (
               <div
                 key={fieldKey}
-                className="grid grid-cols-5 items-center gap-x-4 gap-y-1"
+                className="flex flex-col sm:grid sm:grid-cols-5 sm:items-center gap-2 sm:gap-x-4 sm:gap-y-1"
               >
                 <Label
                   htmlFor={fieldKey}
-                  className="text-right col-span-2 text-xs font-medium text-gray-600 flex items-center justify-end gap-1"
+                  className="sm:text-right sm:col-span-2 text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1 sm:justify-end"
                 >
                   {showIcon && !isReviewed && (
                     <TooltipProvider delayDuration={100}>
@@ -79,13 +79,13 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                   )}
                   {label}:
                 </Label>
-                <div className="col-span-3 flex items-center gap-2">
+                <div className="sm:col-span-3 flex items-center gap-2">
                   {fieldKey === "cell" ? (
                     <PhoneNumberInput
                       id={fieldKey}
                       value={formData[fieldKey] ?? ""}
                       onChange={(value) => handleFormChange(fieldKey, value)}
-                      className={`h-8 text-sm flex-1 ${
+                      className={`h-10 sm:h-8 text-sm flex-1 ${
                         isReviewed && selectedTab === "needs_human_review"
                           ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
                           : showIcon
@@ -100,7 +100,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                       onChange={(e) =>
                         handleFormChange(fieldKey, e.target.value)
                       }
-                      className={`h-8 text-sm flex-1 ${
+                      className={`h-10 sm:h-8 text-sm flex-1 ${
                         isReviewed && selectedTab === "needs_human_review"
                           ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
                           : showIcon
@@ -117,7 +117,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className={`h-8 w-8 p-1 ${
+                            className={`h-10 w-10 sm:h-8 sm:w-8 p-1 ${
                               isReviewed
                                 ? "text-green-500"
                                 : "text-gray-400 hover:text-gray-600"
@@ -142,7 +142,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             );
           })
         ) : (
-          <p className="text-gray-500 text-center mt-4">
+          <p className="text-gray-500 text-center mt-4 text-sm">
             No card selected for review.
           </p>
         )}

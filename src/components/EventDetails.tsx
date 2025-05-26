@@ -869,9 +869,9 @@ const Dashboard = () => {
 
   return (
     <ErrorBoundary>
-      <div className="w-full p-4 md:p-8 relative pb-20">
+      <div className="w-full p-2 sm:p-4 md:p-8 relative pb-20">
         <div className="space-y-4">
-          <nav aria-label="Breadcrumb" className="mb-2 text-sm text-gray-500">
+          <nav aria-label="Breadcrumb" className="mb-2 text-xs sm:text-sm text-gray-500">
             <ol className="flex items-center space-x-1">
               <li className="flex items-center">
                 <a href="/events" className="text-blue-600 hover:underline">
@@ -879,23 +879,24 @@ const Dashboard = () => {
                 </a>
                 <ChevronRight className="mx-1 w-3 h-3 text-gray-400" />
               </li>
-              <li className="font-medium text-gray-900">
+              <li className="font-medium text-gray-900 truncate">
                 {selectedEvent?.name}
               </li>
             </ol>
           </nav>
         </div>
 
-        {/* Header Section */}
-        <div className="container max-w-6xl mx-auto px-4 py-6">
-          <Card className="mb-6">
-            <CardContent className="flex flex-col md:flex-row items-start justify-between gap-4 p-6">
-              <div className="flex flex-col text-left w-full md:w-auto">
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2">
+        {/* Header Section - Mobile Responsive */}
+        <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
+          <Card className="mb-4 sm:mb-6">
+            <CardContent className="flex flex-col gap-4 p-4 sm:p-6">
+              {/* Event Name Section */}
+              <div className="flex flex-col text-left w-full">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2 flex-wrap">
                   {isEditingEventName ? (
                     <>
                       <input
-                        className="border rounded px-2 py-1 text-lg font-semibold w-64 max-w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="border rounded px-2 py-1 text-base sm:text-lg font-semibold w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={eventNameInput}
                         onChange={(e) => setEventNameInput(e.target.value)}
                         disabled={eventNameLoading}
@@ -905,34 +906,36 @@ const Dashboard = () => {
                           if (e.key === "Escape") handleCancelEditEventName();
                         }}
                       />
-                      <button
-                        className="ml-1 text-green-600 hover:text-green-800 disabled:opacity-50"
-                        onClick={handleSaveEventName}
-                        disabled={eventNameLoading || !eventNameInput.trim()}
-                        aria-label="Save event name"
-                      >
-                        {eventNameLoading ? (
-                          <Loader2 className="animate-spin w-5 h-5" />
-                        ) : (
-                          <Check className="w-5 h-5" />
-                        )}
-                      </button>
-                      <button
-                        className="ml-1 text-gray-500 hover:text-red-600"
-                        onClick={handleCancelEditEventName}
-                        disabled={eventNameLoading}
-                        aria-label="Cancel edit"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="text-green-600 hover:text-green-800 disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                          onClick={handleSaveEventName}
+                          disabled={eventNameLoading || !eventNameInput.trim()}
+                          aria-label="Save event name"
+                        >
+                          {eventNameLoading ? (
+                            <Loader2 className="animate-spin w-5 h-5" />
+                          ) : (
+                            <Check className="w-5 h-5" />
+                          )}
+                        </button>
+                        <button
+                          className="text-gray-500 hover:text-red-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                          onClick={handleCancelEditEventName}
+                          disabled={eventNameLoading}
+                          aria-label="Cancel edit"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <>
-                      <span>
+                      <span className="break-words">
                         {selectedEvent ? selectedEvent.name : "All Events"}
                       </span>
                       <button
-                        className="ml-1 text-gray-400 hover:text-blue-600"
+                        className="text-gray-400 hover:text-blue-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
                         onClick={handleEditEventName}
                         aria-label="Edit event name"
                       >
@@ -947,93 +950,86 @@ const Dashboard = () => {
                   </div>
                 )}
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-2 mt-2 md:mt-0">
-                <Badge
-                  variant="outline"
-                  className="inline-flex items-center text-indigo-700 border-indigo-200 bg-indigo-50"
-                >
-                  <Info className="w-4 h-4 mr-1 text-indigo-500" />
-                  Need Review: {getStatusCount("needs_human_review")}
+              
+              {/* Status Badges - Mobile Responsive Grid */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
+                  <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
+                  <span className="hidden sm:inline">Need Review:</span>
+                  <span>{getStatusCount("needs_human_review")}</span>
                 </Badge>
-                <Badge
-                  variant="outline"
-                  className="inline-flex items-center text-green-700 border-green-200 bg-green-50"
-                >
-                  <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
-                  Ready for Export: {getStatusCount("reviewed")}
+                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
+                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+                  <span className="hidden sm:inline">Ready:</span>
+                  <span>{getStatusCount("reviewed")}</span>
                 </Badge>
-                <Badge
-                  variant="outline"
-                  className="inline-flex items-center text-slate-700 border-slate-200 bg-slate-50"
-                >
-                  <Download className="w-4 h-4 mr-1 text-slate-500" />
-                  Exported: {getStatusCount("exported")}
+                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
+                  <Download className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
+                  <span className="hidden sm:inline">Exported:</span>
+                  <span>{getStatusCount("exported")}</span>
                 </Badge>
-                <Badge
-                  variant="outline"
-                  className="inline-flex items-center text-gray-600 border-gray-200 bg-gray-50"
-                >
-                  <Archive className="w-4 h-4 mr-1 text-gray-500" />
-                  Archived: {getStatusCount("archived")}
+                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
+                  <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
+                  <span className="hidden sm:inline">Archived:</span>
+                  <span>{getStatusCount("archived")}</span>
                 </Badge>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
-        <div className="container max-w-6xl mx-auto px-4 py-6">
+        {/* Main Content - Mobile Responsive */}
+        <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
           <Card className="overflow-hidden">
-            <CardContent className="p-6">
-              {/* Tabs */}
-              <div className="flex justify-between items-center mb-6 border-b">
-                <div className="flex gap-6">
+            <CardContent className="p-3 sm:p-6">
+              {/* Mobile-Responsive Tabs */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b">
+                {/* Main Tabs - Mobile: Stacked, Desktop: Side by side */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 w-full sm:w-auto">
                   <button
                     onClick={() => setSelectedTab("needs_human_review")}
-                    className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
                       selectedTab === "needs_human_review"
                         ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
                         : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
-                    Needs Review
+                    <span>Needs Review</span>
                     <Badge
                       variant="outline"
-                      className="ml-2 text-indigo-700 border-indigo-200 bg-white"
+                      className="ml-2 text-indigo-700 border-indigo-200 bg-white text-xs"
                     >
                       {getStatusCount("needs_human_review")}
                     </Badge>
                   </button>
                   <button
                     onClick={() => setSelectedTab("ready_to_export")}
-                    className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
                       selectedTab === "ready_to_export"
                         ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
                         : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
-                    Ready to Export
+                    <span>Ready to Export</span>
                     <Badge
                       variant="outline"
-                      className="ml-2 text-blue-700 border-blue-200 bg-white"
+                      className="ml-2 text-blue-700 border-blue-200 bg-white text-xs"
                     >
                       {getStatusCount("reviewed")}
                     </Badge>
                   </button>
-                </div>
-                <div className="flex items-center gap-4">
                   <button
                     onClick={() => setSelectedTab("archived")}
-                    className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
                       selectedTab === "archived"
                         ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
                         : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
-                    Archived
+                    <span>Archived</span>
                     <Badge
                       variant="outline"
-                      className="ml-2 text-gray-600 border-gray-200 bg-white"
+                      className="ml-2 text-gray-600 border-gray-200 bg-white text-xs"
                     >
                       {getStatusCount("archived")}
                     </Badge>
@@ -1075,23 +1071,22 @@ const Dashboard = () => {
 
         {/* Review Modal Dialog */}
         <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
-          <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-7xl w-[calc(100%-4rem)] h-[calc(100vh-8rem)] rounded-lg overflow-hidden flex flex-col p-0">
+          <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-7xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] md:w-[calc(100%-4rem)] h-[calc(100vh-2rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-8rem)] rounded-lg overflow-hidden flex flex-col p-0">
             <DialogHeader className="flex-shrink-0">
-              <div className="flex justify-between items-center px-6 pt-6 pb-4 border-b">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b gap-3 sm:gap-0">
                 <div className="space-y-1">
-                  <DialogTitle className="text-2xl font-semibold">
+                  <DialogTitle className="text-lg sm:text-xl md:text-2xl font-semibold">
                     Review Card Data
                   </DialogTitle>
-                  <DialogDescription className="text-sm text-gray-500">
-                    Review and edit the extracted information from the card
-                    image.
+                  <DialogDescription className="text-xs sm:text-sm text-gray-500">
+                    Review and edit the extracted information from the card image.
                   </DialogDescription>
                 </div>
-                <div className="flex flex-col items-end space-y-1">
-                  <div className="flex items-center gap-1 text-sm font-medium transition-all duration-200">
+                <div className="flex flex-col items-start sm:items-end space-y-1 w-full sm:w-auto">
+                  <div className="flex items-center gap-1 text-xs sm:text-sm font-medium transition-all duration-200">
                     {reviewProgress.allReviewed ? (
                       <div className="flex items-center gap-1 text-green-600 animate-in fade-in duration-300">
-                        <CheckCircle2 className="h-5 w-5" />
+                        <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
                         <span>All fields reviewed!</span>
                       </div>
                     ) : (
@@ -1102,9 +1097,9 @@ const Dashboard = () => {
                     )}
                   </div>
                   {!reviewProgress.allReviewed && (
-                    <div className="transition-all duration-300">
+                    <div className="transition-all duration-300 w-full sm:w-32">
                       <Progress
-                        className="w-32 h-1"
+                        className="w-full sm:w-32 h-1"
                         value={
                           (reviewProgress.reviewedCount /
                             reviewProgress.totalFields) *
@@ -1117,8 +1112,8 @@ const Dashboard = () => {
               </div>
             </DialogHeader>
             <div className="flex-1 overflow-hidden">
-              <div className="grid grid-cols-2 gap-6 h-full">
-                {/* Image Panel - removed unnecessary div wrapper */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 h-full">
+                {/* Image Panel - Mobile: Full width, Desktop: Half width */}
                 <ReviewImagePanel
                   imagePath={selectedCardForReview?.image_path || ""}
                   zoom={zoom}
@@ -1126,7 +1121,7 @@ const Dashboard = () => {
                   zoomOut={zoomOut}
                   selectedCardId={selectedCardForReview?.id}
                 />
-                {/* Form Fields Panel */}
+                {/* Form Fields Panel - Mobile: Full width, Desktop: Half width */}
                 <ReviewForm
                   selectedCardForReview={selectedCardForReview}
                   fieldsToShow={fieldsToShow}
@@ -1138,14 +1133,14 @@ const Dashboard = () => {
                 />
               </div>
             </div>
-            <DialogFooter className="px-6 py-3 border-t flex-shrink-0">
-              <div className="flex gap-2 w-full justify-end">
+            <DialogFooter className="px-4 sm:px-6 py-3 border-t flex-shrink-0">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleArchiveCard}
                   disabled={!selectedCardForReview?.id}
-                  className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+                  className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50 w-full sm:w-auto min-h-[44px]"
                 >
                   Archive Card
                 </Button>
@@ -1153,6 +1148,7 @@ const Dashboard = () => {
                   type="button"
                   onClick={handleReviewSave}
                   disabled={!selectedCardForReview?.id || isSaving}
+                  className="w-full sm:w-auto min-h-[44px]"
                 >
                   {isSaving ? "Saving..." : "Save Changes"}
                 </Button>

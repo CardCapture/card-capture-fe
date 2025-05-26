@@ -551,113 +551,112 @@ const DashboardCopy = () => {
   };
 
   return (
-    <div className="container max-w-6xl mx-auto py-6">
+    <div className="container max-w-6xl mx-auto py-4 sm:py-6 px-4">
       {/* Hero-style header card */}
-      <Card className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 sm:p-6 mb-8 shadow-sm">
+      <Card className="flex flex-col justify-between items-start p-4 sm:p-6 mb-6 sm:mb-8 shadow-sm">
         {/* Left: title + icon & subtitle row */}
-        <div className="flex flex-col items-start w-full md:w-auto mb-4 md:mb-0">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 leading-tight mb-2">
+        <div className="flex flex-col items-start w-full mb-4">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-gray-900 leading-tight mb-2">
             Your Events
           </h1>
           <div className="flex items-center space-x-2">
-            <CalendarDays className="h-5 w-5 text-primary-600" />
-            <p className="text-sm text-gray-500">
+            <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-primary-600" />
+            <p className="text-xs sm:text-sm text-gray-500">
               Review and export cards for all of your events
             </p>
           </div>
         </div>
 
-        {/* Right: status pills + Create button */}
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <Badge variant="outline" className="flex items-center space-x-1">
-            <CalendarDays className="w-4 h-4 text-indigo-500" />
-            <span>Upcoming: {upcomingEvents.length}</span>
+        {/* Right: status pills - responsive grid */}
+        <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:w-auto">
+          <Badge variant="outline" className="flex items-center justify-center space-x-1 text-xs py-1">
+            <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
+            <span className="hidden sm:inline">Upcoming:</span>
+            <span>{upcomingEvents.length}</span>
           </Badge>
-          <Badge variant="outline" className="flex items-center space-x-1">
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span>Completed: {completedEvents.length}</span>
+          <Badge variant="outline" className="flex items-center justify-center space-x-1 text-xs py-1">
+            <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+            <span className="hidden sm:inline">Completed:</span>
+            <span>{completedEvents.length}</span>
           </Badge>
-          <Badge variant="outline" className="flex items-center space-x-1">
-            <Archive className="w-4 h-4 text-gray-500" />
-            <span>
-              Archived: {archivedEventsCount}
-            </span>
+          <Badge variant="outline" className="flex items-center justify-center space-x-1 text-xs py-1">
+            <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
+            <span className="hidden sm:inline">Archived:</span>
+            <span>{archivedEventsCount}</span>
           </Badge>
         </div>
       </Card>
 
       {eventsLoading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-500">Loading events...</div>
+          <div className="text-base sm:text-lg text-gray-500">Loading events...</div>
         </div>
       ) : (
         <Card className="overflow-hidden">
-          <CardContent className="p-6">
-            {/* Tabs */}
-            <div className="flex justify-between items-center mb-6 border-b">
-              <div className="flex gap-6">
+          <CardContent className="p-4 sm:p-6">
+            {/* Mobile-responsive Tabs */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 w-full sm:w-auto">
                 <button
                   onClick={() => setSelectedTab('upcoming')}
-                  className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
+                  className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
                     selectedTab === 'upcoming'
                       ? 'border-b-2 border-indigo-500 text-gray-900 font-semibold'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Upcoming Events
-                  <Badge variant="outline" className="ml-2 text-indigo-700 border-indigo-200 bg-white">
+                  <span>Upcoming Events</span>
+                  <Badge variant="outline" className="ml-2 text-indigo-700 border-indigo-200 bg-white text-xs">
                     {upcomingEvents.length}
                   </Badge>
                 </button>
                 <button
                   onClick={() => setSelectedTab('completed')}
-                  className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
+                  className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
                     selectedTab === 'completed'
                       ? 'border-b-2 border-indigo-500 text-gray-900 font-semibold'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Completed Events
-                  <Badge variant="outline" className="ml-2 text-blue-700 border-blue-200 bg-white">
+                  <span>Completed Events</span>
+                  <Badge variant="outline" className="ml-2 text-blue-700 border-blue-200 bg-white text-xs">
                     {completedEvents.length}
                   </Badge>
                 </button>
-              </div>
-              <div className="flex items-center">
                 <button
                   onClick={() => setSelectedTab('archived')}
-                  className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
+                  className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
                     selectedTab === 'archived'
                       ? 'border-b-2 border-indigo-500 text-gray-900 font-semibold'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Archived Events
-                  <Badge variant="outline" className="ml-2 text-gray-600 border-gray-200 bg-white">
+                  <span>Archived Events</span>
+                  <Badge variant="outline" className="ml-2 text-gray-600 border-gray-200 bg-white text-xs">
                     {archivedEventsCount}
                   </Badge>
                 </button>
               </div>
             </div>
 
-            {/* Table Toolbar */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
-              <div className="w-full md:w-auto md:flex-1 max-w-sm">
+            {/* Mobile-responsive Table Toolbar */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center sm:gap-4 mb-4">
+              <div className="w-full sm:w-auto sm:flex-1 sm:max-w-sm">
                 <Input
                   type="search"
                   placeholder="Search events..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full"
+                  className="w-full min-h-[44px]"
                 />
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <Button 
                   onClick={() => setIsCreateEventModalOpen(true)}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 hover:scale-[1.02]"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 hover:scale-[1.02] w-full sm:w-auto min-h-[44px] text-sm sm:text-base"
                 >
-                  <PlusCircle className="w-5 h-5" />
-                  Create Event
+                  <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="sm:inline">Create Event</span>
                 </Button>
               </div>
             </div>
@@ -676,9 +675,10 @@ const DashboardCopy = () => {
               <SelectionActionBar />
             )}
 
+            {/* Mobile-responsive table container */}
             <div className="overflow-hidden rounded-lg border border-gray-200">
-              <div className="relative w-full overflow-auto">
-                <Table>
+              <div className="relative w-full overflow-x-auto">
+                <Table className="min-w-full">
                   <TableHeader className="bg-gray-50 sticky top-0 z-10">
                     {table.getHeaderGroups().map(headerGroup => (
                       <TableRow key={headerGroup.id}>
@@ -686,11 +686,11 @@ const DashboardCopy = () => {
                           <TableHead
                             key={header.id}
                             onClick={header.column.getToggleSortingHandler()}
-                            className={`py-3 px-4 whitespace-nowrap ${
+                            className={`py-3 px-2 sm:px-4 whitespace-nowrap text-xs sm:text-sm ${
                               header.column.getCanSort() ? 'cursor-pointer select-none' : ''
                             }`}
                           >
-                            <div className="flex items-center gap-1 text-xs font-medium text-gray-500">
+                            <div className="flex items-center gap-1 font-medium text-gray-500">
                               {flexRender(header.column.columnDef.header, header.getContext())}
                               {{
                                 asc: ' ▲',
@@ -718,7 +718,7 @@ const DashboardCopy = () => {
                           data-state={row.getIsSelected() ? 'selected' : undefined}
                         >
                           {row.getVisibleCells().map(cell => (
-                            <TableCell key={cell.id} className="px-4 py-3 text-sm text-gray-700">
+                            <TableCell key={cell.id} className="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-700">
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </TableCell>
                           ))}
@@ -727,15 +727,15 @@ const DashboardCopy = () => {
                     ) : (
                       <TableRow>
                         <TableCell className="h-24" colSpan={table.getAllColumns().length}>
-                          <div className="flex flex-col items-center justify-center h-full gap-2">
-                            <div className="text-sm font-medium text-gray-900">
+                          <div className="flex flex-col items-center justify-center h-full gap-2 p-4">
+                            <div className="text-sm font-medium text-gray-900 text-center">
                               {selectedTab === 'upcoming' 
                                 ? 'No upcoming events found' 
                                 : selectedTab === 'completed' 
                                   ? 'No completed events found' 
                                   : 'No archived events found'}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-xs sm:text-sm text-gray-500 text-center">
                               {selectedTab === 'upcoming' 
                                 ? 'Click "Create Event" to get started.' 
                                 : selectedTab === 'completed' 

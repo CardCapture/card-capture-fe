@@ -61,6 +61,14 @@ const PRICING_DISPLAY: Record<string, string> = {
   enterprise: "Custom pricing",
 };
 
+interface UserToEdit {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: ('admin' | 'recruiter' | 'reviewer')[];
+}
+
 interface UserProfile {
   id: string;
   email: string;
@@ -145,7 +153,7 @@ const AdminSettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserToEdit | null>(null);
 
   // School state for subscription tab
   const [school, setSchool] = useState<SchoolRecord | null>(null);
@@ -364,7 +372,15 @@ const AdminSettings: React.FC = () => {
   }, [activeTab, session]);
 
   const handleRowClick = (user: UserProfile) => {
-    setSelectedUser(user);
+    // Convert UserProfile to UserToEdit format
+    const userToEdit = {
+      id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      role: Array.isArray(user.role) ? user.role : [user.role] as ('admin' | 'recruiter' | 'reviewer')[]
+    };
+    setSelectedUser(userToEdit);
     setEditModalOpen(true);
   };
 
@@ -800,10 +816,30 @@ const AdminSettings: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Navigation */}
-        <div className="w-full md:w-64 space-y-1">
+    <div className="container mx-auto py-4 sm:py-8 px-4">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+        {/* Mobile Navigation - Horizontal scroll */}
+        <div className="lg:hidden">
+          <div className="flex overflow-x-auto space-x-2 pb-2 mb-6">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleTabChange(item.id)}
+                className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors whitespace-nowrap min-w-fit ${
+                  activeTab === item.id
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted bg-white border"
+                }`}
+              >
+                <span className="w-4 h-4 mr-2">{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop Navigation - Vertical */}
+        <div className="hidden lg:block w-64 space-y-1">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
@@ -826,7 +862,7 @@ const AdminSettings: React.FC = () => {
           ref={contentRef}
           style={{ maxHeight: "80vh", overflowY: "auto" }}
         >
-          <h1 className="text-2xl font-bold mb-6">{heading}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">{heading}</h1>
           {content}
         </div>
       </div>

@@ -422,7 +422,7 @@ const ScanPage: React.FC = () => {
   // If camera is open, render the camera view
   if (isCameraOpen) {
     return (
-      <div className="fixed inset-0 bg-black flex flex-col">
+      <div className="fixed inset-0 bg-black flex flex-col z-50">
         {/* Hidden file input for iOS */}
         {useFileInput && (
           <input
@@ -438,21 +438,25 @@ const ScanPage: React.FC = () => {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="absolute top-4 left-4 z-10 bg-black/70 backdrop-blur-sm rounded-full"
+          className="absolute top-4 left-4 z-10 bg-black/70 backdrop-blur-sm rounded-full text-white hover:bg-black/80"
           onClick={() => {
             closeCamera();
             navigate('/scan');
           }}
         >
-          <ArrowLeft className="h-5 w-5 text-white" />
+          <ArrowLeft className="h-5 w-5" />
         </Button>
         
-        {/* Event selector in top-right corner */}
+        {/* Event selector in top-right corner - responsive */}
         <div className="absolute top-4 right-4 z-10">
           <Select value={selectedEventId} onValueChange={handleEventChange}>
-            <SelectTrigger className="w-[200px] bg-black/70 backdrop-blur-sm text-white border-white/20">
-              <SelectValue placeholder="Select an event">
-                {selectedEvent ? selectedEvent.name : "Select an event"}
+            <SelectTrigger className="w-[160px] sm:w-[200px] bg-black/70 backdrop-blur-sm text-white border-white/20 text-xs sm:text-sm">
+              <SelectValue placeholder="Select event">
+                {selectedEvent ? (
+                  <span className="truncate">{selectedEvent.name}</span>
+                ) : (
+                  "Select event"
+                )}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -474,41 +478,57 @@ const ScanPage: React.FC = () => {
                 alt="Captured"
                 className="w-full h-full object-contain"
               />
-              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
-                <Button onClick={retakePhoto} variant="outline" size="lg">
+              {/* Mobile-optimized action buttons */}
+              <div className="absolute bottom-4 left-4 right-4 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+                <Button 
+                  onClick={retakePhoto} 
+                  variant="outline" 
+                  size="lg"
+                  className="w-full sm:w-auto bg-white/90 backdrop-blur-sm hover:bg-white"
+                >
                   <Camera className="mr-2 h-5 w-5" />
                   Retake
                 </Button>
-                <Button onClick={handleProcessImage} size="lg" className="bg-green-600 hover:bg-green-700">
+                <Button 
+                  onClick={handleProcessImage} 
+                  size="lg" 
+                  className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+                  disabled={!selectedEventId}
+                >
                   <Upload className="mr-2 h-5 w-5" />
                   Process Image
                 </Button>
               </div>
             </div>
           ) : cameraError ? (
-            <div className="w-full h-full flex items-center justify-center text-white">
-              <div className="text-center p-4">
+            <div className="w-full h-full flex items-center justify-center text-white p-4">
+              <div className="text-center max-w-md">
                 <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-                <p className="mb-4">{cameraError}</p>
+                <p className="mb-4 text-sm sm:text-base">{cameraError}</p>
                 {isIOS && isChrome && (
-                  <div className="mb-4 p-3 bg-yellow-900/50 rounded-lg text-sm">
+                  <div className="mb-4 p-3 bg-yellow-900/50 rounded-lg text-xs sm:text-sm">
                     <p className="font-bold mb-1">iOS Chrome Limitation:</p>
                     <p>On iOS, Chrome uses Safari's engine and has limited camera access.</p>
                     <p className="mt-2">Please use Safari instead.</p>
                   </div>
                 )}
-                <Button onClick={closeCamera}>Go Back</Button>
+                <Button onClick={closeCamera} className="w-full sm:w-auto">
+                  Go Back
+                </Button>
               </div>
             </div>
           ) : useFileInput ? (
-            <div className="w-full h-full flex flex-col items-center justify-center text-white">
-              <div className="text-center p-4">
+            <div className="w-full h-full flex flex-col items-center justify-center text-white p-4">
+              <div className="text-center max-w-md">
                 <Upload className="h-16 w-16 mx-auto mb-4" />
-                <p className="mb-4">Waiting for photo...</p>
-                <p className="text-sm text-gray-400">If the camera doesn't open automatically, tap below</p>
+                <p className="mb-4 text-sm sm:text-base">Waiting for photo...</p>
+                <p className="text-xs sm:text-sm text-gray-400 mb-4">
+                  If the camera doesn't open automatically, tap below
+                </p>
                 <Button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="mt-4"
+                  className="w-full sm:w-auto"
+                  size="lg"
                 >
                   Open Camera
                 </Button>
@@ -527,16 +547,17 @@ const ScanPage: React.FC = () => {
             </div>
           )}
           
-          {/* Capture/Retake button */}
-          {!cameraError && !useFileInput && (
-            <div className="absolute bottom-8 left-0 right-0 flex justify-center">
+          {/* Capture button - mobile optimized */}
+          {!cameraError && !useFileInput && !capturedImage && (
+            <div className="absolute bottom-6 left-4 right-4 flex justify-center">
               <Button 
                 variant="default" 
                 size="lg"
-                className="rounded-full px-8"
-                onClick={capturedImage ? retakePhoto : takeSnapshot}
+                className="rounded-full px-8 py-4 text-lg font-semibold bg-white text-black hover:bg-gray-100 min-h-[56px] min-w-[120px]"
+                onClick={takeSnapshot}
+                disabled={!selectedEventId}
               >
-                {capturedImage ? "Retake" : "Take Photo"}
+                Take Photo
               </Button>
             </div>
           )}
@@ -547,144 +568,137 @@ const ScanPage: React.FC = () => {
 
   // Otherwise, render the landing view
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-4">Scan Card</h1>
-          
-          {/* Event Selection */}
-          <div className="mb-6">
-            <Select
-              value={selectedEventId}
-              onValueChange={handleEventChange}
-            >
-              <SelectTrigger className="w-full bg-white border-gray-200">
-                <SelectValue placeholder="Select an event">
-                  {selectedEvent ? selectedEvent.name : "Select an event"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {events.map(event => (
-                  <SelectItem key={event.id} value={event.id}>
-                    {event.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Camera Error Display */}
-          {cameraError && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center gap-2 text-red-700">
-                <AlertCircle className="h-5 w-5" />
-                <p>{cameraError}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Camera/Upload UI */}
-          {!capturedImage && !isCameraOpen && (
-            <div className="space-y-4">
-              {!useFileInput && (
-                <Button
-                  onClick={openCamera}
-                  className="w-full"
-                  disabled={!selectedEventId}
-                >
-                  <Camera className="mr-2 h-4 w-4" />
-                  Open Camera
-                </Button>
-              )}
-              {useFileInput && (
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept=".pdf,image/*"
-                  className="hidden"
-                />
-              )}
-            </div>
-          )}
-
-          {/* Camera View */}
-          {isCameraOpen && !capturedImage && (
-            <div className="relative">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="w-full aspect-[3/4] bg-black rounded-lg"
-              />
-              <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-4">
-                <Button onClick={closeCamera} variant="secondary">
-                  <X className="mr-2 h-4 w-4" />
-                  Close
-                </Button>
-                <Button onClick={takeSnapshot}>
-                  <Camera className="mr-2 h-4 w-4" />
-                  Capture
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Captured Image Preview */}
-          {capturedImage && (
-            <div className="space-y-4">
-              <div className="relative">
-                <img
-                  src={capturedImage}
-                  alt="Captured"
-                  className="w-full rounded-lg"
-                />
-                {selectedEvent && (
-                  <Badge
-                    className="absolute top-2 right-2"
-                    variant="secondary"
-                  >
-                    <Calendar className="mr-1 h-4 w-4" />
-                    {selectedEvent.name}
-                  </Badge>
-                )}
-              </div>
-              
-              <div className="flex justify-center space-x-4">
-                <Button onClick={retakePhoto} variant="secondary">
-                  <Camera className="mr-2 h-4 w-4" />
-                  Retake
-                </Button>
-                <Button
-                  onClick={handleProcessImage}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Process Image
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Processing Progress */}
-              {isProcessing && (
-                <div className="space-y-2">
-                  <Progress value={processingProgress} />
-                  <p className="text-sm text-center text-gray-500">
-                    Processing image... {processingProgress}%
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+    <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold mb-4">Scan Card</h1>
+        
+        {/* Event Selection */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Event
+          </label>
+          <Select
+            value={selectedEventId}
+            onValueChange={handleEventChange}
+          >
+            <SelectTrigger className="w-full bg-white border-gray-200 min-h-[44px]">
+              <SelectValue placeholder="Choose an event to scan cards for">
+                {selectedEvent ? selectedEvent.name : "Choose an event to scan cards for"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {events.map(event => (
+                <SelectItem key={event.id} value={event.id}>
+                  {event.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
+        {/* Camera Error Display */}
+        {cameraError && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start gap-2 text-red-700">
+              <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <p className="text-sm">{cameraError}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Camera/Upload UI */}
+        {!capturedImage && !isCameraOpen && (
+          <div className="space-y-4">
+            {!useFileInput && (
+              <Button
+                onClick={openCamera}
+                className="w-full min-h-[48px] text-base"
+                disabled={!selectedEventId}
+                size="lg"
+              >
+                <Camera className="mr-2 h-5 w-5" />
+                Open Camera
+              </Button>
+            )}
+            {useFileInput && (
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".pdf,image/*"
+                className="hidden"
+              />
+            )}
+            
+            {!selectedEventId && (
+              <p className="text-sm text-gray-500 text-center">
+                Please select an event first
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Captured Image Preview */}
+        {capturedImage && (
+          <div className="space-y-4">
+            <div className="relative">
+              <img
+                src={capturedImage}
+                alt="Captured"
+                className="w-full rounded-lg shadow-lg"
+              />
+              {selectedEvent && (
+                <Badge
+                  className="absolute top-2 right-2"
+                  variant="secondary"
+                >
+                  <Calendar className="mr-1 h-4 w-4" />
+                  {selectedEvent.name}
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+              <Button 
+                onClick={retakePhoto} 
+                variant="secondary"
+                className="w-full sm:w-auto min-h-[44px]"
+                size="lg"
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Retake
+              </Button>
+              <Button
+                onClick={handleProcessImage}
+                disabled={isProcessing}
+                className="w-full sm:w-auto min-h-[44px]"
+                size="lg"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Process Image
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Processing Progress */}
+            {isProcessing && (
+              <div className="space-y-2">
+                <Progress value={processingProgress} />
+                <p className="text-sm text-center text-gray-500">
+                  Processing image... {processingProgress}%
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
