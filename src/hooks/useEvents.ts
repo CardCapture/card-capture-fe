@@ -33,10 +33,11 @@ export function useEvents(): UseEventsReturn {
 
             if (eventsError) throw eventsError;
 
-            // Then fetch associated reviewed_data in a separate query
+            // Then fetch associated reviewed_data in a separate query, excluding deleted cards
             const { data: reviewedData, error: reviewedError } = await supabase
                 .from('reviewed_data')
-                .select('*');
+                .select('*')
+                .neq('review_status', 'deleted');
 
             if (reviewedError) {
                 console.error('Error fetching reviewed_data:', reviewedError);
