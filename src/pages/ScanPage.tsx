@@ -8,13 +8,14 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Camera, X, Calendar, AlertCircle, Upload, Loader2, ArrowLeft } from 'lucide-react';
+import { Camera, X, Calendar, AlertCircle, Upload, Loader2, ArrowLeft, Plus } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { useEvents } from '@/hooks/useEvents';
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from 'react-router-dom';
 import { useCardUpload } from '@/hooks/useCardUpload';
 import { Event } from '@/types/event';
+import { CreateEventModal } from '@/components/CreateEventModal';
 
 const ScanPage: React.FC = () => {
   const { events, fetchEvents } = useEvents();
@@ -33,6 +34,7 @@ const ScanPage: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [documentId, setDocumentId] = useState<string | null>(null);
+  const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -362,12 +364,20 @@ const ScanPage: React.FC = () => {
 
   // Select an event
   const handleEventChange = (id: string) => {
-    const event = events.find(evt => evt.id === id);
-    if (event) {
-      setSelectedEventId(id);
-      setSelectedEvent(event);
-      localStorage.setItem("lastEventId", id);
+    if (id === "create-new") {
+      setIsCreateEventModalOpen(true);
+      return;
     }
+    
+    const event = events.find(evt => evt.id === id);
+    setSelectedEventId(id);
+    setSelectedEvent(event || null);
+    localStorage.setItem("lastEventId", id);
+  };
+
+  const handleEventCreated = () => {
+    fetchEvents(); // Refresh the events list
+    setIsCreateEventModalOpen(false);
   };
 
   // Retake photo
@@ -587,6 +597,15 @@ const ScanPage: React.FC = () => {
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="create-new" className="text-blue-600 font-medium">
+                <div className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create New Event
+                </div>
+              </SelectItem>
+              {events.length > 0 && (
+                <div className="border-t border-gray-200 my-1" />
+              )}
               {events.map(event => (
                 <SelectItem key={event.id} value={event.id}>
                   {event.name}
@@ -700,6 +719,13 @@ const ScanPage: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* Create Event Modal */}
+      <CreateEventModal
+        isOpen={isCreateEventModalOpen}
+        onClose={() => setIsCreateEventModalOpen(false)}
+        onEventCreated={handleEventCreated}
+      />
     </div>
   );
 };

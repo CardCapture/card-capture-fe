@@ -12,7 +12,7 @@ export const getDefaultRedirectPath = (profile: UserProfile | null): string => {
     return '/events';
   }
 
-  // Recruiter can scan cards and view events, default to scan page
+  // Recruiter can scan cards, default to scan page
   if (roles.includes('recruiter')) {
     return '/scan';
   }

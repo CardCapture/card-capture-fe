@@ -44,8 +44,16 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout><Outlet /></AppLayout>}>
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/events" element={<EventsHome />} />
-              <Route path="/events/:eventId" element={<Dashboard />} />
+              <Route path="/events" element={
+                <RoleProtectedRoute requiredPermission="canAccessEventsPage" fallbackPath="/scan">
+                  <EventsHome />
+                </RoleProtectedRoute>
+              } />
+              <Route path="/events/:eventId" element={
+                <RoleProtectedRoute requiredPermission="canAccessEventsPage" fallbackPath="/scan">
+                  <Dashboard />
+                </RoleProtectedRoute>
+              } />
               
               {/* Role-protected routes */}
               <Route path="/scan" element={

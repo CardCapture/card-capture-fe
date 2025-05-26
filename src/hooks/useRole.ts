@@ -37,7 +37,7 @@ export const useRole = () => {
     
     // Navigation permissions
     canAccessScanPage: roles.some(r => ['admin', 'recruiter'].includes(r)),
-    canAccessEventsPage: roles.some(r => ['admin', 'recruiter', 'reviewer'].includes(r)),
+    canAccessEventsPage: roles.some(r => ['admin', 'reviewer'].includes(r)),
     canAccessDashboard: roles.length > 0, // Any role can access dashboard
     canAccessSettings: roles.includes('admin'),
     
