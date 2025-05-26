@@ -44,7 +44,14 @@ VITE_API_URL               # Your Cloud Run backend URL
 2. **Check File Paths**: Ensure you're changing files in `src/`, `public/`, or other monitored paths
 3. **Validate YAML**: Use [YAML Lint](https://www.yamllint.com/) to check `.github/workflows/deploy.yml`
 
-### Issue 3: Firebase Service Account Issues
+### Issue 3: Node.js Version Incompatibility 🆕
+**Symptoms**: Error: "Firebase CLI v14.4.0 is incompatible with Node.js v18.x.x"
+**Solution**: 
+- Firebase CLI requires Node.js >=20.0.0 || >=22.0.0
+- The workflow now uses Node.js 20 to fix this issue
+- If you see this error, ensure your workflow uses `node-version: '20'` or higher
+
+### Issue 4: Firebase Service Account Issues
 **Symptoms**: Build succeeds but deployment fails
 **Solution**: 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
@@ -54,7 +61,7 @@ VITE_API_URL               # Your Cloud Run backend URL
 5. Copy the entire JSON content
 6. Paste as `FIREBASE_SERVICE_ACCOUNT` secret in GitHub
 
-### Issue 4: Wrong Project ID
+### Issue 5: Wrong Project ID
 **Symptoms**: Firebase deployment fails with project not found
 **Solution**: 
 - Verify `FIREBASE_PROJECT_ID` secret matches: `gen-lang-client-0493571343`
@@ -96,17 +103,21 @@ ls -la .github/workflows/
 # Validate package.json scripts
 npm run build
 
-# Test Firebase CLI access
+# Test Firebase CLI access (requires Node.js 20+)
 firebase projects:list
 
 # Check environment variables
 cat .env.production  # (if it exists)
+
+# Check Node.js version (should be 20+ for Firebase CLI)
+node --version
 ```
 
 ## 📋 Workflow File Validation
 
 Your `.github/workflows/deploy.yml` should:
 - ✅ Trigger on pushes to `main` branch
+- ✅ Use Node.js version 20 or higher
 - ✅ Have the correct paths filter
 - ✅ Use the right secrets
 - ✅ Include workflow_dispatch for manual triggers
@@ -129,6 +140,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
     - name: Test
       run: echo "Workflow is working!"
 ```
