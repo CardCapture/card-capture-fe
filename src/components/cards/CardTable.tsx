@@ -39,12 +39,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
+import { useBulkActions } from "@/hooks/useBulkActions";
+import { downloadCSV } from "@/utils/csvExport";
+import { useCardTableActions } from "@/hooks/useCardTableActions";
 
 // Add any additional imports as needed
 
 const CardTable = ({
   table,
-  rowSelection,
   handleRowClick,
   selectedTab,
   filteredCards,
@@ -61,14 +63,7 @@ const CardTable = ({
   setSearchQuery,
   debouncedSearch,
   isUploading,
-  handleExportSelected,
-  downloadCSV,
-  handleArchiveSelected,
-  handleMoveSelected,
-  handleDeleteSelected,
-  setIsArchiveConfirmOpen,
-  setIsMoveConfirmOpen,
-  setIsDeleteConfirmOpen,
+  selectedEvent, // Add selectedEvent prop for the hook
   dataFieldsMap,
   reviewFieldOrder,
   fileInputRef,
@@ -76,45 +71,60 @@ const CardTable = ({
   handleCaptureCard,
   handleImportFile,
   handleManualEntry,
-  handleExportToSlate,
+  fetchCards, // Add this prop for refreshing data
+  bulkSelection, // Add bulkSelection as a prop
 }) => {
-  // Debug pagination and filtering
-  console.log('CardTable debug:', {
+  // Remove the local useBulkSelection hook since we're getting it as a prop
+  // const bulkSelection = useBulkSelection(filteredCards);
+  
+  // Use our new bulk actions hook  
+  const bulkActions = useBulkActions(fetchCards, toast, bulkSelection.clearSelection);
+  
+  // Use the card table actions hook for export functionality
+  const { handleExportToSlate } = useCardTableActions(
     filteredCards,
-    paginatedCards,
-    currentPage,
-    pageSize,
-    paginatedCardsLength: paginatedCards.length,
-    filteredCardsLength: filteredCards.length
-  });
-  // Render the table and toolbar as in the current file
-  // ...
-  const handleArchiveClick = () => {
-    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-    if (selectedIds.length === 0) {
-      return; // No cards selected, do nothing
-    }
-    setIsArchiveConfirmOpen(true);
-  };
-
+    fetchCards,
+    toast,
+    selectedEvent,
+    dataFieldsMap
+  );
+  
+  // Handle CSV export
   const handleExportClick = () => {
-    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-    console.log('=== CSV Export Debug ===');
-    console.log('rowSelection:', rowSelection);
-    console.log('selectedIds from rowSelection:', selectedIds);
-    console.log('paginatedCards:', paginatedCards.map(card => ({ id: card.id, name: card.fields?.name?.value })));
-    console.log('table.getRowModel().rows:', table.getRowModel().rows.map(row => ({ id: row.id, original: row.original.id })));
-    console.log('Calling downloadCSV with selectedIds:', selectedIds);
-    downloadCSV(selectedIds, table);
+    if (bulkSelection.selectedCount === 0) {
+      toast({
+        title: "No Cards Selected",
+        description: "Please select at least one card to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log(`📊 Exporting ${bulkSelection.selectedCount} cards to CSV`);
+    const eventName = selectedEvent?.name || "Unknown Event";
+    downloadCSV(
+      bulkSelection.selectedCards, 
+      `cards-export-${new Date().toISOString().split('T')[0]}.csv`,
+      eventName
+    );
+    
+    // Mark as exported via API
+    bulkActions.exportCards(bulkSelection.selectedIds);
   };
-
+  
+  // Handle Slate export
   const handleExportToSlateClick = () => {
-    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-    console.log('=== Slate Export Debug ===');
-    console.log('rowSelection:', rowSelection);
-    console.log('selectedIds from rowSelection:', selectedIds);
-    console.log('Calling handleExportToSlate with selectedIds:', selectedIds);
-    handleExportToSlate(selectedIds);
+    if (bulkSelection.selectedCount === 0) {
+      toast({
+        title: "No Cards Selected", 
+        description: "Please select at least one card to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log(`🎯 Exporting ${bulkSelection.selectedCount} cards to Slate`);
+    handleExportToSlate(bulkSelection.selectedIds);
   };
 
   return (
@@ -160,7 +170,7 @@ const CardTable = ({
         {selectedTab === "ready_to_export" && (
           <div
             className={`flex items-center gap-3 text-xs text-gray-500 mt-4 ${
-              Object.keys(rowSelection).length > 0 ? "mb-4" : "mb-0"
+              bulkSelection.selectedCount > 0 ? "mb-4" : "mb-0"
             }`}
           >
             <Switch
@@ -184,24 +194,24 @@ const CardTable = ({
           accept=".pdf,image/*"
           className="hidden"
         />
-        {Object.keys(rowSelection).length > 0 ? (
+        {bulkSelection.selectedCount > 0 ? (
           <div className="bg-blue-50 border-b border-blue-200 shadow-sm sticky top-0 z-10 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-top-2 mb-0">
             <div className="w-full flex justify-between items-center px-4 py-2.5">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={table.getIsAllRowsSelected()}
+                  checked={bulkSelection.isAllSelected}
                   ref={(input) => {
                     if (input) {
-                      input.indeterminate = table.getIsSomeRowsSelected();
+                      input.indeterminate = bulkSelection.isSomeSelected;
                     }
                   }}
-                  onChange={table.getToggleAllRowsSelectedHandler()}
+                  onChange={bulkSelection.toggleAll}
                   className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
                 />
                 <span className="text-sm font-semibold text-blue-800">
-                  {Object.keys(rowSelection).length}{" "}
-                  {Object.keys(rowSelection).length === 1 ? "Card" : "Cards"}{" "}
+                  {bulkSelection.selectedCount}{" "}
+                  {bulkSelection.selectedCount === 1 ? "Card" : "Cards"}{" "}
                   Selected
                 </span>
               </div>
@@ -211,25 +221,29 @@ const CardTable = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-                        handleMoveSelected(selectedIds);
-                      }}
+                      onClick={() => bulkActions.moveCards(bulkSelection.selectedIds, "reviewed")}
+                      disabled={bulkActions.isLoading}
                       className="text-gray-700 hover:text-gray-900 gap-1.5"
                     >
-                      <CheckCircle className="h-4 w-4" />
+                      {bulkActions.isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4" />
+                      )}
                       Move
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-                        handleDeleteSelected(selectedIds);
-                      }}
+                      onClick={() => bulkActions.deleteCards(bulkSelection.selectedIds)}
+                      disabled={bulkActions.isLoading}
                       className="text-red-600 hover:text-red-700 gap-1.5"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {bulkActions.isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                       Delete
                     </Button>
                   </>
@@ -241,11 +255,11 @@ const CardTable = ({
                           variant="ghost"
                           size="sm"
                           className="text-gray-700 hover:text-gray-900 gap-1.5 flex items-center"
-                          disabled={isUploading}
+                          disabled={isUploading || bulkActions.isLoading}
                           type="button"
                           aria-label="Export options"
                         >
-                          {isUploading ? (
+                          {isUploading || bulkActions.isLoading ? (
                             <>
                               <Loader2 className="h-4 w-4 animate-spin" />
                               Exporting...
@@ -271,10 +285,15 @@ const CardTable = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={handleArchiveClick}
+                      onClick={() => bulkActions.archiveCards(bulkSelection.selectedIds)}
+                      disabled={bulkActions.isLoading}
                       className="text-gray-700 hover:text-gray-900 gap-1.5"
                     >
-                      <Archive className="h-4 w-4" />
+                      {bulkActions.isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Archive className="h-4 w-4" />
+                      )}
                       Archive
                     </Button>
                   </>
@@ -284,8 +303,8 @@ const CardTable = ({
           </div>
         ) : null}
         {/* Table */}
-        <Table className={Object.keys(rowSelection).length > 0 ? "" : "mt-4"}>
-          {Object.keys(rowSelection).length === 0 && (
+        <Table className={bulkSelection.selectedCount > 0 ? "" : "mt-4"}>
+          {bulkSelection.selectedCount === 0 && (
             <TableHeader className="bg-gray-50 sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -319,7 +338,7 @@ const CardTable = ({
               table.getRowModel().rows.map((tableRow) => (
                 <TableRow
                   key={tableRow.id}
-                  data-state={tableRow.getIsSelected() && "selected"}
+                  data-state={bulkSelection.isSelected(tableRow.original.document_id) && "selected"}
                   className="hover:bg-gray-100 cursor-pointer"
                   onClick={() => handleRowClick(tableRow.original)}
                 >

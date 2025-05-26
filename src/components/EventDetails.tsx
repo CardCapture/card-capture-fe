@@ -77,6 +77,8 @@ import { useManualEntryModal } from "@/hooks/useManualEntryModal";
 import { useCardUploadActions } from "@/hooks/useCardUploadActions";
 import { useZoom } from "@/hooks/useZoom";
 import { useStatusTabs } from "@/hooks/useStatusTabs";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
+import { useBulkActions } from "@/hooks/useBulkActions";
 
 // === Component Definition ===
 const Dashboard = () => {
@@ -230,7 +232,7 @@ const Dashboard = () => {
     (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
     fileInputRef
   );
-  const { 
+  const {
     isReviewModalOpen,
     setIsReviewModalOpen,
     selectedCardForReview,
@@ -245,11 +247,12 @@ const Dashboard = () => {
     imageKeyRef,
     fieldsWithToastRef,
     isSaving,
+    setIsSaving,
   } = useCardReviewModal(
     cards,
     reviewFieldOrder,
     fetchCards,
-    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
+    toast,
     dataFieldsMap
   );
   const { handleManualEntry, handleManualEntryChange, handleManualEntrySubmit } = useManualEntryModal(
@@ -349,8 +352,14 @@ const Dashboard = () => {
     });
   }, [cards, selectedTab, selectedEvent, hideExported, debouncedSearchQuery]);
 
+  // Use our new bulk selection hook (after filteredCards is defined)
+  const bulkSelection = useBulkSelection(filteredCards);
+  
+  // Use our new bulk actions hook  
+  const bulkActions = useBulkActions(fetchCards, toast, bulkSelection.clearSelection);
+
   // Now that filteredCards is defined, we can use it in useCardTableActions
-  const { handleExportSelected, handleMoveSelected, handleArchiveSelected, handleDeleteSelected, downloadCSV } = useCardTableActions(
+  const { handleExportSelected, handleMoveSelected, handleArchiveSelected, handleDeleteSelected } = useCardTableActions(
     filteredCards,
     fetchCards,
     (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
@@ -484,7 +493,7 @@ const Dashboard = () => {
       setIsReviewModalOpen(true);
       setReviewModalState(true);
     },
-    [setReviewModalState]
+    [setReviewModalState, localCardRef, setSelectedCardForReview, selectedCardIdRef, imageKeyRef, setFormData, setIsReviewModalOpen]
   );
 
   // Reset the fields with toast when the modal is closed
@@ -492,7 +501,7 @@ const Dashboard = () => {
     if (!isReviewModalOpen) {
       fieldsWithToastRef.current.clear();
     }
-  }, [isReviewModalOpen]);
+  }, [isReviewModalOpen, fieldsWithToastRef]);
 
   // Add an effect to update the selected card when cards are refreshed
   useEffect(() => {
@@ -507,7 +516,7 @@ const Dashboard = () => {
         }
       }
     }
-  }, [cards, isReviewModalOpen]);
+  }, [cards, isReviewModalOpen, selectedCardIdRef, setSelectedCardForReview]);
 
   // Add more detailed logging when modal opens
   useEffect(() => {
@@ -527,7 +536,7 @@ const Dashboard = () => {
       imageKeyRef.current = `image-${selectedCardForReview.id}-${Date.now()}`;
       // imageUrlRef.current = selectedCardForReview.image_path || '';
     }
-  }, [selectedCardForReview?.id]);
+  }, [selectedCardForReview?.id, imageKeyRef]);
 
   // Table definition
   const columns = useMemo<ColumnDef<ProspectCard>[]>(
@@ -538,13 +547,13 @@ const Dashboard = () => {
           <div className="flex justify-center">
             <input
               type="checkbox"
-              checked={table.getIsAllRowsSelected()}
+              checked={bulkSelection.isAllSelected}
               ref={(input) => {
                 if (input) {
-                  input.indeterminate = table.getIsSomeRowsSelected();
+                  input.indeterminate = bulkSelection.isSomeSelected;
                 }
               }}
-              onChange={table.getToggleAllRowsSelectedHandler()}
+              onChange={bulkSelection.toggleAll}
               className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
             />
           </div>
@@ -553,8 +562,8 @@ const Dashboard = () => {
           <div className="flex justify-center">
             <input
               type="checkbox"
-              checked={row.getIsSelected()}
-              onChange={row.getToggleSelectedHandler()}
+              checked={bulkSelection.isSelected(row.original.document_id)}
+              onChange={() => bulkSelection.toggleSelection(row.original.document_id)}
               onClick={(e) => e.stopPropagation()}
               className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
             />
@@ -689,7 +698,7 @@ const Dashboard = () => {
           ]
         : []),
     ],
-    [selectedTab, dataFieldsMap, reviewFieldOrder]
+    [selectedTab, dataFieldsMap, reviewFieldOrder, bulkSelection]
   );
 
   // Table instance
@@ -698,16 +707,9 @@ const Dashboard = () => {
     columns,
     state: {
       sorting,
-      rowSelection,
     },
-    enableRowSelection: true,
-    getRowId: (row) => row.id,
-    onRowSelectionChange: (updater) => {
-      setRowSelection((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater;
-        return next;
-      });
-    },
+    enableRowSelection: false, // Disable built-in row selection
+    getRowId: (row) => row.document_id, // Use document_id as the row ID
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -749,97 +751,11 @@ const Dashboard = () => {
     setIsArchiveConfirmOpen(false);
   };
 
-  // Replace handleExportToSlate with handleExportSelected
-  const handleExportToSlate = handleExportSelected;
-
   // --- Zoom Functions ---
   const zoomIn = useCallback(() => setZoom((z) => Math.min(z * 1.2, 2)), []);
-  const zoomOut = useCallback(
-    () => setZoom((z) => Math.max(z / 1.2, 0.47)),
-    []
-  );
+  const zoomOut = useCallback(() => setZoom((z) => Math.max(z / 1.2, 0.5)), []);
 
-  // --- useEffect for hiding exported cards & sorting ---
-  useEffect(() => {
-    if (prevHideExported.current && !hideExported) {
-      setSorting([{ id: "status", desc: true }]);
-    }
-    prevHideExported.current = hideExported;
-  }, [hideExported]);
-
-  // --- useEffect for event name ---
-  useEffect(() => {
-    setEventNameInput(selectedEvent?.name || "");
-  }, [selectedEvent]);
-
-  // --- useEffect for card field preferences ---
-  useEffect(() => {
-    async function fetchSettings() {
-      if (!selectedEvent || !selectedEvent.school_id) return;
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) return;
-      const { data, error } = await supabase
-        .from("settings")
-        .select("preferences")
-        .eq("user_id", user.id)
-        .eq("school_id", selectedEvent.school_id)
-        .single();
-      if (!error && data?.preferences?.card_fields) {
-        setCardFieldPrefs(data.preferences.card_fields);
-      } else {
-        setCardFieldPrefs(null);
-      }
-    }
-    fetchSettings();
-  }, [selectedEvent]);
-
-  // --- useEffect for initializing form data ---
-  useEffect(() => {
-    if (selectedCardForReview && reviewFieldOrder) {
-      const initialFormData: Record<string, string> = {};
-      reviewFieldOrder.forEach((fieldKey) => {
-        initialFormData[fieldKey] =
-          selectedCardForReview.fields?.[fieldKey]?.value ?? "";
-      });
-      setFormData(initialFormData);
-    } else {
-      setFormData({});
-    }
-  }, [selectedCardForReview, reviewFieldOrder]);
-
-  // --- useEffect for image URL ---
-  useEffect(() => {
-    async function updateImageUrl() {
-      if (selectedCardForReview?.image_path) {
-        const signedUrl = await getSignedImageUrl(
-          selectedCardForReview.image_path
-        );
-        setImageUrlState(signedUrl);
-      } else {
-        setImageUrlState("");
-      }
-    }
-    updateImageUrl();
-  }, [selectedCardForReview?.image_path, getSignedImageUrl]);
-
-  // --- useEffect for keyboard shortcuts ---
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsReviewModalOpen(false);
-        setSelectedCardForReview(null);
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  // Replace openBulkArchiveDialog to just open the dialog
-  const openBulkArchiveDialog = useCallback(() => {
-    setIsArchiveConfirmOpen(true);
-  }, []);
-
-  // Restore missing event name editing handlers
+  // --- Event Name Editing ---
   const handleEditEventName = () => {
     setIsEditingEventName(true);
     setEventNameInput(selectedEvent?.name || "");
@@ -898,6 +814,86 @@ const Dashboard = () => {
       setEventNameLoading(false);
     }
   };
+
+  // --- useEffect for hiding exported cards & sorting ---
+  useEffect(() => {
+    if (prevHideExported.current && !hideExported) {
+      setSorting([{ id: "status", desc: true }]);
+    }
+    prevHideExported.current = hideExported;
+  }, [hideExported]);
+
+  // --- useEffect for event name ---
+  useEffect(() => {
+    setEventNameInput(selectedEvent?.name || "");
+  }, [selectedEvent]);
+
+  // --- useEffect for card field preferences ---
+  useEffect(() => {
+    async function fetchSettings() {
+      if (!selectedEvent || !selectedEvent.school_id) return;
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("settings")
+        .select("preferences")
+        .eq("user_id", user.id)
+        .eq("school_id", selectedEvent.school_id)
+        .single();
+      if (!error && data?.preferences?.card_fields) {
+        setCardFieldPrefs(data.preferences.card_fields);
+      } else {
+        setCardFieldPrefs(null);
+      }
+    }
+    fetchSettings();
+  }, [selectedEvent]);
+
+  // --- useEffect for initializing form data ---
+  useEffect(() => {
+    if (selectedCardForReview && reviewFieldOrder) {
+      const initialFormData: Record<string, string> = {};
+      reviewFieldOrder.forEach((fieldKey) => {
+        initialFormData[fieldKey] =
+          selectedCardForReview.fields?.[fieldKey]?.value ?? "";
+      });
+      setFormData(initialFormData);
+    } else {
+      setFormData({});
+    }
+  }, [selectedCardForReview, reviewFieldOrder, setFormData]);
+
+  // --- useEffect for image URL ---
+  useEffect(() => {
+    async function updateImageUrl() {
+      if (selectedCardForReview?.image_path) {
+        const signedUrl = await getSignedImageUrl(
+          selectedCardForReview.image_path
+        );
+        setImageUrlState(signedUrl);
+      } else {
+        setImageUrlState("");
+      }
+    }
+    updateImageUrl();
+  }, [selectedCardForReview?.image_path]);
+
+  // --- useEffect for keyboard shortcuts ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsReviewModalOpen(false);
+        setSelectedCardForReview(null);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [setIsReviewModalOpen, setSelectedCardForReview]);
+
+  // Replace openBulkArchiveDialog to just open the dialog
+  const openBulkArchiveDialog = useCallback(() => {
+    setIsArchiveConfirmOpen(true);
+  }, []);
 
   // --- JSX ---
   useEffect(() => {
@@ -1079,7 +1075,6 @@ const Dashboard = () => {
               </div>
               <CardTable
                 table={table}
-                rowSelection={rowSelection}
                 handleRowClick={handleRowClick}
                 selectedTab={selectedTab}
                 filteredCards={filteredCards}
@@ -1096,20 +1091,7 @@ const Dashboard = () => {
                 setSearchQuery={setSearchQuery}
                 debouncedSearch={debouncedSearch}
                 isUploading={isUploading}
-                handleExportSelected={handleExportSelected}
-                downloadCSV={downloadCSV}
-                handleArchiveSelected={handleArchiveSelected}
-                handleMoveSelected={() => {
-                  const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-                  handleMoveSelected(selectedIds);
-                }}
-                handleDeleteSelected={() => {
-                  const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-                  handleDeleteSelected(selectedIds);
-                }}
-                setIsArchiveConfirmOpen={openBulkArchiveDialog}
-                setIsMoveConfirmOpen={setIsMoveConfirmOpen}
-                setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
+                selectedEvent={selectedEvent}
                 dataFieldsMap={dataFieldsMap}
                 reviewFieldOrder={reviewFieldOrder}
                 fileInputRef={fileInputRef}
@@ -1117,7 +1099,8 @@ const Dashboard = () => {
                 handleCaptureCard={handleCaptureCard}
                 handleImportFile={handleImportFile}
                 handleManualEntry={handleManualEntry}
-                handleExportToSlate={handleExportToSlate}
+                fetchCards={fetchCards}
+                bulkSelection={bulkSelection}
               />
             </CardContent>
           </Card>

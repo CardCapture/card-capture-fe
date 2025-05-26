@@ -7,9 +7,9 @@ export function useCardTableActions(
   toast: (args: {
     title: string;
     description: string;
-    variant?: string;
+    variant?: "default" | "destructive";
   }) => void,
-  selectedEvent: { name: string } | null,
+  selectedEvent: { name: string; id: string; school_id: string } | null,
   dataFieldsMap: Map<string, string>
 ) {
   const handleArchiveSelected = useCallback(async (idsToArchive: string[]) => {
@@ -83,7 +83,92 @@ export function useCardTableActions(
         variant: "destructive",
       });
     }
-  }, [toast, fetchCards, selectedEvent, dataFieldsMap]);
+  }, [toast, fetchCards]);
+
+  const handleExportToSlate = useCallback(async (idsToExport: string[]) => {
+    try {
+      if (!idsToExport || idsToExport.length === 0) {
+        toast({
+          title: "No Cards Selected",
+          description: "Please select at least one card to export to Slate.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!selectedEvent?.school_id) {
+        toast({
+          title: "Missing School Information",
+          description: "Cannot export to Slate without school configuration.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Exporting to Slate",
+        description: "Preparing data for Slate export...",
+        variant: "default",
+      });
+
+      // Find the selected cards from filteredCards
+      const selectedCards = filteredCards.filter((card) => 
+        idsToExport.includes(card.document_id) // Use document_id for consistency
+      );
+
+      if (selectedCards.length === 0) {
+        toast({
+          title: "No Cards Found",
+          description: "Selected cards could not be found for export.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Prepare the data in the format expected by the Slate export service
+      const exportData = selectedCards.map((card) => ({
+        id: card.document_id, // Use document_id for the backend
+        event_name: selectedEvent.name,
+        fields: card.fields
+      }));
+
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const response = await fetch(`${apiBaseUrl}/export-to-slate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          school_id: selectedEvent.school_id,
+          rows: exportData
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to export to Slate (${response.status})`);
+      }
+
+      const result = await response.json();
+      
+      // Refresh the cards data to reflect any status changes
+      await fetchCards();
+      
+      toast({
+        title: "Slate Export Successful",
+        description: `${selectedCards.length} ${selectedCards.length === 1 ? "card" : "cards"} exported to Slate successfully.`,
+        variant: "default",
+      });
+
+      console.log("Slate export result:", result);
+
+    } catch (error) {
+      console.error("Error exporting to Slate:", error);
+      toast({
+        title: "Slate Export Failed",
+        description: error instanceof Error ? error.message : "Something went wrong while exporting to Slate. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [toast, fetchCards, selectedEvent, filteredCards]);
 
   const handleDeleteSelected = useCallback(async (idsToDelete: string[]) => {
     try {
@@ -248,6 +333,7 @@ export function useCardTableActions(
   return {
     handleArchiveSelected,
     handleExportSelected,
+    handleExportToSlate,
     handleDeleteSelected,
     handleMoveSelected,
     downloadCSV,
