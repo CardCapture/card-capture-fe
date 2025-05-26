@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from '@/lib/toast';
 
 const editUserSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -39,7 +39,6 @@ interface EditUserModalProps {
 export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { session } = useAuth();
-  const { toast } = useToast();
 
   const form = useForm<EditUserFormValues>({
     resolver: zodResolver(editUserSchema),
@@ -88,20 +87,13 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
         throw new Error(errorData?.message || "Failed to update user");
       }
 
-      toast({
-        title: "Success",
-        description: "User has been updated successfully.",
-      });
+      toast.updated("User");
 
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
       console.error("Error updating user:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update user. Please try again.",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Failed to update user. Please try again.", "Error");
     } finally {
       setIsSubmitting(false);
     }

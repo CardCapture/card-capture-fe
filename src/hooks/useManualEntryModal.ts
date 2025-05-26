@@ -1,27 +1,49 @@
 import { useState } from "react";
+import { toast } from "@/lib/toast";
 
 interface ManualEntryForm {
   name: string;
+  preferred_first_name: string;
+  date_of_birth: string;
   email: string;
   cell: string;
-  date_of_birth: string;
+  permission_to_text: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  high_school: string;
+  class_rank: string;
+  students_in_class: string;
+  gpa: string;
+  student_type: string;
+  entry_term: string;
+  major: string;
 }
 
 export function useManualEntryModal(
-  eventId: string | undefined,
-  fetchCards: () => void,
-  toast: (args: {
-    title: string;
-    description: string;
-    variant?: string;
-  }) => void
+  selectedEvent: any,
+  fetchCards: () => void
 ) {
   const [isManualEntryModalOpen, setIsManualEntryModalOpen] = useState(false);
   const [manualEntryForm, setManualEntryForm] = useState<ManualEntryForm>({
     name: "",
+    preferred_first_name: "",
+    date_of_birth: "",
     email: "",
     cell: "",
-    date_of_birth: "",
+    permission_to_text: "",
+    address: "",
+    city: "",
+    state: "",
+    zip_code: "",
+    high_school: "",
+    class_rank: "",
+    students_in_class: "",
+    gpa: "",
+    student_type: "",
+    entry_term: "",
+    major: "",
   });
 
   const handleManualEntry = () => {
@@ -40,11 +62,7 @@ export function useManualEntryModal(
 
   const handleManualEntrySubmit = async () => {
     if (!manualEntryForm.name) {
-      toast({
-        title: "Name Required",
-        description: "Please enter at least a name for the contact",
-        variant: "destructive",
-      });
+      toast.required("name for the contact");
       return;
     }
     try {
@@ -56,36 +74,44 @@ export function useManualEntryModal(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          event_id: eventId,
-          fields: {
-            name: { value: manualEntryForm.name, confidence: 1.0 },
-            email: { value: manualEntryForm.email, confidence: 1.0 },
-            cell: { value: manualEntryForm.cell, confidence: 1.0 },
-            date_of_birth: {
-              value: manualEntryForm.date_of_birth,
-              confidence: 1.0,
-            },
-          },
+          event_id: selectedEvent?.id,
+          fields: Object.fromEntries(
+            Object.entries(manualEntryForm).map(([key, value]) => [
+              key,
+              { value, confidence: 1.0 }
+            ])
+          ),
         }),
       });
       if (!response.ok) {
         throw new Error("Failed to create manual entry");
       }
-      toast({
-        title: "Contact added successfully",
-        description: "Manual entry was added.",
+      toast.created("Contact");
+      setManualEntryForm({
+        name: "",
+        preferred_first_name: "",
+        date_of_birth: "",
+        email: "",
+        cell: "",
+        permission_to_text: "",
+        address: "",
+        city: "",
+        state: "",
+        zip_code: "",
+        high_school: "",
+        class_rank: "",
+        students_in_class: "",
+        gpa: "",
+        student_type: "",
+        entry_term: "",
+        major: "",
       });
-      setManualEntryForm({ name: "", email: "", cell: "", date_of_birth: "" });
       setIsManualEntryModalOpen(false);
       fetchCards();
     } catch (error: unknown) {
       let message = "Failed to create manual entry";
       if (error instanceof Error) message = error.message;
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      });
+      toast.error(message, "Error");
     }
   };
 

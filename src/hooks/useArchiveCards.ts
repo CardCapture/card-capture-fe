@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/lib/toast';
 import { authFetch } from "@/lib/authFetch";
 
 interface UseArchiveCardsReturn {
@@ -8,16 +8,11 @@ interface UseArchiveCardsReturn {
 }
 
 export function useArchiveCards(): UseArchiveCardsReturn {
-  const { toast } = useToast();
   const [isArchiving, setIsArchiving] = useState(false);
 
   const archiveCards = useCallback(async (documentIds: string[]) => {
     if (!documentIds.length) {
-      toast({
-        title: "No Cards Selected",
-        description: "Please select at least one card to archive.",
-        variant: "destructive",
-      });
+      toast.required("at least one card selection");
       return;
     }
 
@@ -25,11 +20,7 @@ export function useArchiveCards(): UseArchiveCardsReturn {
     try {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
       
-      toast({
-        title: "Archiving Cards",
-        description: "Processing your archive request...",
-        variant: "default",
-      });
+      toast.info("Processing your archive request...", "Archiving Cards");
 
       const response = await authFetch(`${apiBaseUrl}/archive-cards`, {
         method: 'POST',
@@ -44,22 +35,14 @@ export function useArchiveCards(): UseArchiveCardsReturn {
         throw new Error(errorData.error || 'Failed to archive cards');
       }
 
-      toast({
-        title: "Archive Complete",
-        description: `Successfully archived ${documentIds.length} ${documentIds.length === 1 ? 'card' : 'cards'}.`,
-        variant: "default",
-      });
+      toast.success(`Successfully archived ${documentIds.length} ${documentIds.length === 1 ? 'card' : 'cards'}.`, "Archive Complete");
     } catch (error) {
       console.error('Error archiving cards:', error);
-      toast({
-        title: "Archive Failed",
-        description: "Failed to archive cards. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to archive cards. Please try again.", "Archive Failed");
     } finally {
       setIsArchiving(false);
     }
-  }, [toast]);
+  }, []);
 
   return {
     archiveCards,

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from '@/lib/toast';
 
 const AcceptInvitePage = () => {
   const [searchParams] = useSearchParams();
@@ -16,7 +16,6 @@ const AcceptInvitePage = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
 
   // Handle hash fragment redirect from Supabase
   useEffect(() => {
@@ -108,10 +107,7 @@ const AcceptInvitePage = () => {
       }
 
       // Show success message
-      toast({
-        title: "Success!",
-        description: "Your account has been activated successfully.",
-      });
+      toast.success("Your account has been activated successfully.", "Success!");
 
       // Sign in the user with their new credentials
       const { error: signInError } = await supabase.auth.signInWithPassword({

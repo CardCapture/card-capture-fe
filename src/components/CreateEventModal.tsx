@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/lib/toast";
 import { Loader2 } from 'lucide-react';
 import {
   Dialog,
@@ -39,7 +39,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [eventName, setEventName] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const { toast } = useToast();
   const { user } = useAuth();
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -81,28 +80,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventName || !eventDate) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide both an event name and date.",
-        variant: "destructive",
-      });
+      toast.warning("Please provide both an event name and date.", "Missing Information");
       return;
     }
     if (!schoolId) {
-      toast({
-        title: "Missing School ID",
-        description: "Your user profile is missing a school ID. Please contact support.",
-        variant: "destructive",
-      });
+      toast.error("Your user profile is missing a school ID. Please contact support.", "Missing School ID");
       return;
     }
     setIsCreating(true);
     try {
-      toast({
-        title: "Creating Event",
-        description: "Setting up your new event...",
-        variant: "default",
-      });
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
       const response = await authFetch(`${apiBaseUrl}/events`, {
         method: 'POST',
@@ -118,22 +104,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       if (!response.ok) {
         throw new Error('Failed to create event');
       }
-      toast({
-        title: "Event Created",
-        description: "Your new event has been created successfully.",
-        variant: "default",
-      });
+      toast.created("Event");
       onEventCreated();
       onClose();
       setEventName('');
       setEventDate('');
     } catch (error) {
       console.error('Error creating event:', error);
-      toast({
-        title: "Creation Failed",
-        description: "Something went wrong while creating the event. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Something went wrong while creating the event. Please try again.", "Creation Failed");
     } finally {
       setIsCreating(false);
     }

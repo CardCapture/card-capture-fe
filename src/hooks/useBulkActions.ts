@@ -1,14 +1,8 @@
 import { useState, useCallback } from "react";
-
-type ToastFunction = (args: {
-  title: string;
-  description: string;
-  variant?: "default" | "destructive";
-}) => void;
+import { toast } from "@/lib/toast";
 
 export function useBulkActions(
   fetchCards: () => void,
-  toast: ToastFunction,
   clearSelection: () => void
 ) {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,11 +13,7 @@ export function useBulkActions(
     options?: { status?: string }
   ) => {
     if (documentIds.length === 0) {
-      toast({
-        title: "No Cards Selected",
-        description: "Please select at least one card.",
-        variant: "destructive",
-      });
+      toast.required("at least one card selection");
       return false;
     }
     
@@ -78,25 +68,18 @@ export function useBulkActions(
         move: 'moved'
       };
       
-      toast({
-        title: "Success",
-        description: `${documentIds.length} card${documentIds.length === 1 ? '' : 's'} ${actionLabels[action]} successfully.`,
-      });
+      toast.success(`${documentIds.length} card${documentIds.length === 1 ? '' : 's'} ${actionLabels[action]} successfully.`, "Success");
       
       return true;
       
     } catch (error) {
       console.error(`❌ ${action.toUpperCase()} Error:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to ${action} cards: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
+      toast.error(`Failed to ${action} cards: ${error instanceof Error ? error.message : 'Unknown error'}`, "Error");
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, [fetchCards, clearSelection, toast]);
+  }, [fetchCards, clearSelection]);
   
   return {
     isLoading,

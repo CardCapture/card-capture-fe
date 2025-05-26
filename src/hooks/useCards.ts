@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient'; // Import the initialized client
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { useToast } from "@/hooks/use-toast"; // Use toast internally
+import { toast } from '@/lib/toast'; // Use new toast system
 import type { ProspectCard, CardStatus } from '@/types/card'; // Ensure path is correct
 import { useAuth } from "@/contexts/AuthContext";
 import { authFetch } from "@/lib/authFetch";
@@ -25,7 +25,6 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export function useCards(): UseCardsReturn {
     const [cards, setCards] = useState<ProspectCard[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    const { toast } = useToast();
     const { session } = useAuth();
     
     // Add a ref to track if we're in the review modal
@@ -57,26 +56,25 @@ export function useCards(): UseCardsReturn {
                 ? data.map((item: any): ProspectCard => ({
                     id: item.document_id || item.id || `unknown-${Math.random().toString(36).substring(7)}`,
                     document_id: item.document_id || item.id || `unknown-${Math.random().toString(36).substring(7)}`,
-                    status: item.review_status || 'processing',
-                    createdAt: item.uploaded_at || item.created_at || new Date().toISOString(),
+                    review_status: item.review_status || 'processing',
+                    created_at: item.uploaded_at || item.created_at || new Date().toISOString(),
+                    updated_at: item.updated_at || new Date().toISOString(),
+                    school_id: item.school_id || '',
                     exported_at: item.exported_at || null,
                     image_path: item.image_path || undefined,
                     fields: item.fields || {},
+                    event_id: item.event_id,
                 }))
                 : [];
 
             setCards(formattedCards);
         } catch (error) {
             console.error('Error fetching cards:', error);
-            toast({
-                title: "Error Fetching Cards",
-                description: error instanceof Error ? error.message : "An unknown error occurred.",
-                variant: "destructive",
-            });
+            toast.error(error instanceof Error ? error.message : "An unknown error occurred.", "Error Fetching Cards");
         } finally {
             setIsLoading(false);
         }
-    }, [toast, session]);
+    }, [session]);
 
     // Effect for initial fetch
     useEffect(() => {
@@ -104,7 +102,7 @@ export function useCards(): UseCardsReturn {
                             ...card,
                             ...payload.new,
                             fields: payload.new.fields || card.fields,
-                            status: payload.new.review_status || card.status
+                            review_status: payload.new.review_status || card.review_status
                         }
                         : card
                 ));
@@ -159,7 +157,7 @@ export function useCards(): UseCardsReturn {
 
     const getStatusCount = useCallback((status: CardStatus) => {
         if (!Array.isArray(cards)) return 0;
-        return cards.filter(card => card.status === status).length;
+        return cards.filter(card => card.review_status === status).length;
     }, [cards]);
 
     return {

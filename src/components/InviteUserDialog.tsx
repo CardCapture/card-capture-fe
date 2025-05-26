@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/lib/toast";
 
 const inviteUserSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -33,7 +33,6 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const { session } = useAuth();
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchSchoolId = async () => {
@@ -53,21 +52,13 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
 
         if (error) {
           console.error('Error fetching school_id:', error);
-          toast({
-            title: "Error",
-            description: "Could not fetch school information. Please try again.",
-            variant: "destructive",
-          });
+          toast.loadFailed("school information");
           return;
         }
 
         if (!data) {
           console.warn('No profile found for user:', session.user.id);
-          toast({
-            title: "Profile Not Found",
-            description: "Could not find your profile information. Please contact support.",
-            variant: "destructive",
-          });
+          toast.error("Could not find your profile information. Please contact support.", "Profile Not Found");
           return;
         }
 
@@ -75,18 +66,14 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         setSchoolId(data.school_id);
       } catch (e) {
         console.error('Unexpected error in fetchSchoolId:', e);
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred. Please try again.",
-          variant: "destructive",
-        });
+        toast.error("An unexpected error occurred. Please try again.");
       }
     };
 
     if (open) {
       fetchSchoolId();
     }
-  }, [session?.user?.id, open, toast]);
+  }, [session?.user?.id, open]);
 
   const form = useForm<InviteUserFormValues>({
     resolver: zodResolver(inviteUserSchema),
@@ -100,11 +87,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
 
   const onSubmit = async (data: InviteUserFormValues) => {
     if (!schoolId) {
-      toast({
-        title: "Error",
-        description: "School information is not available. Please try again or contact support.",
-        variant: "destructive",
-      });
+      toast.error("School information is not available. Please try again or contact support.");
       return;
     }
 
@@ -138,21 +121,14 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         throw new Error(errorData?.message || "Failed to invite user");
       }
 
-      toast({
-        title: "Success",
-        description: "User has been invited successfully.",
-      });
+      toast.success("User has been invited successfully");
 
       form.reset();
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
       console.error("Error inviting user:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to invite user. Please try again.",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Failed to invite user. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

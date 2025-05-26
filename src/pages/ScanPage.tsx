@@ -9,7 +9,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Camera, X, Calendar, AlertCircle, Upload, Loader2, ArrowLeft } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
+import { toast } from '@/lib/toast';
 import { useEvents } from '@/hooks/useEvents';
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,6 @@ import { Event } from '@/types/event';
 
 const ScanPage: React.FC = () => {
   const { events, fetchEvents } = useEvents();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [selectedEventId, setSelectedEventId] = useState<string | undefined>(undefined);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -114,11 +113,7 @@ const ScanPage: React.FC = () => {
       const error = "Camera access requires HTTPS. Please use HTTPS or localhost.";
       console.error(error);
       setCameraError(error);
-      toast({
-        title: "Camera Error",
-        description: error,
-        variant: "destructive",
-      });
+      toast.error(error, "Camera Error");
       return;
     }
     
@@ -137,11 +132,7 @@ const ScanPage: React.FC = () => {
       
       console.error(error);
       setCameraError(error);
-      toast({
-        title: "Camera Error",
-        description: error,
-        variant: "destructive",
-      });
+      toast.error(error, "Camera Error");
       return;
     }
     
@@ -187,11 +178,7 @@ const ScanPage: React.FC = () => {
               .catch(e => {
                 console.error("Video play error:", e);
                 setCameraError(`Could not start video playback: ${e.message}`);
-                toast({
-                  title: "Video Playback Error",
-                  description: `Could not start video playback: ${e.message}`,
-                  variant: "destructive",
-                });
+                toast.error(`Could not start video playback: ${e.message}`, "Video Playback Error");
               });
           }
         }, 100);
@@ -215,11 +202,7 @@ const ScanPage: React.FC = () => {
         }
         
         setCameraError(errorMessage);
-        toast({
-          title: "Camera Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
+        toast.error(errorMessage, "Camera Error");
       });
       
     // Cleanup function
@@ -407,21 +390,13 @@ const ScanPage: React.FC = () => {
     
     if (!selectedEventId) {
       console.error("No event selected for processing");
-      toast({
-        title: "Error",
-        description: "Please select an event first",
-        variant: "destructive",
-      });
+      toast.error("Please select an event first", "Error");
       return;
     }
     
     if (!capturedFileRef.current) {
       console.error("No captured file found in ref");
-      toast({
-        title: "Error",
-        description: "No image to process",
-        variant: "destructive",
-      });
+      toast.error("No image to process", "Error");
       return;
     }
 
@@ -440,11 +415,7 @@ const ScanPage: React.FC = () => {
       await processImage(capturedFileRef.current);
     } catch (error) {
       console.error("Failed to process image:", error);
-      toast({
-        title: "Error",
-        description: "Failed to process image",
-        variant: "destructive",
-      });
+      toast.error("Failed to process image", "Error");
     }
   };
 

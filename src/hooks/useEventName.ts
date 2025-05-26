@@ -1,21 +1,15 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "@/lib/toast";
 
 interface SelectedEvent {
   id: string;
   name: string;
 }
 
-interface ToastArgs {
-  title: string;
-  description: string;
-  variant?: string;
-}
-
 export function useEventName(
   selectedEvent: SelectedEvent | null,
-  fetchEvents: () => void,
-  toast: (args: ToastArgs) => void
+  fetchEvents: () => void
 ) {
   const [isEditingEventName, setIsEditingEventName] = useState(false);
   const [eventNameInput, setEventNameInput] = useState(
@@ -57,21 +51,14 @@ export function useEventName(
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || "Failed to update event name");
       }
-      toast({
-        title: "Event name updated",
-        description: "The event name was updated successfully.",
-      });
+      toast.updated("Event name");
       setIsEditingEventName(false);
       fetchEvents();
     } catch (error: unknown) {
       let message = "Failed to update event name";
       if (error instanceof Error) message = error.message;
       setEventNameError(message);
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      });
+      toast.error(message, "Error");
     } finally {
       setEventNameLoading(false);
     }

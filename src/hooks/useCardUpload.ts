@@ -1,9 +1,8 @@
-import { useToast } from "@/hooks/use-toast";
+import { toast } from '@/lib/toast';
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const useCardUpload = () => {
-  const { toast } = useToast();
   const { session } = useAuth();
   
   const uploadCard = async (file: File, eventId: string, schoolId: string, onUploadStart?: () => void) => {
@@ -34,11 +33,7 @@ export const useCardUpload = () => {
       
       return data;
     } catch (error: any) {
-      toast({
-        title: "Upload Failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(error.message, "Upload Failed");
       throw error;
     }
   };

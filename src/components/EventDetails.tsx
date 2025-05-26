@@ -79,11 +79,12 @@ import { useZoom } from "@/hooks/useZoom";
 import { useStatusTabs } from "@/hooks/useStatusTabs";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { useBulkActions } from "@/hooks/useBulkActions";
+import { toast } from "@/lib/toast"; // Updated import
 
 // === Component Definition ===
 const Dashboard = () => {
   // --- Hooks ---
-  const { toast } = useToast();
+  const { toast: oldToast } = useToast(); // Keep for hooks compatibility
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId?: string }>();
   const { events, loading: eventsLoading, fetchEvents } = useEvents();
@@ -100,9 +101,7 @@ const Dashboard = () => {
   );
 
   // Event Name
-  const eventName = useEventName(selectedEvent, fetchEvents, (args) =>
-    toast({ ...args, variant: args.variant as "default" | "destructive" })
-  );
+  const eventName = useEventName(selectedEvent, fetchEvents);
 
   // Review Field Order (don't modify this)
   const reviewFieldOrder: string[] = useMemo(
@@ -187,29 +186,6 @@ const Dashboard = () => {
   const [eventNameLoading, setEventNameLoading] = useState(false);
   const [eventNameError, setEventNameError] = useState<string | null>(null);
 
-  // Manual entry
-  const [isManualEntryModalOpen, setIsManualEntryModalOpen] =
-    useState<boolean>(false);
-  const [manualEntryForm, setManualEntryForm] = useState({
-    name: "",
-    preferred_first_name: "",
-    date_of_birth: "",
-    email: "",
-    cell: "",
-    permission_to_text: "",
-    address: "",
-    city: "",
-    state: "",
-    zip_code: "",
-    high_school: "",
-    class_rank: "",
-    students_in_class: "",
-    gpa: "",
-    student_type: "",
-    entry_term: "",
-    major: "",
-  });
-
   // Settings/preferences
   const [cardFieldPrefs, setCardFieldPrefs] = useState<Record<
     string,
@@ -229,7 +205,6 @@ const Dashboard = () => {
     selectedEvent,
     uploadCard,
     fetchCards,
-    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
     fileInputRef
   );
   const {
@@ -252,13 +227,19 @@ const Dashboard = () => {
     cards,
     reviewFieldOrder,
     fetchCards,
-    toast,
     dataFieldsMap
   );
-  const { handleManualEntry, handleManualEntryChange, handleManualEntrySubmit } = useManualEntryModal(
-    eventId,
-    fetchCards,
-    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" })
+  const {
+    isManualEntryModalOpen,
+    setIsManualEntryModalOpen,
+    manualEntryForm,
+    setManualEntryForm,
+    handleManualEntry,
+    handleManualEntrySubmit,
+    handleManualEntryChange,
+  } = useManualEntryModal(
+    selectedEvent,
+    fetchCards
   );
 
   // --- Callbacks ---
@@ -352,17 +333,15 @@ const Dashboard = () => {
     });
   }, [cards, selectedTab, selectedEvent, hideExported, debouncedSearchQuery]);
 
-  // Use our new bulk selection hook (after filteredCards is defined)
+  // Now that filteredCards is defined, we can use bulk selection hooks
   const bulkSelection = useBulkSelection(filteredCards);
-  
-  // Use our new bulk actions hook  
-  const bulkActions = useBulkActions(fetchCards, toast, bulkSelection.clearSelection);
+  const bulkActions = useBulkActions(fetchCards, bulkSelection.clearSelection);
 
   // Now that filteredCards is defined, we can use it in useCardTableActions
   const { handleExportSelected, handleMoveSelected, handleArchiveSelected, handleDeleteSelected } = useCardTableActions(
     filteredCards,
     fetchCards,
-    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
+    oldToast,
     selectedEvent,
     dataFieldsMap
   );
@@ -430,12 +409,7 @@ const Dashboard = () => {
           // If event not found, redirect to first event
           const firstEvent = events[0];
           navigate(`/events/${firstEvent.id}`);
-          toast({
-            title: "Event Not Found",
-            description:
-              "The requested event could not be found. Redirected to the first available event.",
-            variant: "destructive",
-          });
+          toast.error("The requested event could not be found. Redirected to the first available event.", "Event Not Found");
         }
       } else {
         // No eventId in URL, redirect to first event
@@ -443,7 +417,7 @@ const Dashboard = () => {
         navigate(`/events/${firstEvent.id}`);
       }
     }
-  }, [eventId, events, navigate, toast]);
+  }, [eventId, events, navigate]);
 
   // Effect to refetch cards when selected event changes
   useEffect(() => {
@@ -740,19 +714,13 @@ const Dashboard = () => {
 
   const confirmArchiveAction = () => {
     if (selectedCardForReview) {
-      handleArchiveSelected([selectedCardForReview.id]);
-      setIsReviewModalOpen(false);
-      setSelectedCardForReview(null);
+      handleArchiveCard();
     } else {
       const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
       if (selectedIds.length > 0) {
         handleArchiveSelected(selectedIds);
       } else {
-        toast({
-          title: "No Cards Selected",
-          description: "Please select at least one card to archive.",
-          variant: "destructive",
-        });
+        toast.required("at least one card selection");
       }
     }
     setIsArchiveConfirmOpen(false);
@@ -793,13 +761,10 @@ const Dashboard = () => {
         body: JSON.stringify({ name: eventNameInput.trim() }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+        const data = await response.json();
         throw new Error(data.error || "Failed to update event name");
       }
-      toast({
-        title: "Event name updated",
-        description: "The event name was updated successfully.",
-      });
+      toast.updated("Event name");
       setIsEditingEventName(false);
       setSelectedEvent((ev) =>
         ev ? { ...ev, name: eventNameInput.trim() } : ev
@@ -809,14 +774,9 @@ const Dashboard = () => {
       setEventNameError(
         error instanceof Error ? error.message : "Failed to update event name"
       );
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to update event name",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error
+          ? error.message
+          : "Failed to update event name", "Error");
     } finally {
       setEventNameLoading(false);
     }

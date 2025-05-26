@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from '@/lib/toast';
 import { getSignedImageUrl } from "@/lib/imageUtils";
 
 const ReviewImagePanel = ({
@@ -20,13 +20,12 @@ const ReviewImagePanel = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [internalZoom, setInternalZoom] = useState(1.875);
-  const { toast } = useToast();
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
 
   // Add pan state and drag tracking
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [pan, setPan] = useState({ x: 150, y: 150 });
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const lastDistanceRef = useRef<number | null>(null);
@@ -143,9 +142,8 @@ const ReviewImagePanel = ({
 
   // Reset pan when image changes
   useEffect(() => {
-    // With items-start alignment and top center transform origin,
-    // the image should naturally show the top
-    setPan({ x: 0, y: 0 });
+    // Set default position down and to the right for better centering
+    setPan({ x: 150, y: 150 });
   }, [selectedCardId]);
 
   // Add event listeners
@@ -183,7 +181,7 @@ const ReviewImagePanel = ({
   console.log("ReviewImagePanel: Rendering img with imageUrl:", imagePath);
 
   return (
-    <div className="relative flex-1 flex flex-col overflow-hidden bg-white rounded-lg">
+    <div className="relative flex-1 flex flex-col overflow-hidden bg-white rounded-lg h-full">
       {/* Zoom controls - position absolutely in top right */}
       <div className="absolute top-4 right-4 flex gap-2 z-10">
         <Button size="icon" variant="outline" onClick={zoomOut}>
@@ -206,11 +204,11 @@ const ReviewImagePanel = ({
         onMouseLeave={onMouseUp}
         style={{
           touchAction: "none", // Prevent default touch actions to enable custom handling
-          minHeight: 0, // Ensures proper flex behavior
+          minHeight: "500px", // Ensure minimum height
         }}
       >
         <div
-          className="w-full h-full flex items-start justify-center"
+          className="w-full h-full flex items-center justify-center"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px)`,
             transition: draggingRef.current
@@ -227,7 +225,7 @@ const ReviewImagePanel = ({
               draggable={false}
               style={{
                 transform: `scale(${internalZoom * externalZoom})`,
-                transformOrigin: "top center",
+                transformOrigin: "center",
                 transition: draggingRef.current ? "none" : "transform 0.2s",
                 maxWidth: "100%",
                 maxHeight: "100%",
@@ -237,12 +235,7 @@ const ReviewImagePanel = ({
               crossOrigin="anonymous"
               onError={() => {
                 setImgError(true);
-                toast({
-                  title: "Image Load Error",
-                  description:
-                    "Failed to load image. Please try refreshing the page.",
-                  variant: "destructive",
-                });
+                toast.loadFailed("image");
               }}
             />
           )}
