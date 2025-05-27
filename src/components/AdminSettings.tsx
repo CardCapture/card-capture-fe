@@ -655,7 +655,7 @@ const AdminSettings: React.FC = () => {
                           {user.email}
                         </TableCell>
                         <TableCell className="px-5 py-4 text-center">
-                          {user.role}
+                          {Array.isArray(user.role) ? user.role.join(', ') : user.role}
                         </TableCell>
                         <TableCell className="px-5 py-4 text-right">
                           {user.last_sign_in_at
