@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { InviteUserDialog } from "./InviteUserDialog";
 import { EditUserModal } from "./EditUserModal";
 import { useAuth } from "@/contexts/AuthContext";
-import { User, CreditCard, Settings, ListFilter, Users, Database } from "lucide-react";
+import { User, CreditCard, Settings, ListFilter, Users, Database, GraduationCap, Trash2, Plus, PencilLine, Check, X } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { supabase } from "@/lib/supabaseClient";
 import SettingsPreferences from "./SettingsPreferences";
@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
+import { Textarea } from "@/components/ui/textarea";
 
 const NAV_ITEMS = [
   {
@@ -47,6 +48,11 @@ const NAV_ITEMS = [
     id: "field-preferences",
     label: "Field Preferences",
     icon: <ListFilter className="w-5 h-5 mr-2" />,
+  },
+  {
+    id: "majors",
+    label: "Majors",
+    icon: <GraduationCap className="w-5 h-5 mr-2" />,
   },
   {
     id: "integrations",
@@ -173,6 +179,20 @@ const AdminSettings: React.FC = () => {
   const [fields, setFields] = useState<CardField[]>([]);
   const [loadingFields, setLoadingFields] = useState(true);
   const [initialFields, setInitialFields] = useState<CardField[]>([]);
+
+  // Majors state
+  const [majors, setMajors] = useState<string>("");
+  const [majorsList, setMajorsList] = useState<string[]>([]);
+  const [editedMajors, setEditedMajors] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
+  const [addMajorInput, setAddMajorInput] = useState("");
+  const [showImport, setShowImport] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [initialMajors, setInitialMajors] = useState<string>("");
+  const [loadingMajors, setLoadingMajors] = useState(true);
+  const [addMode, setAddMode] = useState(false);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   // Scroll to top when fields are updated after a save (field-preferences tab only)
   useEffect(() => {
@@ -519,6 +539,111 @@ const AdminSettings: React.FC = () => {
     }
   }, [session, activeTab]);
 
+  // Add loadMajors function
+  const loadMajors = async () => {
+    if (!session?.user?.id) return;
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", session.user.id)
+        .single();
+      if (!profile?.school_id) throw new Error("No school ID found");
+      const { data: schoolData } = await supabase
+        .from("schools")
+        .select("majors")
+        .eq("id", profile.school_id)
+        .single();
+      const majorsArr = schoolData?.majors || [];
+      setMajorsList(majorsArr);
+      setEditedMajors(majorsArr);
+      setMajors(majorsArr.join("\n"));
+      setInitialMajors(majorsArr.join("\n"));
+    } catch (error) {
+      console.error("Error loading majors:", error);
+      toast.error("Failed to load majors");
+    } finally {
+      setLoadingMajors(false);
+    }
+  };
+
+  // Save majors (from editedMajors or textarea)
+  const saveMajors = async () => {
+    if (!session?.user?.id) return;
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", session.user.id)
+        .single();
+      if (!profile?.school_id) throw new Error("No school ID found");
+      let majorsToSave: string[] = [];
+      if (showImport) {
+        majorsToSave = majors
+          .split("\n")
+          .map(major => major.trim())
+          .filter(major => major.length > 0);
+      } else {
+        majorsToSave = editedMajors.map(m => m.trim()).filter(m => m.length > 0);
+      }
+      const { error } = await supabase
+        .from("schools")
+        .update({ majors: majorsToSave })
+        .eq("id", profile.school_id);
+      if (error) throw error;
+      setMajorsList(majorsToSave);
+      setEditedMajors(majorsToSave);
+      setMajors(majorsToSave.join("\n"));
+      setInitialMajors(majorsToSave.join("\n"));
+      setIsDirty(false);
+      setShowImport(false);
+      setAddMajorInput("");
+      toast.success("Majors updated successfully");
+    } catch (error) {
+      console.error("Error saving majors:", error);
+      toast.error("Failed to save majors");
+    }
+  };
+
+  // Add useEffect for loading majors
+  useEffect(() => {
+    if (session?.user?.id && activeTab === 'majors') {
+      loadMajors();
+    }
+  }, [session, activeTab]);
+
+  // Add major handler
+  const handleAddMajor = () => {
+    const newMajor = addMajorInput.trim();
+    if (newMajor && !editedMajors.includes(newMajor)) {
+      setEditedMajors([newMajor, ...editedMajors]);
+      setAddMajorInput("");
+      setAddMode(false);
+      setIsDirty(true);
+      toast.success("New major added");
+    }
+  };
+
+  // Edit major handler
+  const handleEditMajor = (idx: number) => {
+    if (editValue.trim() && !editedMajors.includes(editValue.trim())) {
+      const newMajors = [...editedMajors];
+      newMajors[idx] = editValue.trim();
+      setEditedMajors(newMajors);
+      setEditIndex(null);
+      setEditValue("");
+      setIsDirty(true);
+      toast.success("Major updated successfully");
+    }
+  };
+
+  // Delete major handler
+  const handleDeleteMajor = (idx: number) => {
+    setEditedMajors(editedMajors.filter((_, i) => i !== idx));
+    setIsDirty(true);
+    toast.success("Major deleted");
+  };
+
   // Dynamic heading and content based on active menu
   let heading = "";
   let content = null;
@@ -585,6 +710,193 @@ const AdminSettings: React.FC = () => {
               Save Changes
             </Button>
           </div>
+        </div>
+      );
+      break;
+    case "majors":
+      heading = "Majors";
+      if (loadingMajors) {
+        content = <div>Loading majors...</div>;
+        break;
+      }
+      if (showImport || majorsList.length === 0) {
+        content = (
+          <Card>
+            <CardHeader>
+              <CardTitle>Manage Available Majors</CardTitle>
+              <CardDescription>
+                Paste in a list of majors offered at your school. Gemini will use this list to help match student responses.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Label htmlFor="majors" className="text-sm font-medium">Majors (one per line)</Label>
+              <Textarea
+                id="majors"
+                value={majors}
+                onChange={e => {
+                  setMajors(e.target.value);
+                  setIsDirty(e.target.value !== initialMajors);
+                }}
+                placeholder={`Biology\nComputer Science\nBusiness Administration\nMechanical Engineering`}
+                className="min-h-[200px]"
+              />
+              <p className="text-xs text-muted-foreground font-normal">
+                Paste or type one major per line. We'll automatically match students' responses to the closest major from this list.
+              </p>
+              <div className="flex justify-start">
+                <Button
+                  onClick={saveMajors}
+                  disabled={!majors.trim() || majors === initialMajors || !isDirty}
+                >
+                  Save Majors
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+        break;
+      }
+      // Dynamic majors management UI
+      content = (
+        <div className="space-y-2">
+          <Card className="shadow-sm rounded-xl">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Manage Majors</CardTitle>
+              <button
+                className="text-primary hover:bg-muted rounded-full p-1 transition"
+                onClick={() => {
+                  setAddMode(true);
+                  setAddMajorInput("");
+                }}
+                aria-label="Add major"
+                type="button"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search majors..."
+                className="mb-2"
+              />
+              <div className="max-h-[500px] overflow-y-auto rounded-md border border-muted-foreground/10 bg-muted/50 divide-y divide-muted-foreground/10">
+                {/* Add mode input */}
+                {addMode && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white/80 sticky top-0 z-10">
+                    <Input
+                      autoFocus
+                      value={addMajorInput}
+                      onChange={e => setAddMajorInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") handleAddMajor();
+                        if (e.key === "Escape") setAddMode(false);
+                      }}
+                      placeholder="Enter new major..."
+                      className="flex-1 border-none bg-transparent px-0 py-0 text-base font-normal focus:ring-0 focus-visible:ring-0 focus:outline-none shadow-none"
+                    />
+                    <button
+                      className="text-green-600 hover:bg-green-100 rounded-full p-1"
+                      onClick={handleAddMajor}
+                      type="button"
+                      aria-label="Confirm add major"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                      className="text-muted-foreground hover:bg-muted rounded-full p-1"
+                      onClick={() => setAddMode(false)}
+                      type="button"
+                      aria-label="Cancel add major"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+                {editedMajors
+                  .filter(m => m.toLowerCase().includes(search.toLowerCase()))
+                  .map((major, idx) => (
+                    <div key={idx} className="flex items-center gap-2 px-3 py-2 group hover:bg-muted/80 transition">
+                      {editIndex === idx ? (
+                        <>
+                          <Input
+                            autoFocus
+                            value={editValue}
+                            onChange={e => setEditValue(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") handleEditMajor(idx);
+                              if (e.key === "Escape") {
+                                setEditIndex(null);
+                                setEditValue("");
+                              }
+                            }}
+                            className="flex-1 border-none bg-transparent px-0 py-0 text-base font-normal focus:ring-0 focus-visible:ring-0 focus:outline-none shadow-none"
+                          />
+                          <button
+                            className="text-green-600 hover:bg-green-100 rounded-full p-1"
+                            onClick={() => handleEditMajor(idx)}
+                            type="button"
+                            aria-label="Save major"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="text-muted-foreground hover:bg-muted rounded-full p-1"
+                            onClick={() => {
+                              setEditIndex(null);
+                              setEditValue("");
+                            }}
+                            type="button"
+                            aria-label="Cancel edit major"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex-1 truncate text-base font-normal">{major}</span>
+                          <button
+                            className="text-primary hover:bg-muted rounded-full p-1"
+                            onClick={() => {
+                              setEditIndex(idx);
+                              setEditValue(major);
+                            }}
+                            type="button"
+                            aria-label="Edit major"
+                          >
+                            <PencilLine className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="text-destructive hover:bg-destructive/10 rounded-full p-1"
+                            onClick={() => handleDeleteMajor(idx)}
+                            type="button"
+                            aria-label="Delete major"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                {editedMajors.filter(m => m.toLowerCase().includes(search.toLowerCase())).length === 0 && (
+                  <div className="text-xs text-muted-foreground px-3 py-4 text-center">No majors found.</div>
+                )}
+              </div>
+              {/* Sticky Save Button */}
+              {isDirty && (
+                <div className="sticky bottom-0 left-0 w-full flex justify-end pt-4 bg-gradient-to-t from-white via-white/80 to-transparent z-10">
+                  <Button
+                    onClick={saveMajors}
+                    className="shadow-md"
+                    variant="default"
+                  >
+                    Save Changes
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       );
       break;
