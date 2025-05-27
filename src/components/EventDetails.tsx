@@ -580,7 +580,16 @@ const Dashboard = () => {
               : "Unknown";
           }
           const getBadgeClasses = () => {
-            return "text-slate-600 border border-slate-200 bg-white rounded-full px-3 py-1 font-semibold text-xs";
+            if (currentStatus === "reviewed") {
+              return "border-green-500 text-green-700 bg-green-50 font-semibold text-xs px-3 py-1 rounded-full";
+            } else if (currentStatus === "needs_human_review") {
+              return "border-indigo-500 text-indigo-700 bg-indigo-50 font-semibold text-xs px-3 py-1 rounded-full";
+            } else if (currentStatus === "exported") {
+              return "border-blue-500 text-blue-700 bg-blue-50 font-semibold text-xs px-3 py-1 rounded-full";
+            } else if (currentStatus === "archived") {
+              return "border-gray-500 text-gray-700 bg-gray-50 font-semibold text-xs px-3 py-1 rounded-full";
+            }
+            return "border-slate-200 text-slate-600 bg-white font-semibold text-xs px-3 py-1 rounded-full";
           };
           if (currentStatus === "exported" && exportedAt) {
             return (
@@ -705,6 +714,7 @@ const Dashboard = () => {
     if (selectedCardForReview) {
       // Archive the single card from the review modal
       handleArchiveSelected([selectedCardForReview.document_id]);
+      setIsReviewModalOpen(false);
     } else {
       // Archive multiple selected cards from the table
       const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);

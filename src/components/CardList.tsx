@@ -142,11 +142,10 @@ const CardList = () => {
       header: 'Status',
       cell: ({ row }) => {
         const status = row.original.review_status || 'unknown';
-        let variant: "default" | "destructive" | "secondary" | "outline" = "outline";
         let displayText = "Unknown";
 
         if (status === 'reviewed') {
-          displayText = 'Reviewed';
+          displayText = 'Ready for Export';
         } else if (status === 'needs_human_review') {
           displayText = 'Needs Review';
         } else if (status === 'exported') {
@@ -157,7 +156,8 @@ const CardList = () => {
           displayText = 'Processing';
         }
 
-        return <Badge variant={variant}>{displayText}</Badge>;
+        // TEMP: Hardcode a green badge for testing Tailwind class generation
+        return <Badge variant="outline" className="!bg-green-50 !text-green-700 !border-green-500 font-semibold text-xs px-3 py-1 rounded-full">Test Badge</Badge>;
       },
       enableSorting: true,
     },
@@ -186,6 +186,10 @@ const CardList = () => {
 
   return (
     <div className="w-full">
+      {/* Static Tailwind color test */}
+      <div className="bg-green-50 text-green-700 border-green-500 border px-3 py-1 rounded-full mb-4">
+        Static Test
+      </div>
       <Tabs defaultValue="all" value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList className="grid grid-cols-5 mb-6">
           <TabsTrigger value="all">All ({getStatusCount('all')})</TabsTrigger>
