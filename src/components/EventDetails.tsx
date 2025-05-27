@@ -583,7 +583,7 @@ const Dashboard = () => {
             if (currentStatus === "reviewed") {
               return "border-green-500 text-green-700 bg-green-50 font-semibold text-xs px-3 py-1 rounded-full";
             } else if (currentStatus === "needs_human_review") {
-              return "border-indigo-500 text-indigo-700 bg-indigo-50 font-semibold text-xs px-3 py-1 rounded-full";
+              return "border-yellow-400 text-yellow-800 bg-yellow-50 font-semibold text-xs px-3 py-1 rounded-full";
             } else if (currentStatus === "exported") {
               return "border-blue-500 text-blue-700 bg-blue-50 font-semibold text-xs px-3 py-1 rounded-full";
             } else if (currentStatus === "archived") {
