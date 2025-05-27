@@ -580,26 +580,15 @@ const Dashboard = () => {
               : "Unknown";
           }
           const getBadgeClasses = () => {
-            switch (currentStatus) {
-              case "needs_human_review":
-                return "text-indigo-700 border border-indigo-200 bg-white rounded-full px-3 py-1";
-              case "reviewed":
-                return "text-blue-700 border border-blue-200 bg-white rounded-full px-3 py-1";
-              case "exported":
-                return "text-slate-600 border border-slate-200 bg-white rounded-full px-3 py-1";
-              case "archived":
-                return "text-gray-600 border border-gray-200 bg-white rounded-full px-3 py-1";
-              default:
-                return "text-gray-600 border border-gray-200 bg-white rounded-full px-3 py-1";
-            }
+            return "text-slate-600 border border-slate-200 bg-white rounded-full px-3 py-1 font-semibold text-xs";
           };
           if (currentStatus === "exported" && exportedAt) {
             return (
               <TooltipProvider delayDuration={100}>
                 <Tooltip>
                   <TooltipTrigger>
-                    <Badge className="text-slate-600 border border-slate-200 bg-white rounded-full px-3 py-1 text-xs font-medium">
-                      Exported
+                    <Badge variant="outline" className={getBadgeClasses()}>
+                      {displayText}
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -611,7 +600,7 @@ const Dashboard = () => {
           }
           return (
             <div className="flex flex-col gap-1">
-              <Badge className={getBadgeClasses()}>{displayText}</Badge>
+              <Badge variant="outline" className={getBadgeClasses()}>{displayText}</Badge>
             </div>
           );
         },
@@ -955,27 +944,55 @@ const Dashboard = () => {
               
               {/* Status Badges - Mobile Responsive Grid */}
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
-                  <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
-                  <span className="hidden sm:inline">Need Review:</span>
-                  <span>{getStatusCount("needs_human_review")}</span>
-              </Badge>
-                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
-                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
-                  <span className="hidden sm:inline">Ready:</span>
-                  <span>{getStatusCount("reviewed")}</span>
-              </Badge>
-                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
-                  <Download className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
-                  <span className="hidden sm:inline">Exported:</span>
-                  <span>{getStatusCount("exported")}</span>
-              </Badge>
-                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
-                  <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
-                  <span className="hidden sm:inline">Archived:</span>
-                  <span>{getStatusCount("archived")}</span>
-              </Badge>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTab('needs_human_review')}
+                  className="focus:outline-none rounded"
+                  aria-label="Show Needs Review"
+                >
+                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 ${selectedTab === 'needs_human_review' ? 'border-2 border-indigo-500 text-indigo-700 bg-indigo-50' : ''}`}> 
+                    <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
+                    <span className="hidden sm:inline">Needs Review:</span>
+                    <span>{getStatusCount('needs_human_review')}</span>
+                  </Badge>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedTab('ready_to_export'); setHideExported(true); }}
+                  className="focus:outline-none rounded"
+                  aria-label="Show Ready to Export"
+                >
+                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 ${(selectedTab === 'ready_to_export' && hideExported) ? 'border-2 border-green-500 text-green-700 bg-green-50' : ''}`}> 
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+                    <span className="hidden sm:inline">Ready:</span>
+                    <span>{getStatusCount('reviewed')}</span>
+                  </Badge>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedTab('ready_to_export'); setHideExported(false); }}
+                  className="focus:outline-none rounded"
+                  aria-label="Show Exported"
+                >
+                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 ${(selectedTab === 'ready_to_export' && !hideExported) ? 'border-2 border-blue-500 text-blue-700 bg-blue-50' : ''}`}> 
+                    <Download className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
+                    <span className="hidden sm:inline">Exported:</span>
+                    <span>{getStatusCount('exported')}</span>
+                  </Badge>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTab('archived')}
+                  className="focus:outline-none rounded"
+                  aria-label="Show Archived"
+                >
+                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 ${selectedTab === 'archived' ? 'border-2 border-gray-500 text-gray-700 bg-gray-50' : ''}`}> 
+                    <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
+                    <span className="hidden sm:inline">Archived:</span>
+                    <span>{getStatusCount('archived')}</span>
+                  </Badge>
+                </button>
+              </div>
           </CardContent>
         </Card>
         </div>
