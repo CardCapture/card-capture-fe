@@ -172,6 +172,7 @@ const AdminSettings: React.FC = () => {
   // Field preferences state
   const [fields, setFields] = useState<CardField[]>([]);
   const [loadingFields, setLoadingFields] = useState(true);
+  const [initialFields, setInitialFields] = useState<CardField[]>([]);
 
   // Scroll to top when fields are updated after a save (field-preferences tab only)
   useEffect(() => {
@@ -438,6 +439,7 @@ const AdminSettings: React.FC = () => {
       if (!settings || settings.length === 0) {
         console.log('No settings found, initializing with defaults');
         setFields([]);
+        setInitialFields([]);
         return;
       }
 
@@ -465,6 +467,7 @@ const AdminSettings: React.FC = () => {
 
       console.log('Formatted fields:', formattedFields);
       setFields(formattedFields);
+      setInitialFields(formattedFields);
     } catch (error) {
       console.error('Error loading field preferences:', error);
       console.error('Error details:', {
@@ -501,6 +504,7 @@ const AdminSettings: React.FC = () => {
       if (error) throw error;
 
       setFields(updatedFields);
+      setInitialFields(updatedFields);
       toast.saved();
     } catch (error) {
       console.error("Error saving field preferences:", error);
@@ -561,19 +565,26 @@ const AdminSettings: React.FC = () => {
     case "field-preferences":
       heading = "Field Preferences";
       content = (
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="pt-6">
-              {loadingFields ? (
-                <div>Loading field preferences...</div>
-              ) : (
-                <CardFieldPreferences
-                  fields={fields}
-                  onSave={handleSave}
-                />
-              )}
-            </CardContent>
-          </Card>
+        <div className="flex flex-col min-h-[80vh]">
+          <div className="flex-1 space-y-6">
+            {loadingFields ? (
+              <div>Loading field preferences...</div>
+            ) : (
+              <CardFieldPreferences
+                fields={fields}
+                onFieldsChange={setFields}
+              />
+            )}
+          </div>
+          <div className="bg-white border-t z-50 px-4 py-3 flex justify-end shadow-md">
+            <Button
+              onClick={() => handleSave(fields)}
+              disabled={loadingFields || JSON.stringify(fields) === JSON.stringify(initialFields)}
+              variant={JSON.stringify(fields) !== JSON.stringify(initialFields) ? "default" : "secondary"}
+            >
+              Save Changes
+            </Button>
+          </div>
         </div>
       );
       break;
@@ -847,11 +858,7 @@ const AdminSettings: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div
-          className="flex-1"
-          ref={contentRef}
-          style={{ maxHeight: "80vh", overflowY: "auto" }}
-        >
+        <div className="flex-1">
           <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">{heading}</h1>
           {content}
         </div>
