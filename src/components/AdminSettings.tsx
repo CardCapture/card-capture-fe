@@ -482,33 +482,23 @@ const AdminSettings: React.FC = () => {
   // Add handleSave function
   const handleSave = async (updatedFields: CardField[]) => {
     try {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) {
-        toast.error("User not authenticated");
-        return;
-      }
-
       if (!school?.id) {
         toast.error("School information not found");
         return;
       }
 
-      const { error } = await supabase
-        .from("settings")
-        .upsert({
-          user_id: user.id,
-          school_id: school.id,
-          preferences: {
-            card_fields: updatedFields.reduce((acc, field) => {
-              acc[field.key] = field.visible;
-              return acc;
-            }, {} as Record<string, boolean>),
-          },
-        });
+      // Build the card_fields object
+      const cardFields = updatedFields.reduce((acc, field) => {
+        acc[field.key] = { enabled: field.visible, required: field.required };
+        return acc;
+      }, {} as Record<string, { enabled: boolean; required: boolean }>);
 
-      if (error) {
-        throw error;
-      }
+      const { error } = await supabase
+        .from("schools")
+        .update({ card_fields: cardFields })
+        .eq("id", school.id);
+
+      if (error) throw error;
 
       setFields(updatedFields);
       toast.saved();
