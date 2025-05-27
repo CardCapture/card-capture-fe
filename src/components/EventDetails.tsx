@@ -696,11 +696,7 @@ const Dashboard = () => {
 
   // Fields to show in the review panel
   const fieldsToShow = selectedCardForReview
-    ? reviewFieldOrder.filter(
-        (fieldKey) =>
-          selectedCardForReview.fields[fieldKey] &&
-          cardFieldPrefs?.[fieldKey] !== false
-      )
+    ? reviewFieldOrder.filter((fieldKey) => cardFieldPrefs?.[fieldKey] !== false)
     : [];
 
   // --- Row Selection and Card Actions ---
