@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from '@/lib/toast';
 
 const AcceptInvitePage = () => {
   const [searchParams] = useSearchParams();
@@ -16,7 +16,6 @@ const AcceptInvitePage = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
 
   // Handle hash fragment redirect from Supabase
   useEffect(() => {
@@ -61,22 +60,55 @@ const AcceptInvitePage = () => {
   }, [location]);
 
   const validatePassword = (password: string) => {
+    // Check minimum length
     if (password.length < 8) {
       setError('Password must be at least 8 characters long');
       return false;
     }
+    
+    // Check maximum length (reasonable upper limit)
+    if (password.length > 128) {
+      setError('Password must be less than 128 characters long');
+      return false;
+    }
+    
+    // Check for uppercase letter
     if (!/[A-Z]/.test(password)) {
-      setError('Password must contain at least one uppercase letter');
+      setError('Password must contain at least one uppercase letter (A-Z)');
       return false;
     }
+    
+    // Check for lowercase letter
     if (!/[a-z]/.test(password)) {
-      setError('Password must contain at least one lowercase letter');
+      setError('Password must contain at least one lowercase letter (a-z)');
       return false;
     }
+    
+    // Check for number
     if (!/[0-9]/.test(password)) {
-      setError('Password must contain at least one number');
+      setError('Password must contain at least one number (0-9)');
       return false;
     }
+    
+    // Check for special character
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password)) {
+      setError('Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)');
+      return false;
+    }
+    
+    // Check for common weak patterns
+    const commonPatterns = [
+      /(.)\1{2,}/, // Three or more consecutive identical characters
+      /123456|654321|abcdef|qwerty|password|admin/i, // Common sequences
+    ];
+    
+    for (const pattern of commonPatterns) {
+      if (pattern.test(password)) {
+        setError('Password contains common patterns that make it weak. Please choose a more secure password.');
+        return false;
+      }
+    }
+    
     return true;
   };
 
@@ -108,10 +140,7 @@ const AcceptInvitePage = () => {
       }
 
       // Show success message
-      toast({
-        title: "Success!",
-        description: "Your account has been activated successfully.",
-      });
+      toast.success("Your account has been activated successfully.", "Success!");
 
       // Sign in the user with their new credentials
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -163,6 +192,16 @@ const AcceptInvitePage = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              <div className="text-xs text-gray-600 space-y-1">
+                <p className="font-medium">Password requirements:</p>
+                <ul className="list-disc list-inside space-y-0.5 ml-2">
+                  <li>At least 8 characters long</li>
+                  <li>One uppercase letter (A-Z)</li>
+                  <li>One lowercase letter (a-z)</li>
+                  <li>One number (0-9)</li>
+                  <li>One special character (!@#$%^&*()_+-=[]{}|;:,.&lt;&gt;?)</li>
+                </ul>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>

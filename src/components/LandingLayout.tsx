@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { getDefaultRedirectPath } from '@/utils/roleRedirect';
 import { Menu, X } from 'lucide-react';
 import ccLogoOnly from '../../assets/cc-logo-only.svg';
 
@@ -13,7 +14,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,6 +24,11 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleDashboardClick = () => {
+    const redirectPath = getDefaultRedirectPath(profile);
+    navigate(redirectPath);
+  };
 
   const NavLink = ({ to, children, className = '' }: { to: string; children: React.ReactNode; className?: string }) => (
     <Link 
@@ -77,7 +83,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                   variant="default" 
                   size="sm"
                   className="ml-3"
-                  onClick={() => navigate('/events')}
+                  onClick={handleDashboardClick}
                 >
                   Go to Dashboard
                 </Button>

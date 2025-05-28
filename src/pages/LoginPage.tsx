@@ -1,7 +1,8 @@
 // src/pages/LoginPage.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom"; // Import Link if needed
 import { useAuth } from "@/contexts/AuthContext";
+import { getDefaultRedirectPath } from "@/utils/roleRedirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +20,16 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { signInWithPassword } = useAuth(); // Get function from context
+  const { signInWithPassword, profile, user } = useAuth(); // Get function from context
   const navigate = useNavigate();
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user && profile) {
+      const redirectPath = getDefaultRedirectPath(profile);
+      navigate(redirectPath, { replace: true });
+    }
+  }, [user, profile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,12 +45,10 @@ const LoginPage = () => {
       setError(signInError.message); // Show Supabase error message
       setLoading(false);
     } else {
-      // Login successful! onAuthStateChange handles context update.
-      // Redirect user to the dashboard.
-      // setLoading(false); // No need to set loading false here, as navigation occurs
-      navigate("/dashboard", { replace: true }); // Replace login page in history
+      // Login successful! The useEffect above will handle the redirect
+      // once the profile is loaded
+      setLoading(false);
     }
-    // setLoading(false); // Redundant if navigating away on success
   };
 
   return (

@@ -1,17 +1,18 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { ProspectCard } from "@/types/card";
+import { toast } from "@/lib/toast";
 
 export function useCardReviewModal(
   cards,
   reviewFieldOrder,
   fetchCards,
-  toast,
   dataFieldsMap
 ) {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedCardForReview, setSelectedCardForReview] =
     useState<ProspectCard | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const localCardRef = useRef<ProspectCard | null>(null);
   const selectedCardIdRef = useRef<string | null>(null);
   const imageKeyRef = useRef<string>(`image-${Date.now()}`);
@@ -41,15 +42,9 @@ export function useCardReviewModal(
         ...prev,
         [fieldKey]: currentValue,
       }));
-      toast({
-        title: "Field Reviewed",
-        description: `${
-          dataFieldsMap.get(fieldKey) || fieldKey
-        } has been marked as reviewed.`,
-        variant: "default",
-      });
+      toast.success(`${dataFieldsMap.get(fieldKey) || fieldKey} has been marked as reviewed.`, "Field Reviewed");
     },
-    [selectedCardForReview, formData, toast, dataFieldsMap]
+    [selectedCardForReview, formData, dataFieldsMap]
   );
 
   const handleFormChange = (field: string, value: string) => {
@@ -86,13 +81,11 @@ export function useCardReviewModal(
   }, [selectedCardForReview, reviewFieldOrder]);
 
   const handleReviewSave = async () => {
-    if (!selectedCardForReview) return;
+    if (!selectedCardForReview || isSaving) return;
+    
+    setIsSaving(true);
     try {
-      toast({
-        title: "Saving Changes",
-        description: "Updating card information...",
-        variant: "default",
-      });
+      toast.info("Updating card information...", "Saving Changes");
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const updatedFields = Object.fromEntries(
@@ -112,7 +105,7 @@ export function useCardReviewModal(
           field.reviewed === true && field.requires_human_review === false
       );
       const response = await fetch(
-        `${apiBaseUrl}/save-review/${selectedCardForReview.id}`,
+        `${apiBaseUrl}/save-review/${selectedCardForReview.document_id}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -128,21 +121,15 @@ export function useCardReviewModal(
       await fetchCards();
       setIsReviewModalOpen(false);
       setSelectedCardForReview(null);
-      toast({
-        title: "Review Complete",
-        description: allFieldsReviewed
+      toast.success(allFieldsReviewed
           ? "All fields have been reviewed and saved."
-          : "Changes saved successfully.",
-        variant: "default",
-      });
+          : "Changes saved successfully.", "Review Complete");
     } catch (error: unknown) {
       let message = "Unable to save your changes. Please try again.";
       if (error instanceof Error) message = error.message;
-      toast({
-        title: "Save Failed",
-        description: message,
-        variant: "destructive",
-      });
+      toast.error(message, "Save Failed");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -160,5 +147,7 @@ export function useCardReviewModal(
     selectedCardIdRef,
     imageKeyRef,
     fieldsWithToastRef,
+    isSaving,
+    setIsSaving,
   };
 }

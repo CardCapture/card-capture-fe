@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { Event } from "@/types/event";
+import { toast } from "@/lib/toast";
 
 export function useCardUploadActions(
   selectedEvent: Event | null,
@@ -10,14 +11,6 @@ export function useCardUploadActions(
     onUploadStart: () => void
   ) => Promise<unknown>,
   fetchCards: () => void,
-  toast: (args: {
-    title: string;
-    description: string;
-    variant?: string;
-    action?: React.ReactNode;
-    duration?: number;
-    className?: string;
-  }) => void,
   fileInputRef: React.RefObject<HTMLInputElement>
 ) {
   const [isUploading, setIsUploading] = useState(false);
@@ -26,26 +19,14 @@ export function useCardUploadActions(
   const startUploadProcess = useCallback(
     async (file: File) => {
       if (!selectedEvent?.id) {
-        toast({
-          title: "Event Required",
-          description: "Please select an event before uploading a card.",
-          variant: "destructive",
-        });
+        toast.required("event selection before uploading a card");
         return;
       }
       setIsUploading(true);
       setUploadProgress(0);
       try {
         const onUploadStart = () => {
-          toast({
-            title: "Card Processing",
-            description:
-              "Your card is being processed. You can continue scanning more cards.",
-            variant: "default",
-            duration: 4000,
-            className:
-              "bg-white border-green-200 shadow-md rounded-lg animate-in fade-in-0 slide-in-from-top-2",
-          });
+          toast.info("Your card is being processed. You can continue scanning more cards.", "Card Processing");
         };
         await uploadCard(
           file,
@@ -64,14 +45,11 @@ export function useCardUploadActions(
         setUploadProgress(0);
       }
     },
-    [selectedEvent, uploadCard, fetchCards, toast]
+    [selectedEvent, uploadCard, fetchCards]
   );
 
   const handleCaptureCard = () => {
-    toast({
-      title: "Capture Card",
-      description: "Camera capture functionality would be triggered here",
-    });
+    toast.info("Camera capture functionality would be triggered here", "Capture Card");
   };
 
   const handleImportFile = () => {

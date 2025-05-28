@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useToast } from "@/hooks/use-toast";
+import { toast } from '@/lib/toast';
 import CameraCapture from './card-scanner/CameraCapture';
 
 // Interface for Camera-Only Scanner
@@ -9,7 +9,6 @@ interface CardScannerProps {
 }
 
 const CardScanner = ({ onImageCaptured, onScanComplete }: CardScannerProps) => {
-  const { toast } = useToast();
   const [isCapturing, setIsCapturing] = useState(false);
 
   useEffect(() => {
@@ -23,11 +22,7 @@ const CardScanner = ({ onImageCaptured, onScanComplete }: CardScannerProps) => {
       await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     } catch (error) {
       console.error('Error accessing camera:', error);
-      toast({
-        title: "Camera Error",
-        description: "Could not access camera. Check permissions.",
-        variant: "destructive",
-      });
+      toast.error("Could not access camera. Check permissions.", "Camera Error");
       setIsCapturing(false);
       onScanComplete?.(); // Close modal on error
     }

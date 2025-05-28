@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Plus, Camera, Upload, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/lib/toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
@@ -46,7 +46,6 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
   const [localUploadProgress, setLocalUploadProgress] = useState(0);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
@@ -71,11 +70,7 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
     if (file) {
       console.log('Selected event ID:', selectedEventId);
       if (!selectedEventId) {
-        toast({ 
-          title: "Event Required", 
-          description: "Please select an event before uploading.", 
-          variant: "destructive"
-        });
+        toast.required("Event selection");
         return;
       }
       setShowUploadDialog(false);
@@ -94,12 +89,12 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
     console.log('Selected event ID:', selectedEventId);
     
     if (!file) {
-      toast({ title: "File Error", description: "No valid file provided.", variant: "destructive"});
+      toast.error("No valid file provided.", "File Error");
       return;
     }
 
     if (!selectedEventId) {
-      toast({ title: "Event Required", description: "Please select an event before uploading.", variant: "destructive"});
+      toast.required("Event selection");
       return;
     }
 
@@ -135,25 +130,17 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
 
       const data = await response.json();
       setLocalUploadProgress(100);
-      toast({
-        description: (
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-            <span className="text-sm font-medium">
-              {endpoint === "/bulk-upload" ? `Bulk upload successful. ${data.jobs_created} cards queued.` : "Card uploaded successfully."}
-            </span>
-          </div>
-        ),
-        duration: 3000,
-      });
+      
+      if (endpoint === "/bulk-upload") {
+        toast.success(`Bulk upload successful. ${data.jobs_created} cards queued.`);
+      } else {
+        toast.success("Card uploaded successfully");
+      }
+      
       setTimeout(() => { setIsUploading(false); setLocalUploadProgress(0); }, 1500);
     } catch (error: any) {
       console.error("Upload failed:", error);
-      toast({
-        title: "Upload Failed",
-        description: error.message || "An error occurred during upload.",
-        variant: "destructive",
-      });
+      toast.error(error.message || "An error occurred during upload.", "Upload Failed");
       setIsUploading(false);
       setLocalUploadProgress(0);
     }
@@ -184,22 +171,14 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
       const data = await response.json();
       console.log("ScanFab: Test connection successful", data);
       
-      toast({
-        title: "Connection Successful",
-        description: "Backend connection test completed successfully.",
-        duration: 3000,
-      });
+      toast.success("Backend connection test completed successfully.", "Connection Successful");
     } catch (error: any) {
       console.error("ScanFab: Test connection failed", {
         error: error.message,
         stack: error.stack
       });
       
-      toast({
-        title: "Connection Failed",
-        description: error.message || "Unable to connect to the backend server. Please check your connection.",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Unable to connect to the backend server. Please check your connection.", "Connection Failed");
     }
   };
 

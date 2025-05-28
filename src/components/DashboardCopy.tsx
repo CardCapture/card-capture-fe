@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from '@/lib/toast';
 import { useEvents } from '@/hooks/useEvents';
 import type { Event, EventWithStats } from '@/types/event';
 import { CreateEventModal } from './CreateEventModal';
@@ -58,7 +58,6 @@ type EventTab = 'upcoming' | 'completed' | 'archived';
 
 const DashboardCopy = () => {
   // External Hooks
-  const { toast } = useToast();
   const router = useNavigate();
   const { events, loading: eventsLoading, fetchEvents, archiveEvents } = useEvents();
   
@@ -107,10 +106,7 @@ const DashboardCopy = () => {
   // Handler for capturing a card
   const handleCaptureCard = () => {
     // Implementation would go here - this would open the camera modal
-    toast({
-      title: "Capture Card",
-      description: "Camera capture functionality would be triggered here",
-    });
+    toast.info("Camera capture functionality would be triggered here", "Capture Card");
   };
 
   // Handler for importing a file
@@ -124,10 +120,7 @@ const DashboardCopy = () => {
     const file = event.target.files?.[0];
     if (file) {
       // Here you would call the startUploadProcess function from ScanFab
-      toast({
-        title: "File Selected",
-        description: `Selected file: ${file.name}`,
-      });
+      toast.success(`Selected file: ${file.name}`, "File Selected");
     }
     if (event.target) event.target.value = '';
   };
@@ -206,10 +199,7 @@ const DashboardCopy = () => {
     setIsExporting(true);
     // Simulating API call
     setTimeout(() => {
-      toast({
-        title: "Export initiated",
-        description: `${Object.keys(rowSelection).length} events queued for export.`,
-      });
+      toast.success(`${Object.keys(rowSelection).length} events queued for export.`, "Export initiated");
       setRowSelection({});
       setIsExporting(false);
     }, 1000);
@@ -218,11 +208,7 @@ const DashboardCopy = () => {
   const handleArchiveSelected = async () => {
     console.log('Archive triggered with selected events:', selectedEvents); // Debug
     if (selectedEvents.length === 0) {
-      toast({
-        title: "No events selected",
-        description: "Please select events to archive",
-        variant: "destructive"
-      });
+      toast.error("No events selected", "Archive Failed");
       return;
     }
 
@@ -235,11 +221,7 @@ const DashboardCopy = () => {
       await fetchEvents();
     } catch (error) {
       console.error("Failed to archive events:", error);
-      toast({
-        title: "Archive failed",
-        description: "Failed to archive selected events",
-        variant: "destructive"
-      });
+      toast.error("Failed to archive selected events", "Archive Failed");
     }
   };
 
@@ -252,11 +234,7 @@ const DashboardCopy = () => {
   // Add handler for manual entry
   const handleManualEntry = () => {
     if (events.length === 0) {
-      toast({
-        title: "No Events",
-        description: "Please create an event first before adding contacts",
-        variant: "destructive"
-      });
+      toast.error("No Events", "Manual Entry Error");
       return;
     }
     
@@ -279,20 +257,12 @@ const DashboardCopy = () => {
   // Add handler for submitting the manual entry form
   const handleManualEntrySubmit = async () => {
     if (!manualEntryForm.name) {
-      toast({
-        title: "Name Required",
-        description: "Please enter at least a name for the contact",
-        variant: "destructive"
-      });
+      toast.error("Name Required", "Manual Entry Error");
       return;
     }
 
     if (!selectedEventForEntry) {
-      toast({
-        title: "Event Required",
-        description: "Please select an event for this contact",
-        variant: "destructive"
-      });
+      toast.error("Event Required", "Manual Entry Error");
       return;
     }
 
@@ -319,17 +289,7 @@ const DashboardCopy = () => {
         throw new Error("Failed to create manual entry");
       }
 
-      toast({
-        description: (
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-            <span className="text-sm font-medium">
-              Contact added successfully
-            </span>
-          </div>
-        ),
-        duration: 3000,
-      });
+      toast.success("Contact added successfully");
 
       // Reset form and close modal
       setManualEntryForm({
@@ -345,11 +305,7 @@ const DashboardCopy = () => {
       fetchEvents();
     } catch (error: any) {
       console.error("Manual entry failed:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create manual entry",
-        variant: "destructive"
-      });
+      toast.error(error.message || "Failed to create manual entry", "Manual Entry Error");
     }
   };
 
@@ -374,21 +330,14 @@ const DashboardCopy = () => {
       }
       setRowSelection({});
       await fetchEvents();
-      toast({
-        title: 'Event(s) deleted',
-        description: 'The selected event(s) and all associated cards have been deleted.',
-      });
+      toast.success('Event(s) deleted', 'Event Deleted');
     } catch (error: any) {
-      toast({
-        title: 'Delete Failed',
-        description: error.message || 'Failed to delete event(s).',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to delete event(s).', 'Delete Failed');
     } finally {
       setDeleteLoading(false);
       setIsDeleteConfirmOpen(false);
     }
-  }, [rowSelection, filteredEvents, fetchEvents, toast]);
+  }, [rowSelection, filteredEvents, fetchEvents]);
 
   // Define columns for the table
   const columns = useMemo<ColumnDef<EventWithStats>[]>(() => [

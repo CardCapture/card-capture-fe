@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { ScannerResult } from '@/types/card';
-import { useToast } from "@/hooks/use-toast";
+import { toast } from '@/lib/toast';
 import CameraCapture from './card-scanner/CameraCapture';
 import ImagePreview from './card-scanner/ImagePreview';
 import UploadPanel from './card-scanner/UploadPanel';
@@ -12,7 +12,6 @@ interface CardScannerProps {
 }
 
 const CardScanner = ({ initialMode }: CardScannerProps) => {
-  const { toast } = useToast();
   const [image, setImage] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -38,11 +37,7 @@ const CardScanner = ({ initialMode }: CardScannerProps) => {
       return stream;
     } catch (error) {
       console.error('Error accessing camera:', error);
-      toast({
-        title: "Camera Error",
-        description: "Could not access your camera. Please check permissions.",
-        variant: "destructive",
-      });
+      toast.error("Could not access your camera. Please check permissions.", "Camera Error");
       setIsCapturing(false);
       return null;
     }
@@ -96,32 +91,20 @@ const CardScanner = ({ initialMode }: CardScannerProps) => {
   
         // Handle the document_id returned from the backend
         if (data.document_id) {
-          toast({
-            title: "Upload Successful",
-            description: "Your card has been sent for processing!",
-            variant: "default",
-          });
+          toast.success("Your card has been sent for processing!", "Upload Successful");
   
           // Store document_id in state if needed
           console.log("Document ID:", data.document_id);
         } else {
           console.error("❌ No document_id returned.");
-          toast({
-            title: "Error",
-            description: "No document_id received from the backend.",
-            variant: "destructive",
-          });
+          toast.error("No document_id received from the backend.", "Error");
         }
   
         setProcessingProgress(100); // Update the progress to 100%
   
       } catch (error) {
         console.error("❌ Upload failed:", error);
-        toast({
-          title: "Upload Failed",
-          description: "An error occurred while uploading the image.",
-          variant: "destructive",
-        });
+        toast.error("An error occurred while uploading the image.", "Upload Failed");
       } finally {
         clearInterval(progressInterval); // Clear progress interval
         setTimeout(() => setIsProcessing(false), 500); // Reset processing state

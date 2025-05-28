@@ -18,21 +18,18 @@ export interface FieldDetail {
 
 // Updated ProspectCard interface
 export interface ProspectCard {
-  id: string; // Legacy field, same as document_id
-  document_id: string; // Primary identifier for the card
-  review_status: CardStatus; // Status from the backend
-  createdAt: string; // mapped from created_at or uploaded_at
-  updatedAt?: string; // mapped from reviewed_at
-  deleted_at?: string | null; // When the card was deleted
-  imageName?: string; // Optional: Filename if available
-  image_path?: string; // Path or identifier for the image file
-  exported_at: string | null; // When the card was exported
-  event_id?: string | null; // ID of the associated event
-
-  fields: Record<string, FieldDetail>;
-
-  missingFields?: string[];
-  errorMessage?: string;
+  id: string;
+  document_id: string;
+  review_status: string;
+  fields: Record<string, FieldData>;
+  created_at: string;
+  reviewed_at?: string;
+  exported_at?: string;
+  event_id?: string;
+  updated_at: string;
+  school_id: string;
+  user_id?: string;
+  image_path?: string;
 }
 
 // ScannerResult remains the same
@@ -41,4 +38,18 @@ export interface ScannerResult {
   data?: Partial<Record<keyof ProspectCard["fields"], string>>;
   missingFields?: string[];
   errorMessage?: string;
+}
+
+export interface FieldData {
+  value: string;
+  required: boolean;
+  enabled: boolean;
+  review_confidence: number;
+  requires_human_review: boolean;
+  review_notes: string;
+  confidence: number;
+  bounding_box: number[][];
+  reviewed?: boolean;
+  source?: string;
+  actual_field_name?: string;
 }

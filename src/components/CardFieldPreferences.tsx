@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './ui/card';
 import { Switch } from './ui/switch';
 import { Button } from './ui/button';
@@ -17,6 +17,17 @@ interface CardFieldPreferencesProps {
 
 export function CardFieldPreferences({ fields: initialFields, onSave }: CardFieldPreferencesProps) {
   const [fields, setFields] = useState<CardField[]>(initialFields);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Reset local fields state when initialFields changes (after save)
+  useEffect(() => {
+    setFields(initialFields);
+  }, [initialFields]);
+
+  // Compare fields to initialFields to detect changes
+  useEffect(() => {
+    setHasChanges(JSON.stringify(fields) !== JSON.stringify(initialFields));
+  }, [fields, initialFields]);
 
   const updateVisible = (key: string, visible: boolean) => {
     setFields(fields.map(field => {
@@ -39,6 +50,11 @@ export function CardFieldPreferences({ fields: initialFields, onSave }: CardFiel
       }
       return field;
     }));
+  };
+
+  const handleSave = () => {
+    onSave(fields);
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Auto-scroll to top
   };
 
   return (
@@ -107,7 +123,9 @@ export function CardFieldPreferences({ fields: initialFields, onSave }: CardFiel
       </CardContent>
 
       <CardFooter className="justify-end">
-        <Button onClick={() => onSave(fields)}>Save Changes</Button>
+        <Button onClick={handleSave} disabled={!hasChanges} variant={hasChanges ? "default" : "secondary"}>
+          Save Changes
+        </Button>
       </CardFooter>
     </Card>
   );

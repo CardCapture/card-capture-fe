@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from '@/lib/toast';
 import { getSignedImageUrl } from "@/lib/imageUtils";
 
 const ReviewImagePanel = ({
@@ -20,21 +20,22 @@ const ReviewImagePanel = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [internalZoom, setInternalZoom] = useState(1.875);
-  const { toast } = useToast();
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  // Add pan state and drag tracking
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  // Pan and interaction state
+  const [pan, setPan] = useState({ x: 150, y: 150 });
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  
+  // Touch-specific state
+  const touchStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const lastDistanceRef = useRef<number | null>(null);
-
-  // Add a ref to track accumulated movement
   const accumulatedMovementRef = useRef(0);
+  const isPinchingRef = useRef(false);
 
-  // Pan handlers
+  // Mouse pan handlers
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
       draggingRef.current = true;
@@ -62,7 +63,83 @@ const ReviewImagePanel = ({
     draggingRef.current = false;
   }, []);
 
-  // Handle wheel zoom
+  // Touch pan handlers
+  const onTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length === 1) {
+        // Single touch - start panning
+        const touch = e.touches[0];
+        touchStartRef.current = {
+          x: touch.clientX,
+          y: touch.clientY,
+          panX: pan.x,
+          panY: pan.y,
+        };
+        isPinchingRef.current = false;
+      } else if (e.touches.length === 2) {
+        // Two touches - start pinch zoom
+        const distance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        lastDistanceRef.current = distance;
+        accumulatedMovementRef.current = 0;
+        isPinchingRef.current = true;
+        touchStartRef.current = null; // Stop panning during pinch
+      }
+    },
+    [pan]
+  );
+
+  const onTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault(); // Prevent scrolling
+
+      if (e.touches.length === 1 && touchStartRef.current && !isPinchingRef.current) {
+        // Single touch - pan the image
+        const touch = e.touches[0];
+        const dx = touch.clientX - touchStartRef.current.x;
+        const dy = touch.clientY - touchStartRef.current.y;
+        setPan({
+          x: touchStartRef.current.panX + dx,
+          y: touchStartRef.current.panY + dy,
+        });
+      } else if (e.touches.length === 2 && lastDistanceRef.current !== null) {
+        // Two touches - pinch zoom
+        const newDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+
+        const delta = newDistance - lastDistanceRef.current;
+        accumulatedMovementRef.current += delta;
+
+        // Threshold for zoom operations (reduced for more responsive mobile experience)
+        const ZOOM_THRESHOLD = 30;
+
+        if (Math.abs(accumulatedMovementRef.current) > ZOOM_THRESHOLD) {
+          if (accumulatedMovementRef.current > 0) {
+            zoomIn();
+          } else {
+            zoomOut();
+          }
+          // Reset accumulated movement after zoom
+          accumulatedMovementRef.current = 0;
+          lastDistanceRef.current = newDistance;
+        }
+      }
+    },
+    [zoomIn, zoomOut]
+  );
+
+  const onTouchEnd = useCallback(() => {
+    touchStartRef.current = null;
+    lastDistanceRef.current = null;
+    accumulatedMovementRef.current = 0;
+    isPinchingRef.current = false;
+  }, []);
+
+  // Handle wheel zoom (for desktop)
   const handleWheel = useCallback(
     (e: WheelEvent) => {
       e.preventDefault();
@@ -87,7 +164,7 @@ const ReviewImagePanel = ({
     [zoomIn, zoomOut]
   );
 
-  // Handle touch events for pinch zoom
+  // Legacy touch handlers for wheel events (keeping for compatibility)
   const handleTouchStart = useCallback((e: TouchEvent) => {
     if (e.touches.length === 2) {
       const distance = Math.hypot(
@@ -95,7 +172,7 @@ const ReviewImagePanel = ({
         e.touches[0].clientY - e.touches[1].clientY
       );
       lastDistanceRef.current = distance;
-      accumulatedMovementRef.current = 0; // Reset accumulated movement
+      accumulatedMovementRef.current = 0;
     }
   }, []);
 
@@ -108,28 +185,18 @@ const ReviewImagePanel = ({
         );
 
         const delta = newDistance - lastDistanceRef.current;
-
-        // Accumulate the movement
         accumulatedMovementRef.current += delta;
 
-        // Much higher threshold for zoom operations
-        const ZOOM_THRESHOLD = 50; // Significantly increased threshold
-        const SCALE_FACTOR = 0.2; // Much smaller scale factor for more gradual zoom
+        const ZOOM_THRESHOLD = 30;
 
         if (Math.abs(accumulatedMovementRef.current) > ZOOM_THRESHOLD) {
           if (accumulatedMovementRef.current > 0) {
-            // Zoom in
             zoomIn();
-            // Reset accumulated movement after zoom
-            accumulatedMovementRef.current = 0;
-            lastDistanceRef.current = newDistance;
           } else {
-            // Zoom out
             zoomOut();
-            // Reset accumulated movement after zoom
-            accumulatedMovementRef.current = 0;
-            lastDistanceRef.current = newDistance;
           }
+          accumulatedMovementRef.current = 0;
+          lastDistanceRef.current = newDistance;
         }
       }
     },
@@ -138,12 +205,12 @@ const ReviewImagePanel = ({
 
   const handleTouchEnd = useCallback(() => {
     lastDistanceRef.current = null;
-    accumulatedMovementRef.current = 0; // Reset accumulated movement
+    accumulatedMovementRef.current = 0;
   }, []);
 
   // Reset pan when image changes
   useEffect(() => {
-    setPan({ x: 0, y: 0 });
+    setPan({ x: 150, y: 150 });
   }, [selectedCardId]);
 
   // Add event listeners
@@ -151,10 +218,13 @@ const ReviewImagePanel = ({
     const containerEl = containerRef.current;
     if (!containerEl) return;
 
+    // Desktop events
     containerEl.addEventListener("wheel", handleWheel, { passive: false });
-    containerEl.addEventListener("touchstart", handleTouchStart);
-    containerEl.addEventListener("touchmove", handleTouchMove);
-    containerEl.addEventListener("touchend", handleTouchEnd);
+    
+    // Legacy touch events (for compatibility)
+    containerEl.addEventListener("touchstart", handleTouchStart, { passive: false });
+    containerEl.addEventListener("touchmove", handleTouchMove, { passive: false });
+    containerEl.addEventListener("touchend", handleTouchEnd, { passive: false });
 
     return () => {
       containerEl.removeEventListener("wheel", handleWheel);
@@ -164,6 +234,7 @@ const ReviewImagePanel = ({
     };
   }, [handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
+  // Load image
   useEffect(() => {
     if (imagePath) {
       setLoading(true);
@@ -177,46 +248,58 @@ const ReviewImagePanel = ({
     }
   }, [imagePath]);
 
-  // Debug log for imageUrl
-  console.log("ReviewImagePanel: Rendering img with imageUrl:", imagePath);
-
   return (
-    <div className="relative flex-1 flex flex-col overflow-hidden bg-white rounded-lg">
-      {/* Zoom controls - position absolutely in top right */}
+    <div className="relative flex-1 flex flex-col overflow-hidden bg-white rounded-lg h-full">
+      {/* Zoom controls - Touch-friendly sizing */}
       <div className="absolute top-4 right-4 flex gap-2 z-10">
-        <Button size="icon" variant="outline" onClick={zoomOut}>
+        <Button 
+          size="icon" 
+          variant="outline" 
+          onClick={zoomOut} 
+          className="h-10 w-10 sm:h-8 sm:w-8 touch-manipulation"
+        >
           <ZoomOut className="h-4 w-4" />
         </Button>
-        <Button size="icon" variant="outline" onClick={zoomIn}>
+        <Button 
+          size="icon" 
+          variant="outline" 
+          onClick={zoomIn} 
+          className="h-10 w-10 sm:h-8 sm:w-8 touch-manipulation"
+        >
           <ZoomIn className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Image container with pan and zoom */}
+      {/* Image container with pan and zoom - Enhanced touch support */}
       <div
         ref={containerRef}
-        className={`flex-1 overflow-hidden ${
-          draggingRef.current ? "cursor-grabbing" : "cursor-grab"
+        className={`flex-1 overflow-hidden select-none ${
+          draggingRef.current || touchStartRef.current ? "cursor-grabbing" : "cursor-grab"
         }`}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
         style={{
-          touchAction: "none", // Prevent default touch actions to enable custom handling
-          minHeight: 0, // Ensures proper flex behavior
+          touchAction: "none", // Prevent default touch actions
+          minHeight: "300px",
+          userSelect: "none", // Prevent text selection
+          WebkitUserSelect: "none", // Safari
         }}
       >
         <div
-          className="w-full h-full flex items-center justify-center"
+          className="w-full h-full flex items-center justify-center p-2 sm:p-4"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px)`,
-            transition: draggingRef.current
+            transition: (draggingRef.current || touchStartRef.current)
               ? "none"
               : "transform 0.1s ease-out",
           }}
         >
-          {loading && <div>Loading image...</div>}
+          {loading && <div className="text-sm text-gray-500">Loading image...</div>}
           {!loading && signedUrl && !imgError && (
             <img
               ref={imgRef}
@@ -225,30 +308,28 @@ const ReviewImagePanel = ({
               draggable={false}
               style={{
                 transform: `scale(${internalZoom * externalZoom})`,
-                transformOrigin: "center center",
-                transition: draggingRef.current ? "none" : "transform 0.2s",
+                transformOrigin: "center",
+                transition: (draggingRef.current || touchStartRef.current) ? "none" : "transform 0.2s",
                 maxWidth: "100%",
                 maxHeight: "100%",
                 objectFit: "contain",
                 margin: "auto",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+                pointerEvents: "none", // Prevent image drag
               }}
               crossOrigin="anonymous"
               onError={() => {
                 setImgError(true);
-                toast({
-                  title: "Image Load Error",
-                  description:
-                    "Failed to load image. Please try refreshing the page.",
-                  variant: "destructive",
-                });
+                toast.loadFailed("image");
               }}
             />
           )}
           {!loading && imgError && (
-            <div style={{ color: "red" }}>Failed to load image.</div>
+            <div className="text-red-500 text-sm text-center p-4">Failed to load image.</div>
           )}
           {!loading && !signedUrl && !imgError && (
-            <div>No image available.</div>
+            <div className="text-gray-500 text-sm text-center p-4">No image available.</div>
           )}
         </div>
       </div>

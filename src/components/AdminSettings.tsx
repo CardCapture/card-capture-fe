@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import {
   Table,
@@ -19,9 +19,13 @@ import SettingsPreferences from "./SettingsPreferences";
 import { Link, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from '@/lib/toast';
 import { updateSchoolCardFields } from "@/lib/api";
 import { CardFieldPreferences } from "@/components/CardFieldPreferences";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { authFetch } from "@/lib/authFetch";
 
 const NAV_ITEMS = [
   {
@@ -56,6 +60,14 @@ const PRICING_DISPLAY: Record<string, string> = {
   professional: "$7,500/year",
   enterprise: "Custom pricing",
 };
+
+interface UserToEdit {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: ('admin' | 'recruiter' | 'reviewer')[];
+}
 
 interface UserProfile {
   id: string;
@@ -125,8 +137,8 @@ interface CardFields {
 const AdminSettings: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
   const { session } = useAuth();
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Get the active tab from the URL
   const activeTab = location.pathname.split('/').pop() || 'account-settings';
@@ -141,7 +153,7 @@ const AdminSettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserToEdit | null>(null);
 
   // School state for subscription tab
   const [school, setSchool] = useState<SchoolRecord | null>(null);
@@ -161,73 +173,69 @@ const AdminSettings: React.FC = () => {
   const [fields, setFields] = useState<CardField[]>([]);
   const [loadingFields, setLoadingFields] = useState(true);
 
+  // Scroll to top when fields are updated after a save (field-preferences tab only)
+  useEffect(() => {
+    if (activeTab === "field-preferences" && contentRef.current) {
+      contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [fields, activeTab]);
+
   // SFTP functions
   const saveSftpConfig = async () => {
-    if (!session?.user?.id) return;
-
+    setSaving(true);
     try {
-      setSaving(true);
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("school_id")
-        .eq("id", session.user.id)
-        .single();
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await authFetch(
+        `${apiBaseUrl}/sftp/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(sftpConfig),
+        },
+        session?.access_token
+      );
 
-      if (!profile?.school_id) {
-        throw new Error("No school ID found");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || "Failed to save SFTP configuration");
       }
 
-      const { error } = await supabase
-        .from("sftp_configs")
-        .upsert({
-          school_id: profile.school_id,
-          ...sftpConfig,
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "SFTP configuration saved successfully.",
-      });
+      toast.saved();
     } catch (error) {
-      console.error("Error saving SFTP config:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save SFTP configuration. Please try again.",
-        variant: "destructive",
-      });
+      console.error("Error saving SFTP configuration:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to save SFTP configuration");
     } finally {
       setSaving(false);
     }
   };
 
   const testSftpConnection = async () => {
+    setSaving(true);
     try {
-      setSaving(true);
-      const response = await fetch("/api/test-sftp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await authFetch(
+        `${apiBaseUrl}/sftp/test`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(sftpConfig),
         },
-        body: JSON.stringify(sftpConfig),
-      });
+        session?.access_token
+      );
 
       if (!response.ok) {
-        throw new Error("Connection test failed");
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || "Failed to test SFTP connection");
       }
 
-      toast({
-        title: "Success",
-        description: "SFTP connection test successful.",
-      });
+      toast.success("SFTP connection test successful!");
     } catch (error) {
       console.error("Error testing SFTP connection:", error);
-      toast({
-        title: "Error",
-        description: "Failed to test SFTP connection. Please check your credentials.",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Failed to test SFTP connection");
     } finally {
       setSaving(false);
     }
@@ -364,34 +372,43 @@ const AdminSettings: React.FC = () => {
   }, [activeTab, session]);
 
   const handleRowClick = (user: UserProfile) => {
-    setSelectedUser(user);
+    // Convert UserProfile to UserToEdit format
+    const userToEdit = {
+      id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      role: Array.isArray(user.role) ? user.role : [user.role] as ('admin' | 'recruiter' | 'reviewer')[]
+    };
+    setSelectedUser(userToEdit);
     setEditModalOpen(true);
   };
 
   // Stripe Checkout handler
   const handleStripeCheckout = async () => {
-    if (!school?.stripe_customer_id) {
-      alert("No Stripe customer ID found for your school.");
-      return;
-    }
-    const stripe = await stripePromise;
-    const apiBaseUrl =
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-    const res = await fetch(`${apiBaseUrl}/create-checkout-session`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customer_id: school.stripe_customer_id,
-        success_url: window.location.origin + "/settings?checkout=success",
-        cancel_url: window.location.origin + "/settings?checkout=cancel",
-        customer_email: session?.user?.email,
-      }),
-    });
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      alert("Stripe error: " + data.error);
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await authFetch(
+        `${apiBaseUrl}/stripe/create-portal-session`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+        session?.access_token
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || "Failed to create Stripe portal session");
+      }
+
+      const data = await response.json();
+      window.open(data.url, '_blank');
+    } catch (error) {
+      console.error("Error creating Stripe portal session:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to open billing portal");
     }
   };
 
@@ -456,11 +473,7 @@ const AdminSettings: React.FC = () => {
         details: error.details,
         hint: error.hint
       });
-      toast({
-        title: 'Error',
-        description: `Failed to load field preferences: ${error.message || 'Unknown error'}`,
-        variant: 'destructive'
-      });
+      toast.error(error instanceof Error ? error.message : "Failed to load field preferences");
     } finally {
       setLoadingFields(false);
     }
@@ -468,112 +481,40 @@ const AdminSettings: React.FC = () => {
 
   // Add handleSave function
   const handleSave = async (updatedFields: CardField[]) => {
-    if (!session?.user?.id) {
-      console.error('No user session found');
-      return;
-    }
-
-    console.log('Starting save process with fields:', updatedFields);
-
     try {
-      // Only save canonical fields
-      const cardFieldsToSave: CardFields = {};
-      for (const field of CANONICAL_CARD_FIELDS) {
-        const found = updatedFields.find(f => f.key === field);
-        if (found) {
-          cardFieldsToSave[field] = {
-            enabled: found.visible,
-            required: found.required,
-          };
-        } else {
-          cardFieldsToSave[field] = { enabled: true, required: false };
-        }
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) {
+        toast.error("User not authenticated");
+        return;
       }
 
-      console.log('Formatted card fields to save:', cardFieldsToSave);
-      
-      // First verify the current settings
-      const { data: currentSettings } = await supabase
-        .from('settings')
-        .select('preferences')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
+      if (!school?.id) {
+        toast.error("School information not found");
+        return;
+      }
 
-      console.log('Current settings from database:', currentSettings);
-
-      const currentCardFields = (currentSettings?.[0]?.preferences?.card_fields || {}) as CardFields;
-      console.log('Current card fields:', currentCardFields);
-
-      // Save to settings table
-      console.log('Saving to settings table...');
-      const { data: savedData, error } = await supabase
-        .from('settings')
-        .upsert([
-          {
-            user_id: session.user.id,
-            school_id: session.user.app_metadata?.school_id,
-            preferences: {
-              ...currentSettings?.[0]?.preferences,
-              card_fields: cardFieldsToSave,
-            },
-            created_at: new Date().toISOString(),
+      const { error } = await supabase
+        .from("settings")
+        .upsert({
+          user_id: user.id,
+          school_id: school.id,
+          preferences: {
+            card_fields: updatedFields.reduce((acc, field) => {
+              acc[field.key] = field.visible;
+              return acc;
+            }, {} as Record<string, boolean>),
           },
-        ])
-        .select();
+        });
 
       if (error) {
-        console.error('Supabase error saving settings:', error);
         throw error;
       }
 
-      console.log('Settings saved successfully:', savedData);
-
-      // Also update the school's card fields
-      const schoolId = session.user.app_metadata?.school_id;
-      console.log('School ID from metadata:', schoolId);
-
-      // Try to get school_id from profiles table
-      try {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('school_id')
-          .eq('id', session.user.id)
-          .maybeSingle();
-        
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-          throw profileError;
-        }
-
-        if (!profile?.school_id) {
-          console.error('No school ID found in app_metadata or profiles table');
-          throw new Error('No school ID found');
-        }
-
-        console.log('School ID from profile:', profile.school_id);
-        await updateSchoolCardFields(profile.school_id, cardFieldsToSave, session);
-        console.log('Successfully updated school card fields');
-
-        toast({
-          title: 'Success',
-          description: 'Field preferences saved successfully.',
-        });
-      } catch (error) {
-        console.error('Error updating school card fields:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to update school card fields. Please try again.',
-          variant: 'destructive',
-        });
-      }
+      setFields(updatedFields);
+      toast.saved();
     } catch (error) {
-      console.error('Error saving field preferences:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save field preferences. Please try again.',
-        variant: 'destructive',
-      });
+      console.error("Error saving field preferences:", error);
+      toast.error("Failed to save field preferences");
     }
   };
 
@@ -875,10 +816,30 @@ const AdminSettings: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Navigation */}
-        <div className="w-full md:w-64 space-y-1">
+    <div className="container mx-auto py-4 sm:py-8 px-4">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+        {/* Mobile Navigation - Horizontal scroll */}
+        <div className="lg:hidden">
+          <div className="flex overflow-x-auto space-x-2 pb-2 mb-6">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleTabChange(item.id)}
+                className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors whitespace-nowrap min-w-fit ${
+                  activeTab === item.id
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted bg-white border"
+                }`}
+              >
+                <span className="w-4 h-4 mr-2">{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop Navigation - Vertical */}
+        <div className="hidden lg:block w-64 space-y-1">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
@@ -896,8 +857,12 @@ const AdminSettings: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold mb-6">{heading}</h1>
+        <div
+          className="flex-1"
+          ref={contentRef}
+          style={{ maxHeight: "80vh", overflowY: "auto" }}
+        >
+          <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">{heading}</h1>
           {content}
         </div>
       </div>

@@ -77,11 +77,14 @@ import { useManualEntryModal } from "@/hooks/useManualEntryModal";
 import { useCardUploadActions } from "@/hooks/useCardUploadActions";
 import { useZoom } from "@/hooks/useZoom";
 import { useStatusTabs } from "@/hooks/useStatusTabs";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
+import { useBulkActions } from "@/hooks/useBulkActions";
+import { toast } from "@/lib/toast"; // Updated import
 
 // === Component Definition ===
 const Dashboard = () => {
   // --- Hooks ---
-  const { toast } = useToast();
+  const { toast: oldToast } = useToast(); // Keep for hooks compatibility
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId?: string }>();
   const { events, loading: eventsLoading, fetchEvents } = useEvents();
@@ -98,9 +101,7 @@ const Dashboard = () => {
   );
 
   // Event Name
-  const eventName = useEventName(selectedEvent, fetchEvents, (args) =>
-    toast({ ...args, variant: args.variant as "default" | "destructive" })
-  );
+  const eventName = useEventName(selectedEvent, fetchEvents);
 
   // Review Field Order (don't modify this)
   const reviewFieldOrder: string[] = useMemo(
@@ -156,16 +157,9 @@ const Dashboard = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  // Upload/processing state
+  // Upload state
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
-
-  // Review modal state
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
-  const [selectedCardForReview, setSelectedCardForReview] =
-    useState<ProspectCard | null>(null);
-  const [formData, setFormData] = useState<Record<string, string>>({});
-  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Confirmation dialogs
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] =
@@ -181,7 +175,7 @@ const Dashboard = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   // Image and zoom
-  const [zoom, setZoom] = useState(0.47);
+  const [zoom, setZoom] = useState(0.85);
   const [imageUrlState, setImageUrlState] = useState("");
 
   // Event editing
@@ -192,29 +186,6 @@ const Dashboard = () => {
   const [eventNameLoading, setEventNameLoading] = useState(false);
   const [eventNameError, setEventNameError] = useState<string | null>(null);
 
-  // Manual entry
-  const [isManualEntryModalOpen, setIsManualEntryModalOpen] =
-    useState<boolean>(false);
-  const [manualEntryForm, setManualEntryForm] = useState({
-    name: "",
-    preferred_first_name: "",
-    date_of_birth: "",
-    email: "",
-    cell: "",
-    permission_to_text: "",
-    address: "",
-    city: "",
-    state: "",
-    zip_code: "",
-    high_school: "",
-    class_rank: "",
-    students_in_class: "",
-    gpa: "",
-    student_type: "",
-    entry_term: "",
-    major: "",
-  });
-
   // Settings/preferences
   const [cardFieldPrefs, setCardFieldPrefs] = useState<Record<
     string,
@@ -222,12 +193,8 @@ const Dashboard = () => {
   > | null>(null);
 
   // --- Refs ---
-  const selectedCardIdRef = useRef<string | null>(null);
-  const imageKeyRef = useRef<string>(`image-${Date.now()}`);
   const imageUrlRef = useRef<string>("");
-  const localCardRef = useRef<ProspectCard | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout>();
-  const fieldsWithToastRef = useRef<Set<string>>(new Set());
   const eventsRef = useRef<{ fetchEvents: () => Promise<void> } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevHideExported = useRef(hideExported);
@@ -238,20 +205,41 @@ const Dashboard = () => {
     selectedEvent,
     uploadCard,
     fetchCards,
-    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
     fileInputRef
   );
-  const { handleReviewSave } = useCardReviewModal(
+  const {
+    isReviewModalOpen,
+    setIsReviewModalOpen,
+    selectedCardForReview,
+    setSelectedCardForReview,
+    formData,
+    setFormData,
+    handleFieldReview,
+    handleReviewSave,
+    handleFormChange,
+    localCardRef,
+    selectedCardIdRef,
+    imageKeyRef,
+    fieldsWithToastRef,
+    isSaving,
+    setIsSaving,
+  } = useCardReviewModal(
     cards,
     reviewFieldOrder,
     fetchCards,
-    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
     dataFieldsMap
   );
-  const { handleManualEntry, handleManualEntryChange, handleManualEntrySubmit } = useManualEntryModal(
-    eventId,
-    fetchCards,
-    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" })
+  const {
+    isManualEntryModalOpen,
+    setIsManualEntryModalOpen,
+    manualEntryForm,
+    setManualEntryForm,
+    handleManualEntry,
+    handleManualEntrySubmit,
+    handleManualEntryChange,
+  } = useManualEntryModal(
+    selectedEvent,
+    fetchCards
   );
 
   // --- Callbacks ---
@@ -345,11 +333,15 @@ const Dashboard = () => {
     });
   }, [cards, selectedTab, selectedEvent, hideExported, debouncedSearchQuery]);
 
+  // Now that filteredCards is defined, we can use bulk selection hooks
+  const bulkSelection = useBulkSelection(filteredCards);
+  const bulkActions = useBulkActions(fetchCards, bulkSelection.clearSelection);
+
   // Now that filteredCards is defined, we can use it in useCardTableActions
-  const { handleExportSelected, handleMoveSelected, handleArchiveSelected, handleDeleteSelected, downloadCSV } = useCardTableActions(
+  const { handleExportSelected, handleMoveSelected, handleArchiveSelected, handleDeleteSelected } = useCardTableActions(
     filteredCards,
     fetchCards,
-    (args) => toast({ ...args, variant: args.variant as "default" | "destructive" }),
+    oldToast,
     selectedEvent,
     dataFieldsMap
   );
@@ -417,12 +409,7 @@ const Dashboard = () => {
           // If event not found, redirect to first event
           const firstEvent = events[0];
           navigate(`/events/${firstEvent.id}`);
-          toast({
-            title: "Event Not Found",
-            description:
-              "The requested event could not be found. Redirected to the first available event.",
-            variant: "destructive",
-          });
+          toast.error("The requested event could not be found. Redirected to the first available event.", "Event Not Found");
         }
       } else {
         // No eventId in URL, redirect to first event
@@ -430,7 +417,7 @@ const Dashboard = () => {
         navigate(`/events/${firstEvent.id}`);
       }
     }
-  }, [eventId, events, navigate, toast]);
+  }, [eventId, events, navigate]);
 
   // Effect to refetch cards when selected event changes
   useEffect(() => {
@@ -440,7 +427,7 @@ const Dashboard = () => {
   // Add this after filteredCards is defined and before JSX return
   useEffect(() => {
     setRowSelection((prev) => {
-      const validIds = new Set(filteredCards.map((card) => card.id));
+      const validIds = new Set(paginatedCards.map((card) => card.id));
       const next = Object.fromEntries(
         Object.entries(prev).filter(([id]) => validIds.has(id))
       );
@@ -449,60 +436,21 @@ const Dashboard = () => {
         ? prev
         : next;
     });
-  }, [filteredCards]);
+  }, [paginatedCards]);
 
   // Add effect to update selected card IDs when row selection changes
   useEffect(() => {
     const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    console.log('=== Row Selection Debug ===');
+    console.log('rowSelection state:', rowSelection);
     console.log('Selected card IDs:', selectedIds);
-  }, [rowSelection]);
+    console.log('paginatedCards length:', paginatedCards.length);
+    console.log('paginatedCards IDs:', paginatedCards.map(card => card.id));
+    console.log('filteredCards length:', filteredCards.length);
+    console.log('Current page:', currentPage, 'Page size:', pageSize);
+  }, [rowSelection, paginatedCards, filteredCards, currentPage, pageSize]);
 
   // --- Callbacks & Effects ---
-  const handleFieldReview = useCallback(
-    (fieldKey: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (!selectedCardForReview) return;
-
-      // Update the local state immediately
-      const updatedCard = { ...selectedCardForReview };
-      const currentValue =
-        formData[fieldKey] ??
-        selectedCardForReview.fields[fieldKey]?.value ??
-        "";
-
-      // Update the field in the local copy
-      if (updatedCard.fields[fieldKey]) {
-        updatedCard.fields[fieldKey] = {
-          ...updatedCard.fields[fieldKey],
-          value: currentValue,
-          reviewed: true,
-          requires_human_review: false,
-          review_notes: "Manually Reviewed",
-        };
-      }
-
-      // Update the local state
-      setSelectedCardForReview(updatedCard);
-      localCardRef.current = updatedCard;
-
-      // Update the formData to reflect the reviewed state
-      setFormData((prev) => ({
-        ...prev,
-        [fieldKey]: currentValue,
-      }));
-
-      // Show success toast
-      toast({
-        title: "Field Reviewed",
-        description: `${
-          dataFieldsMap.get(fieldKey) || fieldKey
-        } has been marked as reviewed.`,
-        variant: "default",
-      });
-    },
-    [selectedCardForReview, formData, toast, dataFieldsMap]
-  );
-
   const handleRowClick = useCallback(
     (card: ProspectCard) => {
       // Store a local copy of the card that won't be affected by updates
@@ -519,42 +467,20 @@ const Dashboard = () => {
       setIsReviewModalOpen(true);
       setReviewModalState(true);
     },
-    [setReviewModalState]
+    [setReviewModalState, localCardRef, setSelectedCardForReview, selectedCardIdRef, imageKeyRef, setFormData, setIsReviewModalOpen]
   );
-
-  const handleFormChange = (field: string, value: string) => {
-    // Update form data
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Update local card state
-    if (selectedCardForReview) {
-      setSelectedCardForReview((prev) => {
-        if (!prev) return prev;
-        const updatedFields = { ...prev.fields };
-        if (updatedFields[field]) {
-          updatedFields[field] = {
-            ...updatedFields[field],
-            value,
-            reviewed: true,
-            requires_human_review: false,
-            review_notes: "Manually reviewed",
-          };
-        }
-        return {
-          ...prev,
-          fields: updatedFields,
-        };
-      });
-    }
-  };
 
   // Reset the fields with toast when the modal is closed
   useEffect(() => {
     if (!isReviewModalOpen) {
       fieldsWithToastRef.current.clear();
+    }
+  }, [isReviewModalOpen, fieldsWithToastRef]);
+
+  // Reset zoom level when modal is closed
+  useEffect(() => {
+    if (!isReviewModalOpen) {
+      setZoom(0.85); // Reset to default zoom level
     }
   }, [isReviewModalOpen]);
 
@@ -571,7 +497,7 @@ const Dashboard = () => {
         }
       }
     }
-  }, [cards, isReviewModalOpen]);
+  }, [cards, isReviewModalOpen, selectedCardIdRef, setSelectedCardForReview]);
 
   // Add more detailed logging when modal opens
   useEffect(() => {
@@ -591,7 +517,7 @@ const Dashboard = () => {
       imageKeyRef.current = `image-${selectedCardForReview.id}-${Date.now()}`;
       // imageUrlRef.current = selectedCardForReview.image_path || '';
     }
-  }, [selectedCardForReview?.id]);
+  }, [selectedCardForReview?.id, imageKeyRef]);
 
   // Table definition
   const columns = useMemo<ColumnDef<ProspectCard>[]>(
@@ -602,13 +528,13 @@ const Dashboard = () => {
           <div className="flex justify-center">
             <input
               type="checkbox"
-              checked={table.getIsAllRowsSelected()}
+              checked={bulkSelection.isAllSelected}
               ref={(input) => {
                 if (input) {
-                  input.indeterminate = table.getIsSomeRowsSelected();
+                  input.indeterminate = bulkSelection.isSomeSelected;
                 }
               }}
-              onChange={table.getToggleAllRowsSelectedHandler()}
+              onChange={bulkSelection.toggleAll}
               className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
             />
           </div>
@@ -617,8 +543,8 @@ const Dashboard = () => {
           <div className="flex justify-center">
             <input
               type="checkbox"
-              checked={row.getIsSelected()}
-              onChange={row.getToggleSelectedHandler()}
+              checked={bulkSelection.isSelected(row.original.document_id)}
+              onChange={() => bulkSelection.toggleSelection(row.original.document_id)}
               onClick={(e) => e.stopPropagation()}
               className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
             />
@@ -626,9 +552,9 @@ const Dashboard = () => {
         ),
       },
       {
-        accessorKey: "createdAt",
+        accessorKey: "created_at",
         header: "Date added",
-        cell: ({ row }) => formatDateOrTimeAgo(row.original.createdAt),
+        cell: ({ row }) => formatDateOrTimeAgo(row.original.created_at),
         enableSorting: true,
       },
       {
@@ -753,25 +679,18 @@ const Dashboard = () => {
           ]
         : []),
     ],
-    [selectedTab, dataFieldsMap, reviewFieldOrder]
+    [selectedTab, dataFieldsMap, reviewFieldOrder, bulkSelection]
   );
 
   // Table instance
   const table = useReactTable({
-    data: filteredCards,
+    data: paginatedCards,
     columns,
     state: {
       sorting,
-      rowSelection,
     },
-    enableRowSelection: true,
-    getRowId: (row) => row.id,
-    onRowSelectionChange: (updater) => {
-      setRowSelection((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater;
-        return next;
-      });
-    },
+    enableRowSelection: false, // Disable built-in row selection
+    getRowId: (row) => row.document_id, // Use document_id as the row ID
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -795,33 +714,75 @@ const Dashboard = () => {
 
   const confirmArchiveAction = () => {
     if (selectedCardForReview) {
-      handleArchiveSelected([selectedCardForReview.id]);
-      setIsReviewModalOpen(false);
-      setSelectedCardForReview(null);
+      // Archive the single card from the review modal
+      handleArchiveSelected([selectedCardForReview.document_id]);
     } else {
+      // Archive multiple selected cards from the table
       const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
       if (selectedIds.length > 0) {
         handleArchiveSelected(selectedIds);
       } else {
-        toast({
-          title: "No Cards Selected",
-          description: "Please select at least one card to archive.",
-          variant: "destructive",
-        });
+        toast.required("at least one card selection");
       }
     }
     setIsArchiveConfirmOpen(false);
   };
 
-  // Replace handleExportToSlate with handleExportSelected
-  const handleExportToSlate = handleExportSelected;
-
   // --- Zoom Functions ---
-  const zoomIn = useCallback(() => setZoom((z) => Math.min(z * 1.2, 2)), []);
-  const zoomOut = useCallback(
-    () => setZoom((z) => Math.max(z / 1.2, 0.47)),
-    []
-  );
+  const zoomIn = useCallback(() => setZoom((z) => Math.min(z * 1.2, 3)), []);
+  const zoomOut = useCallback(() => setZoom((z) => Math.max(z / 1.2, 0.3)), []);
+
+  // --- Event Name Editing ---
+  const handleEditEventName = () => {
+    setIsEditingEventName(true);
+    setEventNameInput(selectedEvent?.name || "");
+    setEventNameError(null);
+  };
+
+  const handleCancelEditEventName = () => {
+    setIsEditingEventName(false);
+    setEventNameInput(selectedEvent?.name || "");
+    setEventNameError(null);
+  };
+
+  const handleSaveEventName = async () => {
+    if (!selectedEvent || !eventNameInput.trim()) return;
+    setEventNameLoading(true);
+    setEventNameError(null);
+    try {
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const response = await fetch(`${apiBaseUrl}/events/${selectedEvent.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ name: eventNameInput.trim() }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update event name");
+      }
+      toast.updated("Event name");
+      setIsEditingEventName(false);
+      setSelectedEvent((ev) =>
+        ev ? { ...ev, name: eventNameInput.trim() } : ev
+      );
+      fetchEvents();
+    } catch (error) {
+      setEventNameError(
+        error instanceof Error ? error.message : "Failed to update event name"
+      );
+      toast.error(error instanceof Error
+          ? error.message
+          : "Failed to update event name", "Error");
+    } finally {
+      setEventNameLoading(false);
+    }
+  };
 
   // --- useEffect for hiding exported cards & sorting ---
   useEffect(() => {
@@ -869,7 +830,7 @@ const Dashboard = () => {
     } else {
       setFormData({});
     }
-  }, [selectedCardForReview, reviewFieldOrder]);
+  }, [selectedCardForReview, reviewFieldOrder, setFormData]);
 
   // --- useEffect for image URL ---
   useEffect(() => {
@@ -884,7 +845,7 @@ const Dashboard = () => {
       }
     }
     updateImageUrl();
-  }, [selectedCardForReview?.image_path, getSignedImageUrl]);
+  }, [selectedCardForReview?.image_path]);
 
   // --- useEffect for keyboard shortcuts ---
   useEffect(() => {
@@ -896,72 +857,12 @@ const Dashboard = () => {
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [setIsReviewModalOpen, setSelectedCardForReview]);
 
   // Replace openBulkArchiveDialog to just open the dialog
   const openBulkArchiveDialog = useCallback(() => {
     setIsArchiveConfirmOpen(true);
   }, []);
-
-  // Restore missing event name editing handlers
-  const handleEditEventName = () => {
-    setIsEditingEventName(true);
-    setEventNameInput(selectedEvent?.name || "");
-    setEventNameError(null);
-  };
-
-  const handleCancelEditEventName = () => {
-    setIsEditingEventName(false);
-    setEventNameInput(selectedEvent?.name || "");
-    setEventNameError(null);
-  };
-
-  const handleSaveEventName = async () => {
-    if (!selectedEvent || !eventNameInput.trim()) return;
-    setEventNameLoading(true);
-    setEventNameError(null);
-    try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const response = await fetch(`${apiBaseUrl}/events/${selectedEvent.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ name: eventNameInput.trim() }),
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to update event name");
-      }
-      toast({
-        title: "Event name updated",
-        description: "The event name was updated successfully.",
-      });
-      setIsEditingEventName(false);
-      setSelectedEvent((ev) =>
-        ev ? { ...ev, name: eventNameInput.trim() } : ev
-      );
-      fetchEvents();
-    } catch (error) {
-      setEventNameError(
-        error instanceof Error ? error.message : "Failed to update event name"
-      );
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to update event name",
-        variant: "destructive",
-      });
-    } finally {
-      setEventNameLoading(false);
-    }
-  };
 
   // --- JSX ---
   useEffect(() => {
@@ -970,9 +871,9 @@ const Dashboard = () => {
 
   return (
     <ErrorBoundary>
-      <div className="w-full p-4 md:p-8 relative pb-20">
+      <div className="w-full p-2 sm:p-4 md:p-8 relative pb-20">
         <div className="space-y-4">
-          <nav aria-label="Breadcrumb" className="mb-2 text-sm text-gray-500">
+          <nav aria-label="Breadcrumb" className="mb-2 text-xs sm:text-sm text-gray-500">
             <ol className="flex items-center space-x-1">
               <li className="flex items-center">
                 <a href="/events" className="text-blue-600 hover:underline">
@@ -980,170 +881,169 @@ const Dashboard = () => {
                 </a>
                 <ChevronRight className="mx-1 w-3 h-3 text-gray-400" />
               </li>
-              <li className="font-medium text-gray-900">
+              <li className="font-medium text-gray-900 truncate">
                 {selectedEvent?.name}
               </li>
             </ol>
           </nav>
         </div>
 
-        {/* Header Section */}
-        <div className="container max-w-6xl mx-auto px-4 py-6">
-          <Card className="mb-6">
-            <CardContent className="flex flex-col md:flex-row items-start justify-between gap-4 p-6">
-              <div className="flex flex-col text-left w-full md:w-auto">
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2">
-                  {isEditingEventName ? (
-                    <>
-                      <input
-                        className="border rounded px-2 py-1 text-lg font-semibold w-64 max-w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={eventNameInput}
-                        onChange={(e) => setEventNameInput(e.target.value)}
-                        disabled={eventNameLoading}
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveEventName();
-                          if (e.key === "Escape") handleCancelEditEventName();
-                        }}
-                      />
-                      <button
-                        className="ml-1 text-green-600 hover:text-green-800 disabled:opacity-50"
-                        onClick={handleSaveEventName}
-                        disabled={eventNameLoading || !eventNameInput.trim()}
-                        aria-label="Save event name"
-                      >
-                        {eventNameLoading ? (
-                          <Loader2 className="animate-spin w-5 h-5" />
-                        ) : (
-                          <Check className="w-5 h-5" />
-                        )}
-                      </button>
-                      <button
-                        className="ml-1 text-gray-500 hover:text-red-600"
-                        onClick={handleCancelEditEventName}
-                        disabled={eventNameLoading}
-                        aria-label="Cancel edit"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span>
-                        {selectedEvent ? selectedEvent.name : "All Events"}
-                      </span>
-                      <button
-                        className="ml-1 text-gray-400 hover:text-blue-600"
-                        onClick={handleEditEventName}
-                        aria-label="Edit event name"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
-                </h1>
-                {eventNameError && (
-                  <div className="text-sm text-red-600 mt-1">
-                    {eventNameError}
-                  </div>
+        {/* Header Section - Mobile Responsive */}
+        <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
+          <Card className="mb-4 sm:mb-6">
+            <CardContent className="flex flex-col gap-4 p-4 sm:p-6">
+              {/* Event Name Section */}
+              <div className="flex flex-col text-left w-full">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2 flex-wrap">
+                {isEditingEventName ? (
+                  <>
+                    <input
+                        className="border rounded px-2 py-1 text-base sm:text-lg font-semibold w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={eventNameInput}
+                      onChange={(e) => setEventNameInput(e.target.value)}
+                      disabled={eventNameLoading}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveEventName();
+                        if (e.key === "Escape") handleCancelEditEventName();
+                      }}
+                    />
+                      <div className="flex items-center gap-1">
+                    <button
+                          className="text-green-600 hover:text-green-800 disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      onClick={handleSaveEventName}
+                      disabled={eventNameLoading || !eventNameInput.trim()}
+                      aria-label="Save event name"
+                    >
+                      {eventNameLoading ? (
+                        <Loader2 className="animate-spin w-5 h-5" />
+                      ) : (
+                        <Check className="w-5 h-5" />
+                      )}
+                    </button>
+                    <button
+                          className="text-gray-500 hover:text-red-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      onClick={handleCancelEditEventName}
+                      disabled={eventNameLoading}
+                      aria-label="Cancel edit"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                      </div>
+                  </>
+                ) : (
+                  <>
+                      <span className="break-words">
+                      {selectedEvent ? selectedEvent.name : "All Events"}
+                    </span>
+                    <button
+                        className="text-gray-400 hover:text-blue-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      onClick={handleEditEventName}
+                      aria-label="Edit event name"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  </>
                 )}
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2 mt-2 md:mt-0">
-                <Badge
-                  variant="outline"
-                  className="inline-flex items-center text-indigo-700 border-indigo-200 bg-indigo-50"
-                >
-                  <Info className="w-4 h-4 mr-1 text-indigo-500" />
-                  Need Review: {getStatusCount("needs_human_review")}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="inline-flex items-center text-green-700 border-green-200 bg-green-50"
-                >
-                  <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
-                  Ready for Export: {getStatusCount("reviewed")}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="inline-flex items-center text-slate-700 border-slate-200 bg-slate-50"
-                >
-                  <Download className="w-4 h-4 mr-1 text-slate-500" />
-                  Exported: {getStatusCount("exported")}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="inline-flex items-center text-gray-600 border-gray-200 bg-gray-50"
-                >
-                  <Archive className="w-4 h-4 mr-1 text-gray-500" />
-                  Archived: {getStatusCount("archived")}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
+              </h1>
+              {eventNameError && (
+                <div className="text-sm text-red-600 mt-1">
+                  {eventNameError}
+                </div>
+              )}
+            </div>
+              
+              {/* Status Badges - Mobile Responsive Grid */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
+                  <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
+                  <span className="hidden sm:inline">Need Review:</span>
+                  <span>{getStatusCount("needs_human_review")}</span>
+              </Badge>
+                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
+                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+                  <span className="hidden sm:inline">Ready:</span>
+                  <span>{getStatusCount("reviewed")}</span>
+              </Badge>
+                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
+                  <Download className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
+                  <span className="hidden sm:inline">Exported:</span>
+                  <span>{getStatusCount("exported")}</span>
+              </Badge>
+                <Badge variant="outline" className="flex items-center space-x-1 text-xs py-1 w-fit">
+                  <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
+                  <span className="hidden sm:inline">Archived:</span>
+                  <span>{getStatusCount("archived")}</span>
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
         </div>
 
-        {/* Main Content */}
-        <div className="container max-w-6xl mx-auto px-4 py-6">
+        {/* Main Content - Mobile Responsive */}
+        <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
           <Card className="overflow-hidden">
-            <CardContent className="p-6">
-              {/* Tabs */}
-              <div className="flex justify-between items-center mb-6 border-b">
-                <div className="flex gap-6">
-                  <button
-                    onClick={() => setSelectedTab("needs_human_review")}
-                    className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
-                      selectedTab === "needs_human_review"
-                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+            <CardContent className="p-3 sm:p-6">
+              {/* Mobile-Responsive Tabs */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b">
+                {/* Main Tabs - Left side */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 w-full sm:w-auto">
+                <button
+                  onClick={() => setSelectedTab("needs_human_review")}
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
+                    selectedTab === "needs_human_review"
+                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                    <span>Needs Review</span>
+                  <Badge
+                    variant="outline"
+                      className="ml-2 text-indigo-700 border-indigo-200 bg-white text-xs"
                   >
-                    Needs Review
-                    <Badge
-                      variant="outline"
-                      className="ml-2 text-indigo-700 border-indigo-200 bg-white"
-                    >
-                      {getStatusCount("needs_human_review")}
-                    </Badge>
-                  </button>
-                  <button
-                    onClick={() => setSelectedTab("ready_to_export")}
-                    className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
-                      selectedTab === "ready_to_export"
-                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    {getStatusCount("needs_human_review")}
+                  </Badge>
+                </button>
+                <button
+                  onClick={() => setSelectedTab("ready_to_export")}
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
+                    selectedTab === "ready_to_export"
+                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                    <span>Ready to Export</span>
+                  <Badge
+                    variant="outline"
+                      className="ml-2 text-blue-700 border-blue-200 bg-white text-xs"
                   >
-                    Ready to Export
-                    <Badge
-                      variant="outline"
-                      className="ml-2 text-blue-700 border-blue-200 bg-white"
-                    >
-                      {getStatusCount("reviewed")}
-                    </Badge>
-                  </button>
-                </div>
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => setSelectedTab("archived")}
-                    className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
-                      selectedTab === "archived"
-                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    Archived
-                    <Badge
-                      variant="outline"
-                      className="ml-2 text-gray-600 border-gray-200 bg-white"
-                    >
-                      {getStatusCount("archived")}
-                    </Badge>
-                  </button>
-                </div>
+                    {getStatusCount("reviewed")}
+                  </Badge>
+                </button>
               </div>
+                
+                {/* Archived Tab - Right side */}
+                <div className="w-full sm:w-auto mt-2 sm:mt-0">
+                <button
+                  onClick={() => setSelectedTab("archived")}
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
+                    selectedTab === "archived"
+                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                    <span>Archived</span>
+                  <Badge
+                    variant="outline"
+                      className="ml-2 text-gray-600 border-gray-200 bg-white text-xs"
+                  >
+                    {getStatusCount("archived")}
+                  </Badge>
+                </button>
+              </div>
+            </div>
               <CardTable
                 table={table}
-                rowSelection={rowSelection}
                 handleRowClick={handleRowClick}
                 selectedTab={selectedTab}
                 filteredCards={filteredCards}
@@ -1160,19 +1060,7 @@ const Dashboard = () => {
                 setSearchQuery={setSearchQuery}
                 debouncedSearch={debouncedSearch}
                 isUploading={isUploading}
-                handleExportSelected={handleExportSelected}
-                handleArchiveSelected={handleArchiveSelected}
-                handleMoveSelected={() => {
-                  const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-                  handleMoveSelected(selectedIds);
-                }}
-                handleDeleteSelected={() => {
-                  const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-                  handleDeleteSelected(selectedIds);
-                }}
-                setIsArchiveConfirmOpen={openBulkArchiveDialog}
-                setIsMoveConfirmOpen={setIsMoveConfirmOpen}
-                setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
+                selectedEvent={selectedEvent}
                 dataFieldsMap={dataFieldsMap}
                 reviewFieldOrder={reviewFieldOrder}
                 fileInputRef={fileInputRef}
@@ -1180,7 +1068,8 @@ const Dashboard = () => {
                 handleCaptureCard={handleCaptureCard}
                 handleImportFile={handleImportFile}
                 handleManualEntry={handleManualEntry}
-                handleExportToSlate={handleExportToSlate}
+                fetchCards={fetchCards}
+                bulkSelection={bulkSelection}
               />
             </CardContent>
           </Card>
@@ -1188,23 +1077,22 @@ const Dashboard = () => {
 
         {/* Review Modal Dialog */}
         <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
-          <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-7xl w-[calc(100%-4rem)] h-[calc(100vh-8rem)] rounded-lg overflow-hidden flex flex-col p-0">
+          <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-7xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] md:w-[calc(100%-4rem)] h-[calc(100vh-2rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-8rem)] rounded-lg overflow-hidden flex flex-col p-0">
             <DialogHeader className="flex-shrink-0">
-              <div className="flex justify-between items-center px-6 pt-6 pb-4 border-b">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b gap-3 sm:gap-0">
                 <div className="space-y-1">
-                  <DialogTitle className="text-2xl font-semibold">
+                  <DialogTitle className="text-lg sm:text-xl md:text-2xl font-semibold">
                     Review Card Data
                   </DialogTitle>
-                  <DialogDescription className="text-sm text-gray-500">
-                    Review and edit the extracted information from the card
-                    image.
+                  <DialogDescription className="text-xs sm:text-sm text-gray-500">
+                    Review and edit the extracted information from the card image.
                   </DialogDescription>
                 </div>
-                <div className="flex flex-col items-end space-y-1">
-                  <div className="flex items-center gap-1 text-sm font-medium transition-all duration-200">
+                <div className="flex flex-col items-start sm:items-end space-y-1 w-full sm:w-auto">
+                  <div className="flex items-center gap-1 text-xs sm:text-sm font-medium transition-all duration-200">
                     {reviewProgress.allReviewed ? (
                       <div className="flex items-center gap-1 text-green-600 animate-in fade-in duration-300">
-                        <CheckCircle2 className="h-5 w-5" />
+                        <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
                         <span>All fields reviewed!</span>
                       </div>
                     ) : (
@@ -1215,9 +1103,9 @@ const Dashboard = () => {
                     )}
                   </div>
                   {!reviewProgress.allReviewed && (
-                    <div className="transition-all duration-300">
+                    <div className="transition-all duration-300 w-full sm:w-32">
                       <Progress
-                        className="w-32 h-1"
+                        className="w-full sm:w-32 h-1"
                         value={
                           (reviewProgress.reviewedCount /
                             reviewProgress.totalFields) *
@@ -1230,8 +1118,8 @@ const Dashboard = () => {
               </div>
             </DialogHeader>
             <div className="flex-1 overflow-hidden">
-              <div className="grid grid-cols-2 gap-6 h-full">
-                {/* Image Panel - removed unnecessary div wrapper */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 h-full">
+                {/* Image Panel - Mobile: Full width, Desktop: Half width */}
                 <ReviewImagePanel
                   imagePath={selectedCardForReview?.image_path || ""}
                   zoom={zoom}
@@ -1239,7 +1127,7 @@ const Dashboard = () => {
                   zoomOut={zoomOut}
                   selectedCardId={selectedCardForReview?.id}
                 />
-                {/* Form Fields Panel */}
+                {/* Form Fields Panel - Mobile: Full width, Desktop: Half width */}
                 <ReviewForm
                   selectedCardForReview={selectedCardForReview}
                   fieldsToShow={fieldsToShow}
@@ -1249,16 +1137,16 @@ const Dashboard = () => {
                   selectedTab={selectedTab}
                   dataFieldsMap={dataFieldsMap}
                 />
-              </div>
-            </div>
-            <DialogFooter className="px-6 py-3 border-t flex-shrink-0">
-              <div className="flex gap-2 w-full justify-end">
+                            </div>
+                          </div>
+            <DialogFooter className="px-4 sm:px-6 py-3 border-t flex-shrink-0">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleArchiveCard}
                   disabled={!selectedCardForReview?.id}
-                  className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+                  className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50 w-full sm:w-auto min-h-[44px]"
                 >
                   Archive Card
                 </Button>
@@ -1266,6 +1154,7 @@ const Dashboard = () => {
                   type="button"
                   onClick={handleReviewSave}
                   disabled={!selectedCardForReview?.id || isSaving}
+                  className="w-full sm:w-auto min-h-[44px]"
                 >
                   {isSaving ? "Saving..." : "Save Changes"}
                 </Button>

@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/lib/toast';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 
 const GetStartedPage = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -30,20 +29,12 @@ const GetStartedPage = () => {
     
     // Basic validation
     if (!formData.name || !formData.email || !formData.university) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
-      });
+      toast.required("name, email, and university fields");
       return;
     }
 
     if (!validateEmail(formData.email)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive"
-      });
+      toast.invalid("email address");
       return;
     }
 
@@ -53,22 +44,39 @@ const GetStartedPage = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      toast({
-        title: "Success!",
-        description: "We've received your information and will be in touch soon.",
-      });
+      toast.success("We've received your information and will be in touch soon.");
       
       // Redirect to thank you page
       navigate('/thank-you');
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Something went wrong. Please try again.", "Error");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCreateEvent = () => {
+    // Navigate to events page where they can create an event
+    navigate('/events');
+    toast.info("Click 'Create Event' to set up your first event", "Ready to Create Event");
+  };
+
+  const handleInviteTeam = () => {
+    // Navigate to team management
+    navigate('/admin');
+    toast.info("Use the team management section to invite colleagues", "Team Invitations");
+  };
+
+  const handleUploadCard = () => {
+    // Check if user has events first
+    // This would typically check if they have events
+    navigate('/scan');
+    toast.warning("Create an event first, then return here to upload cards", "Event Required");
+  };
+
+  const handleViewDashboard = () => {
+    navigate('/events');
+    toast.success("Welcome to your dashboard!");
   };
 
   return (
