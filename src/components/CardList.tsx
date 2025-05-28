@@ -48,10 +48,10 @@ const CardList = () => {
           return {
             id: item.document_id || item.id || `unknown-${Math.random().toString(36).substring(7)}`,
             document_id: item.document_id || item.id || `unknown-${Math.random().toString(36).substring(7)}`,
-            status: item.review_status || 'needs_human_review',
+            review_status: item.review_status || 'needs_human_review',
             missingFields: item.missing_fields || [],
             imageName: item.image_name || '',
-            createdAt: item.created_at || item.uploaded_at || new Date().toISOString(),
+            created_at: item.created_at || item.uploaded_at || new Date().toISOString(),
             updatedAt: item.updated_at || item.reviewed_at,
             exported_at: item.exported_at || null,
             fields: item.fields || {},
@@ -70,12 +70,12 @@ const CardList = () => {
 
   const filteredCards = selectedTab === 'all'
     ? cards
-    : cards.filter(card => card.status === selectedTab);
+    : cards.filter(card => card.review_status === selectedTab);
 
   const getStatusCount = (status: CardStatus | 'all') => {
     if (!Array.isArray(cards)) return 0;
 
-    const isArchived = (card: ProspectCard) => card.status === 'archived';
+    const isArchived = (card: ProspectCard) => card.review_status === 'archived';
     const isExported = (card: ProspectCard) => !!card.exported_at;
     const hasFieldsNeedingReview = (card: ProspectCard) => {
       return Object.values(card.fields || {}).some(field => 
@@ -88,13 +88,13 @@ const CardList = () => {
         return cards.length;
       case 'reviewed':
         return cards.filter(c => 
-          c.status === 'reviewed' && 
+          c.review_status === 'reviewed' && 
           !isExported(c) && 
           !isArchived(c)
         ).length;
       case 'needs_human_review':
         return cards.filter(c => 
-          (c.status === 'needs_human_review' || hasFieldsNeedingReview(c)) && 
+          (c.review_status === 'needs_human_review' || hasFieldsNeedingReview(c)) && 
           !isExported(c) && 
           !isArchived(c)
         ).length;
@@ -104,7 +104,7 @@ const CardList = () => {
         return cards.filter(isArchived).length;
       case 'processing':
         return cards.filter(c => 
-          c.status === 'processing' && 
+          c.review_status === 'processing' && 
           !isExported(c) && 
           !isArchived(c)
         ).length;
@@ -132,37 +132,32 @@ const CardList = () => {
 
   const columns: ColumnDef<ExtendedProspectCard>[] = [
     {
-      accessorKey: 'createdAt',
+      accessorKey: 'created_at',
       header: 'Date added',
-      cell: ({ row }) => formatDateOrTimeAgo(row.original.createdAt),
+      cell: ({ row }) => formatDateOrTimeAgo(row.original.created_at),
       enableSorting: true,
     },
     {
-      accessorKey: 'status',
+      accessorKey: 'review_status',
       header: 'Status',
       cell: ({ row }) => {
-        const status = row.original.status;
-        let variant: "default" | "destructive" | "secondary" | "outline" = "secondary";
+        const status = row.original.review_status || 'unknown';
         let displayText = "Unknown";
 
         if (status === 'reviewed') {
-          variant = 'default';
-          displayText = 'Reviewed';
+          displayText = 'Ready for Export';
         } else if (status === 'needs_human_review') {
-          variant = 'outline';
           displayText = 'Needs Review';
         } else if (status === 'exported') {
-          variant = 'default';
           displayText = 'Exported';
         } else if (status === 'archived') {
-          variant = 'secondary';
           displayText = 'Archived';
         } else if (status === 'processing') {
-          variant = 'secondary';
           displayText = 'Processing';
         }
 
-        return <Badge variant={variant}>{displayText}</Badge>;
+        // TEMP: Hardcode a green badge for testing Tailwind class generation
+        return <Badge variant="outline" className="!bg-green-50 !text-green-700 !border-green-500 font-semibold text-xs px-3 py-1 rounded-full">Test Badge</Badge>;
       },
       enableSorting: true,
     },
@@ -191,6 +186,10 @@ const CardList = () => {
 
   return (
     <div className="w-full">
+      {/* Static Tailwind color test */}
+      <div className="bg-green-50 text-green-700 border-green-500 border px-3 py-1 rounded-full mb-4">
+        Static Test
+      </div>
       <Tabs defaultValue="all" value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList className="grid grid-cols-5 mb-6">
           <TabsTrigger value="all">All ({getStatusCount('all')})</TabsTrigger>

@@ -36,17 +36,12 @@ const ThankYouPage = () => {
                 <p className="text-muted-foreground">
                   In the meantime, feel free to explore our pricing plans or return to the homepage.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <div className="flex flex-col gap-4 justify-center">
                   <Button
-                    variant="outline"
+                    className="w-full text-lg py-6"
                     onClick={() => navigate('/')}
                   >
                     Return Home
-                  </Button>
-                  <Button
-                    onClick={() => navigate('/pricing')}
-                  >
-                   Request Demo 
                   </Button>
                 </div>
               </div>

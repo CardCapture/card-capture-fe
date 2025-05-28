@@ -117,7 +117,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
     try {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
       const response = await authFetch(
-        `${apiBaseUrl}/users/invite`,
+        `${apiBaseUrl}/invite-user`,
         {
           method: "POST",
           body: JSON.stringify({

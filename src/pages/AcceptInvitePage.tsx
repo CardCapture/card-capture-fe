@@ -59,58 +59,35 @@ const AcceptInvitePage = () => {
     handleHashRedirect();
   }, [location]);
 
-  const validatePassword = (password: string) => {
-    // Check minimum length
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return false;
-    }
-    
-    // Check maximum length (reasonable upper limit)
-    if (password.length > 128) {
-      setError('Password must be less than 128 characters long');
-      return false;
-    }
-    
-    // Check for uppercase letter
-    if (!/[A-Z]/.test(password)) {
-      setError('Password must contain at least one uppercase letter (A-Z)');
-      return false;
-    }
-    
-    // Check for lowercase letter
-    if (!/[a-z]/.test(password)) {
-      setError('Password must contain at least one lowercase letter (a-z)');
-      return false;
-    }
-    
-    // Check for number
-    if (!/[0-9]/.test(password)) {
-      setError('Password must contain at least one number (0-9)');
-      return false;
-    }
-    
-    // Check for special character
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password)) {
-      setError('Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)');
-      return false;
-    }
-    
-    // Check for common weak patterns
-    const commonPatterns = [
-      /(.)\1{2,}/, // Three or more consecutive identical characters
-      /123456|654321|abcdef|qwerty|password|admin/i, // Common sequences
-    ];
-    
-    for (const pattern of commonPatterns) {
-      if (pattern.test(password)) {
-        setError('Password contains common patterns that make it weak. Please choose a more secure password.');
-        return false;
-      }
-    }
-    
-    return true;
+  const passwordRequirements = [
+    {
+      label: 'At least 8 characters long',
+      test: (pw: string) => pw.length >= 8,
+    },
+    {
+      label: 'One uppercase letter (A-Z)',
+      test: (pw: string) => /[A-Z]/.test(pw),
+    },
+    {
+      label: 'One lowercase letter (a-z)',
+      test: (pw: string) => /[a-z]/.test(pw),
+    },
+    {
+      label: 'One number (0-9)',
+      test: (pw: string) => /[0-9]/.test(pw),
+    },
+    {
+      label: 'One special character (!@#$%^&*()_+-=[]{}|;:,.<>?)',
+      test: (pw: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(pw),
+    },
+  ];
+
+  const getPasswordValidationState = (pw: string) => {
+    return passwordRequirements.map(req => req.test(pw));
   };
+
+  const passwordValidationState = getPasswordValidationState(password);
+  const allRequirementsMet = passwordValidationState.every(Boolean);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -123,7 +100,8 @@ const AcceptInvitePage = () => {
     }
 
     // Validate password strength
-    if (!validatePassword(password)) {
+    if (!allRequirementsMet) {
+      setError('Password does not meet all requirements');
       return;
     }
 
@@ -194,12 +172,21 @@ const AcceptInvitePage = () => {
               />
               <div className="text-xs text-gray-600 space-y-1">
                 <p className="font-medium">Password requirements:</p>
-                <ul className="list-disc list-inside space-y-0.5 ml-2">
-                  <li>At least 8 characters long</li>
-                  <li>One uppercase letter (A-Z)</li>
-                  <li>One lowercase letter (a-z)</li>
-                  <li>One number (0-9)</li>
-                  <li>One special character (!@#$%^&*()_+-=[]{}|;:,.&lt;&gt;?)</li>
+                <ul className="list-none ml-2">
+                  {passwordRequirements.map((req, idx) => (
+                    <li key={req.label} className="flex items-center gap-1">
+                      {password.length > 0 ? (
+                        passwordValidationState[idx] ? (
+                          <span className="text-green-600">&#10003;</span>
+                        ) : (
+                          <span className="text-gray-400">&#10007;</span>
+                        )
+                      ) : (
+                        <span className="text-gray-400">&#10007;</span>
+                      )}
+                      <span>{req.label}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -223,7 +210,7 @@ const AcceptInvitePage = () => {
             <Button
               type="submit"
               className="w-full"
-              disabled={loading}
+              disabled={loading || !allRequirementsMet}
             >
               {loading ? 'Setting Password...' : 'Set Password'}
             </Button>

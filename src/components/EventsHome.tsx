@@ -569,21 +569,42 @@ const DashboardCopy = () => {
 
         {/* Right: status pills - responsive grid */}
         <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:w-auto">
-          <Badge variant="outline" className="flex items-center justify-center space-x-1 text-xs py-1">
-            <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
-            <span className="hidden sm:inline">Upcoming:</span>
-            <span>{upcomingEvents.length}</span>
-          </Badge>
-          <Badge variant="outline" className="flex items-center justify-center space-x-1 text-xs py-1">
-            <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
-            <span className="hidden sm:inline">Completed:</span>
-            <span>{completedEvents.length}</span>
-          </Badge>
-          <Badge variant="outline" className="flex items-center justify-center space-x-1 text-xs py-1">
-            <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
-            <span className="hidden sm:inline">Archived:</span>
-            <span>{archivedEventsCount}</span>
-          </Badge>
+          <button
+            type="button"
+            onClick={() => setSelectedTab('upcoming')}
+            className="focus:outline-none rounded"
+            aria-label="Show Upcoming Events"
+          >
+            <Badge variant="outline" className={`flex items-center justify-center space-x-1 text-xs py-1 transition-colors duration-150 ${selectedTab === 'upcoming' ? 'border-2 border-indigo-500 text-indigo-700 bg-indigo-50' : ''}`}> 
+              <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
+              <span className="hidden sm:inline">Upcoming:</span>
+              <span>{upcomingEvents.length}</span>
+            </Badge>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedTab('completed')}
+            className="focus:outline-none rounded"
+            aria-label="Show Completed Events"
+          >
+            <Badge variant="outline" className={`flex items-center justify-center space-x-1 text-xs py-1 transition-colors duration-150 ${selectedTab === 'completed' ? 'border-2 border-green-500 text-green-700 bg-green-50' : ''}`}> 
+              <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+              <span className="hidden sm:inline">Completed:</span>
+              <span>{completedEvents.length}</span>
+            </Badge>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedTab('archived')}
+            className="focus:outline-none rounded"
+            aria-label="Show Archived Events"
+          >
+            <Badge variant="outline" className={`flex items-center justify-center space-x-1 text-xs py-1 transition-colors duration-150 ${selectedTab === 'archived' ? 'border-2 border-gray-500 text-gray-700 bg-gray-50' : ''}`}> 
+              <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
+              <span className="hidden sm:inline">Archived:</span>
+              <span>{archivedEventsCount}</span>
+            </Badge>
+          </button>
         </div>
       </Card>
 

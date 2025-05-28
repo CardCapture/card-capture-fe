@@ -11,7 +11,7 @@ interface UserProfile {
   email: string;
   first_name: string;
   last_name: string;
-  role: string;
+  role: string | string[];
   last_sign_in_at?: string | null;
 }
 
@@ -86,7 +86,11 @@ const UserManagement = () => {
                 >
                   <TableCell>{user.first_name} {user.last_name}</TableCell>
                   <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.role}</TableCell>
+                  <TableCell>{
+                    Array.isArray(user.role)
+                      ? user.role.join(', ')
+                      : user.role
+                  }</TableCell>
                   <TableCell>{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '-'}</TableCell>
                 </TableRow>
               ))
@@ -102,7 +106,12 @@ const UserManagement = () => {
       <EditUserModal
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
-        user={selectedUser}
+        user={selectedUser ? {
+          ...selectedUser,
+          role: Array.isArray(selectedUser.role)
+            ? selectedUser.role.filter((r): r is 'admin' | 'recruiter' | 'reviewer' => ['admin', 'recruiter', 'reviewer'].includes(r))
+            : [selectedUser.role].filter((r): r is 'admin' | 'recruiter' | 'reviewer' => ['admin', 'recruiter', 'reviewer'].includes(r))
+        } : null}
         onSuccess={fetchUsers}
       />
     </div>

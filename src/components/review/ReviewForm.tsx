@@ -38,22 +38,24 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       <div className="space-y-3 sm:space-y-4">
         {selectedCardForReview ? (
           fieldsToShow.map((fieldKey) => {
-            const fieldData = selectedCardForReview.fields?.[fieldKey];
+            const fieldData = selectedCardForReview.fields?.[fieldKey] || {};
             const label =
-              fieldData?.actual_field_name ||
+              ("actual_field_name" in fieldData && (fieldData as any).actual_field_name) ||
               dataFieldsMap.get(fieldKey) ||
               fieldKey.replace(/_/g, " ");
-            const needsReview = fieldData?.requires_human_review === true;
-            const isReviewed = fieldData?.reviewed === true;
-            const reviewNotes = fieldData?.review_notes;
+            const needsReview = !!(fieldData && (fieldData as any).requires_human_review);
+            const isReviewed = !!(fieldData && (fieldData as any).reviewed);
+            const reviewNotes = (fieldData && (fieldData as any).review_notes) || undefined;
             const showIcon = needsReview;
-            let formattedValue = fieldData?.value ?? "";
+            let formattedValue = (fieldData && (fieldData as any).value) ?? "";
             if (fieldKey === "cell")
-              formattedValue = formatPhoneNumber(fieldData?.value);
+              formattedValue = formatPhoneNumber((fieldData && (fieldData as any).value) ?? "");
             if (fieldKey === "date_of_birth")
-              formattedValue = formatBirthday(fieldData?.value);
+              formattedValue = formatBirthday((fieldData && (fieldData as any).value) ?? "");
             const tooltipContent =
-              reviewNotes || (needsReview ? "Needs human review" : null);
+              typeof reviewNotes === 'string' && reviewNotes.length > 0
+                ? reviewNotes
+                : needsReview ? "Needs human review" : null;
             return (
               <div
                 key={fieldKey}

@@ -1,7 +1,4 @@
-import { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './ui/card';
 import { Switch } from './ui/switch';
-import { Button } from './ui/button';
 
 interface CardField {
   key: string;
@@ -12,30 +9,16 @@ interface CardField {
 
 interface CardFieldPreferencesProps {
   fields: CardField[];
-  onSave: (fields: CardField[]) => void;
+  onFieldsChange: (fields: CardField[]) => void;
 }
 
-export function CardFieldPreferences({ fields: initialFields, onSave }: CardFieldPreferencesProps) {
-  const [fields, setFields] = useState<CardField[]>(initialFields);
-  const [hasChanges, setHasChanges] = useState(false);
-
-  // Reset local fields state when initialFields changes (after save)
-  useEffect(() => {
-    setFields(initialFields);
-  }, [initialFields]);
-
-  // Compare fields to initialFields to detect changes
-  useEffect(() => {
-    setHasChanges(JSON.stringify(fields) !== JSON.stringify(initialFields));
-  }, [fields, initialFields]);
-
+export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPreferencesProps) {
   const updateVisible = (key: string, visible: boolean) => {
-    setFields(fields.map(field => {
+    onFieldsChange(fields.map(field => {
       if (field.key === key) {
         return {
           ...field,
           visible,
-          // If field is hidden, it cannot be required
           required: visible ? field.required : false
         };
       }
@@ -44,7 +27,7 @@ export function CardFieldPreferences({ fields: initialFields, onSave }: CardFiel
   };
 
   const updateRequired = (key: string, required: boolean) => {
-    setFields(fields.map(field => {
+    onFieldsChange(fields.map(field => {
       if (field.key === key) {
         return { ...field, required };
       }
@@ -52,21 +35,10 @@ export function CardFieldPreferences({ fields: initialFields, onSave }: CardFiel
     }));
   };
 
-  const handleSave = () => {
-    onSave(fields);
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Auto-scroll to top
-  };
-
   return (
-    <Card>
-      <CardHeader>
-        <CardDescription>
-          Choose which fields appear during review and which are required.
-        </CardDescription>
-      </CardHeader>
-
+    <>
       {/* Desktop layout */}
-      <CardContent className="hidden sm:block">
+      <div className="hidden sm:block">
         <table className="w-full text-sm">
           <thead className="text-muted-foreground">
             <tr>
@@ -96,10 +68,10 @@ export function CardFieldPreferences({ fields: initialFields, onSave }: CardFiel
             ))}
           </tbody>
         </table>
-      </CardContent>
+      </div>
 
       {/* Mobile layout */}
-      <CardContent className="block sm:hidden space-y-4">
+      <div className="block sm:hidden space-y-4">
         {fields.map((field) => (
           <div key={field.key} className="rounded-md border p-4 space-y-2">
             <div className="font-medium">{field.label}</div>
@@ -120,13 +92,7 @@ export function CardFieldPreferences({ fields: initialFields, onSave }: CardFiel
             </div>
           </div>
         ))}
-      </CardContent>
-
-      <CardFooter className="justify-end">
-        <Button onClick={handleSave} disabled={!hasChanges} variant={hasChanges ? "default" : "secondary"}>
-          Save Changes
-        </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </>
   );
 } 
