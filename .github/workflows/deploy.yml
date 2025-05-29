@@ -31,8 +31,15 @@ jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || github.ref_name == 'staging' && 'staging' }}
+    env:
+      SELECTED_ENV: ${{ github.ref_name == 'main' && 'production' || github.ref_name == 'staging' && 'staging' }}
 
     steps:
+      - name: Debug-Show environment context
+        run: |
+          echo "SELECTED_ENV: $SELECTED_ENV"
+          echo "GitHub Ref: ${{ github.ref }}"
+          echo "GitHub Ref Name: ${{ github.ref_name }}"
       - name: Checkout code
         uses: actions/checkout@v4
 
