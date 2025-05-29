@@ -15,6 +15,7 @@ export function useCardUploadActions(
 ) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
   const startUploadProcess = useCallback(
     async (file: File) => {
@@ -48,9 +49,27 @@ export function useCardUploadActions(
     [selectedEvent, uploadCard, fetchCards]
   );
 
-  const handleCaptureCard = () => {
-    toast.info("Camera capture functionality would be triggered here", "Capture Card");
-  };
+  const handleCaptureCard = useCallback(() => {
+    setIsCameraModalOpen(true);
+  }, []);
+
+  const handleImageCaptured = useCallback((imageDataUrl: string) => {
+    // Convert base64 to File object
+    const byteString = atob(imageDataUrl.split(',')[1]);
+    const mimeString = imageDataUrl.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    
+    const blob = new Blob([ab], { type: mimeString });
+    const file = new File([blob], `capture-${Date.now()}.jpg`, { type: mimeString });
+    
+    startUploadProcess(file);
+    setIsCameraModalOpen(false);
+  }, [startUploadProcess]);
 
   const handleImportFile = () => {
     fileInputRef.current?.click();
@@ -70,8 +89,11 @@ export function useCardUploadActions(
     uploadProgress,
     setUploadProgress,
     handleCaptureCard,
+    handleImageCaptured,
     handleImportFile,
     handleFileSelect,
     startUploadProcess,
+    isCameraModalOpen,
+    setIsCameraModalOpen,
   };
 }

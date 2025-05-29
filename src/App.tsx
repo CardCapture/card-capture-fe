@@ -20,6 +20,8 @@ import GetStartedPage from './pages/GetStartedPage';
 import ThankYouPage from './pages/ThankYouPage';
 import PrivacyPage from './pages/PrivacyPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
 
 // --- CSS Import ---
 import './App.css';
@@ -37,6 +39,8 @@ function App() {
             <Route path="/thank-you" element={<ThankYouPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/accept-invite" element={<AcceptInvitePage />} />
           </Route>
 

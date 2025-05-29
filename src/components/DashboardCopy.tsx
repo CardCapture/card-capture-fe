@@ -403,8 +403,8 @@ const DashboardCopy = () => {
       accessorFn: (row) => row.stats.needs_review || 0,
       cell: ({ row }) => (
         <div className={determineHighlightStatus(row.original) === 'needs_review' 
-          ? 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-indigo-700 border border-indigo-200 bg-white'
-          : 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-slate-600 border border-slate-200 bg-white'
+          ? 'inline-flex items-center px-2 py-0.5 rounded-full text-indigo-700 border border-indigo-200 bg-white'
+          : 'inline-flex items-center px-2 py-0.5 rounded-full text-slate-600 border border-slate-200 bg-white'
         }>
           {row.original.stats.needs_review}
         </div>
@@ -417,8 +417,8 @@ const DashboardCopy = () => {
       accessorFn: (row) => row.stats.ready_for_export || 0,
       cell: ({ row }) => (
         <div className={determineHighlightStatus(row.original) === 'ready' 
-          ? 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-blue-700 border border-blue-200 bg-white'
-          : 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-slate-600 border border-slate-200 bg-white'
+          ? 'inline-flex items-center px-2 py-0.5 rounded-full text-blue-700 border border-blue-200 bg-white'
+          : 'inline-flex items-center px-2 py-0.5 rounded-full text-slate-600 border border-slate-200 bg-white'
         }>
           {row.original.stats.ready_for_export}
         </div>
@@ -569,20 +569,42 @@ const DashboardCopy = () => {
 
         {/* Right: status pills + Create button */}
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <Badge variant="outline" className="flex items-center space-x-1">
-            <CalendarDays className="w-4 h-4 text-indigo-500" />
-            <span>Upcoming: {upcomingEvents.length}</span>
-          </Badge>
-          <Badge variant="outline" className="flex items-center space-x-1">
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span>Completed: {completedEvents.length}</span>
-          </Badge>
-          <Badge variant="outline" className="flex items-center space-x-1">
-            <Archive className="w-4 h-4 text-gray-500" />
-            <span>
-              Archived: {archivedEventsCount}
-            </span>
-          </Badge>
+          <button
+            type="button"
+            onClick={() => setSelectedTab('upcoming')}
+            className="focus:outline-none rounded cursor-pointer"
+            style={{ touchAction: 'manipulation' }}
+            aria-label="Show Upcoming Events"
+          >
+            <Badge variant="outline" className={`flex items-center space-x-1 cursor-pointer ${selectedTab === 'upcoming' ? 'border-2 border-indigo-500 text-indigo-700 bg-indigo-50' : ''}`}> 
+              <CalendarDays className="w-4 h-4 text-indigo-500" />
+              <span>Upcoming: {upcomingEvents.length}</span>
+            </Badge>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedTab('completed')}
+            className="focus:outline-none rounded cursor-pointer"
+            style={{ touchAction: 'manipulation' }}
+            aria-label="Show Completed Events"
+          >
+            <Badge variant="outline" className={`flex items-center space-x-1 cursor-pointer ${selectedTab === 'completed' ? 'border-2 border-green-500 text-green-700 bg-green-50' : ''}`}> 
+              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              <span>Completed: {completedEvents.length}</span>
+            </Badge>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedTab('archived')}
+            className="focus:outline-none rounded cursor-pointer"
+            style={{ touchAction: 'manipulation' }}
+            aria-label="Show Archived Events"
+          >
+            <Badge variant="outline" className={`flex items-center space-x-1 cursor-pointer ${selectedTab === 'archived' ? 'border-2 border-gray-500 text-gray-700 bg-gray-50' : ''}`}> 
+              <Archive className="w-4 h-4 text-gray-500" />
+              <span>Archived: {archivedEventsCount}</span>
+            </Badge>
+          </button>
         </div>
       </Card>
 
@@ -597,44 +619,44 @@ const DashboardCopy = () => {
             <div className="flex justify-between items-center mb-6 border-b">
               <div className="flex gap-6">
                 <button
+                  type="button"
                   onClick={() => setSelectedTab('upcoming')}
-                  className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
-                    selectedTab === 'upcoming'
-                      ? 'border-b-2 border-indigo-500 text-gray-900 font-semibold'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`focus:outline-none rounded cursor-pointer`}
+                  style={{ touchAction: 'manipulation' }}
+                  aria-label="Show Upcoming Events"
                 >
-                  Upcoming Events
-                  <Badge variant="outline" className="ml-2 text-indigo-700 border-indigo-200 bg-white">
-                    {upcomingEvents.length}
+                  <Badge variant="outline" className={`flex items-center justify-center space-x-1 text-xs py-1 transition-colors duration-150 cursor-pointer ${selectedTab === 'upcoming' ? 'border-2 border-indigo-500 text-indigo-700 bg-indigo-50' : ''}`}> 
+                    <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
+                    <span className="hidden sm:inline">Upcoming:</span>
+                    <span>{upcomingEvents.length}</span>
                   </Badge>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setSelectedTab('completed')}
-                  className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
-                    selectedTab === 'completed'
-                      ? 'border-b-2 border-indigo-500 text-gray-900 font-semibold'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`focus:outline-none rounded cursor-pointer`}
+                  style={{ touchAction: 'manipulation' }}
+                  aria-label="Show Completed Events"
                 >
-                  Completed Events
-                  <Badge variant="outline" className="ml-2 text-blue-700 border-blue-200 bg-white">
-                    {completedEvents.length}
+                  <Badge variant="outline" className={`flex items-center justify-center space-x-1 text-xs py-1 transition-colors duration-150 cursor-pointer ${selectedTab === 'completed' ? 'border-2 border-indigo-500 text-indigo-700 bg-indigo-50' : ''}`}> 
+                    <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+                    <span className="hidden sm:inline">Completed:</span>
+                    <span>{completedEvents.length}</span>
                   </Badge>
                 </button>
               </div>
               <div className="flex items-center">
                 <button
+                  type="button"
                   onClick={() => setSelectedTab('archived')}
-                  className={`px-4 py-2.5 -mb-px flex items-center transition-colors ${
-                    selectedTab === 'archived'
-                      ? 'border-b-2 border-indigo-500 text-gray-900 font-semibold'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`focus:outline-none rounded cursor-pointer`}
+                  style={{ touchAction: 'manipulation' }}
+                  aria-label="Show Archived Events"
                 >
-                  Archived Events
-                  <Badge variant="outline" className="ml-2 text-gray-600 border-gray-200 bg-white">
-                    {archivedEventsCount}
+                  <Badge variant="outline" className={`flex items-center justify-center space-x-1 text-xs py-1 transition-colors duration-150 cursor-pointer ${selectedTab === 'archived' ? 'border-2 border-indigo-500 text-indigo-700 bg-indigo-50' : ''}`}> 
+                    <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
+                    <span className="hidden sm:inline">Archived:</span>
+                    <span>{archivedEventsCount}</span>
                   </Badge>
                 </button>
               </div>

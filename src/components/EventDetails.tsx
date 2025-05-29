@@ -80,6 +80,7 @@ import { useStatusTabs } from "@/hooks/useStatusTabs";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import { toast } from "@/lib/toast"; // Updated import
+import CameraCapture from "@/components/card-scanner/CameraCapture";
 
 // === Component Definition ===
 const Dashboard = () => {
@@ -157,10 +158,6 @@ const Dashboard = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  // Upload state
-  const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-
   // Confirmation dialogs
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] =
     useState<boolean>(false);
@@ -201,7 +198,19 @@ const Dashboard = () => {
 
   // --- Custom Hooks ---
   const zoomState = useZoom();
-  const { handleFileSelect, handleCaptureCard, handleImportFile } = useCardUploadActions(
+  const {
+    isUploading,
+    setIsUploading,
+    uploadProgress,
+    setUploadProgress,
+    handleCaptureCard,
+    handleImageCaptured,
+    handleImportFile,
+    handleFileSelect,
+    startUploadProcess,
+    isCameraModalOpen,
+    setIsCameraModalOpen,
+  } = useCardUploadActions(
     selectedEvent,
     uploadCard,
     fetchCards,
@@ -953,10 +962,11 @@ const Dashboard = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedTab('needs_human_review')}
-                  className="focus:outline-none rounded"
+                  className="focus:outline-none rounded cursor-pointer"
+                  style={{ touchAction: 'manipulation' }}
                   aria-label="Show Needs Review"
                 >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 ${selectedTab === 'needs_human_review' ? 'border-2 border-indigo-500 text-indigo-700 bg-indigo-50' : ''}`}> 
+                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'needs_human_review' ? 'border-2 border-indigo-500 text-indigo-700 bg-indigo-50' : ''}`}> 
                     <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
                     <span className="hidden sm:inline">Needs Review:</span>
                     <span>{getStatusCount('needs_human_review')}</span>
@@ -965,10 +975,11 @@ const Dashboard = () => {
                 <button
                   type="button"
                   onClick={() => { setSelectedTab('ready_to_export'); setHideExported(true); }}
-                  className="focus:outline-none rounded"
+                  className="focus:outline-none rounded cursor-pointer"
+                  style={{ touchAction: 'manipulation' }}
                   aria-label="Show Ready to Export"
                 >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 ${(selectedTab === 'ready_to_export' && hideExported) ? 'border-2 border-green-500 text-green-700 bg-green-50' : ''}`}> 
+                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'ready_to_export' && hideExported ? 'border-2 border-green-500 text-green-700 bg-green-50' : ''}`}> 
                     <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
                     <span className="hidden sm:inline">Ready:</span>
                     <span>{getStatusCount('reviewed')}</span>
@@ -977,10 +988,11 @@ const Dashboard = () => {
                 <button
                   type="button"
                   onClick={() => { setSelectedTab('ready_to_export'); setHideExported(false); }}
-                  className="focus:outline-none rounded"
+                  className="focus:outline-none rounded cursor-pointer"
+                  style={{ touchAction: 'manipulation' }}
                   aria-label="Show Exported"
                 >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 ${(selectedTab === 'ready_to_export' && !hideExported) ? 'border-2 border-blue-500 text-blue-700 bg-blue-50' : ''}`}> 
+                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'ready_to_export' && !hideExported ? 'border-2 border-blue-500 text-blue-700 bg-blue-50' : ''}`}> 
                     <Download className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
                     <span className="hidden sm:inline">Exported:</span>
                     <span>{getStatusCount('exported')}</span>
@@ -989,10 +1001,11 @@ const Dashboard = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedTab('archived')}
-                  className="focus:outline-none rounded"
+                  className="focus:outline-none rounded cursor-pointer"
+                  style={{ touchAction: 'manipulation' }}
                   aria-label="Show Archived"
                 >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 ${selectedTab === 'archived' ? 'border-2 border-gray-500 text-gray-700 bg-gray-50' : ''}`}> 
+                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'archived' ? 'border-2 border-gray-500 text-gray-700 bg-gray-50' : ''}`}> 
                     <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                     <span className="hidden sm:inline">Archived:</span>
                     <span>{getStatusCount('archived')}</span>
@@ -1160,8 +1173,8 @@ const Dashboard = () => {
                   selectedTab={selectedTab}
                   dataFieldsMap={dataFieldsMap}
                 />
-                            </div>
-                          </div>
+              </div>
+            </div>
             <DialogFooter className="px-4 sm:px-6 py-3 border-t flex-shrink-0">
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:justify-end">
                 <Button
@@ -1183,6 +1196,21 @@ const Dashboard = () => {
                 </Button>
               </div>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Camera Capture Modal */}
+        <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Capture Card</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4">
+              <CameraCapture
+                onCapture={handleImageCaptured}
+                onCancel={() => setIsCameraModalOpen(false)}
+              />
+            </div>
           </DialogContent>
         </Dialog>
 
