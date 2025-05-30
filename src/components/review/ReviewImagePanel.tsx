@@ -19,13 +19,13 @@ const ReviewImagePanel = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-  const [internalZoom, setInternalZoom] = useState(1.875);
+  const [internalZoom, setInternalZoom] = useState(1.3);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
 
   // Pan and interaction state
-  const [pan, setPan] = useState({ x: 150, y: 150 });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   
@@ -210,7 +210,7 @@ const ReviewImagePanel = ({
 
   // Reset pan when image changes
   useEffect(() => {
-    setPan({ x: 150, y: 150 });
+    setPan({ x: 0, y: 0 });
   }, [selectedCardId]);
 
   // Add event listeners
@@ -240,8 +240,19 @@ const ReviewImagePanel = ({
       setLoading(true);
       setImgError(false);
       getSignedImageUrl(imagePath)
-        .then((url) => setSignedUrl(url))
-        .catch(() => setSignedUrl(null))
+        .then((url) => {
+          if (!url) {
+            setImgError(true);
+            toast.error("Failed to load image", "Image Error");
+          } else {
+            setSignedUrl(url);
+          }
+        })
+        .catch((error) => {
+          console.error("[ReviewImagePanel] Error loading image:", error);
+          setImgError(true);
+          toast.error("Failed to load image", "Image Error");
+        })
         .finally(() => setLoading(false));
     } else {
       setSignedUrl(null);
@@ -273,7 +284,7 @@ const ReviewImagePanel = ({
       {/* Image container with pan and zoom - Enhanced touch support */}
       <div
         ref={containerRef}
-        className={`flex-1 overflow-hidden select-none ${
+        className={`flex-1 overflow-hidden select-none flex items-center justify-center ${
           draggingRef.current || touchStartRef.current ? "cursor-grabbing" : "cursor-grab"
         }`}
         onMouseDown={onMouseDown}
@@ -291,7 +302,7 @@ const ReviewImagePanel = ({
         }}
       >
         <div
-          className="w-full h-full flex items-center justify-center p-2 sm:p-4"
+          className="flex items-center justify-center w-full h-full p-2 sm:p-4"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px)`,
             transition: (draggingRef.current || touchStartRef.current)
