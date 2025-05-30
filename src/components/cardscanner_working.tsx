@@ -75,9 +75,9 @@ const CardScanner = ({ initialMode }: CardScannerProps) => {
   
       try {
         // Determine endpoint based on file type
-        let endpoint = "/upload";
+        let endpoint = "/uploads/upload";
         if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
-          endpoint = "/bulk-upload";
+          endpoint = "/uploads/bulk-upload";
         }
         const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
         // Send the image or PDF to the backend

@@ -113,9 +113,9 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
 
     try {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      let endpoint = "/upload";
+      let endpoint = "/uploads/upload";
       if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
-        endpoint = "/bulk-upload";
+        endpoint = "/uploads/bulk-upload";
       }
       console.log('Making upload request to:', `${apiBaseUrl}${endpoint}`);
       const response = await authFetch(`${apiBaseUrl}${endpoint}`, {
@@ -131,7 +131,7 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
       const data = await response.json();
       setLocalUploadProgress(100);
       
-      if (endpoint === "/bulk-upload") {
+      if (endpoint === "/uploads/bulk-upload") {
         toast.success(`Bulk upload successful. ${data.jobs_created} cards queued.`);
       } else {
         toast.success("Card uploaded successfully");
