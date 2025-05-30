@@ -51,7 +51,7 @@ const ReviewImagePanel = ({
 
     try {
       const response = await authFetch(
-        `${apiBaseUrl}/api/upload-status/${selectedCardId}`
+        `${apiBaseUrl}/upload-status/${selectedCardId}`
       );
       const data = await response.json();
 
@@ -94,7 +94,7 @@ const ReviewImagePanel = ({
     if (imagePath && !isProcessing) {
       setLoading(true);
       setImgError(false);
-      authFetch(`${apiBaseUrl}/api/images/${selectedCardId}`)
+      authFetch(`${apiBaseUrl}/images/${selectedCardId}`)
         .then((response) => response.json())
         .then((data) => {
           if (data.url) {
