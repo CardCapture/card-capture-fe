@@ -1157,7 +1157,7 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 h-full">
                 {/* Image Panel - Mobile: Full width, Desktop: Half width */}
                 <ReviewImagePanel
-                  imagePath={selectedCardForReview?.image_path || ""}
+                  imagePath={selectedCardForReview?.trimmed_image_path || selectedCardForReview?.image_path || ""}
                   zoom={zoom}
                   zoomIn={zoomIn}
                   zoomOut={zoomOut}

@@ -30,6 +30,7 @@ export interface ProspectCard {
   school_id: string;
   user_id?: string;
   image_path?: string;
+  trimmed_image_path?: string;
 }
 
 // ScannerResult remains the same
