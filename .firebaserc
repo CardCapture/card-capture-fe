@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "gen-lang-client-0493571343"
-  }
-} 
+  },
+  "targets": {
+    "gen-lang-client-0493571343": {
+      "hosting": {
+        "prod": [
+          "gen-lang-client-0493571343"
+        ],
+        "staging": [
+          "gen-lang-client-0493571343-staging"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
