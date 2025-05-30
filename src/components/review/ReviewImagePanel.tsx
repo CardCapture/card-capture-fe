@@ -1,8 +1,9 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut } from "lucide-react";
-import { toast } from '@/lib/toast';
+import { toast } from "@/lib/toast";
 import { getSignedImageUrl } from "@/lib/imageUtils";
+import { authFetch } from "@/lib/authFetch";
 
 const ReviewImagePanel = ({
   imagePath,
@@ -25,14 +26,21 @@ const ReviewImagePanel = ({
   const [imgError, setImgError] = useState(false);
   const [isProcessing, setIsProcessing] = useState(true);
   const pollingIntervalRef = useRef<NodeJS.Timeout>();
+  const apiBaseUrl =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
   // Pan and interaction state
   const [pan, setPan] = useState({ x: 150, y: 150 });
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
-  
+
   // Touch-specific state
-  const touchStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const touchStartRef = useRef<{
+    x: number;
+    y: number;
+    panX: number;
+    panY: number;
+  } | null>(null);
   const lastDistanceRef = useRef<number | null>(null);
   const accumulatedMovementRef = useRef(0);
   const isPinchingRef = useRef(false);
@@ -40,11 +48,13 @@ const ReviewImagePanel = ({
   // Check job status
   const checkJobStatus = useCallback(async () => {
     if (!selectedCardId) return;
-    
+
     try {
-      const response = await fetch(`/api/uploads/upload-status/${selectedCardId}`);
+      const response = await authFetch(
+        `${apiBaseUrl}/api/uploads/upload-status/${selectedCardId}`
+      );
       const data = await response.json();
-      
+
       if (data.status === "complete") {
         setIsProcessing(false);
         if (pollingIntervalRef.current) {
@@ -71,7 +81,7 @@ const ReviewImagePanel = ({
       // Then poll every 2 seconds
       pollingIntervalRef.current = setInterval(checkJobStatus, 2000);
     }
-    
+
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -84,9 +94,9 @@ const ReviewImagePanel = ({
     if (imagePath && !isProcessing) {
       setLoading(true);
       setImgError(false);
-      fetch(`/api/uploads/images/${selectedCardId}`)
-        .then(response => response.json())
-        .then(data => {
+      authFetch(`${apiBaseUrl}/api/uploads/images/${selectedCardId}`)
+        .then((response) => response.json())
+        .then((data) => {
           if (data.url) {
             setSignedUrl(data.url);
           } else {
@@ -164,7 +174,11 @@ const ReviewImagePanel = ({
     (e: React.TouchEvent) => {
       e.preventDefault(); // Prevent scrolling
 
-      if (e.touches.length === 1 && touchStartRef.current && !isPinchingRef.current) {
+      if (
+        e.touches.length === 1 &&
+        touchStartRef.current &&
+        !isPinchingRef.current
+      ) {
         // Single touch - pan the image
         const touch = e.touches[0];
         const dx = touch.clientX - touchStartRef.current.x;
@@ -289,11 +303,17 @@ const ReviewImagePanel = ({
 
     // Desktop events
     containerEl.addEventListener("wheel", handleWheel, { passive: false });
-    
+
     // Legacy touch events (for compatibility)
-    containerEl.addEventListener("touchstart", handleTouchStart, { passive: false });
-    containerEl.addEventListener("touchmove", handleTouchMove, { passive: false });
-    containerEl.addEventListener("touchend", handleTouchEnd, { passive: false });
+    containerEl.addEventListener("touchstart", handleTouchStart, {
+      passive: false,
+    });
+    containerEl.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
+    containerEl.addEventListener("touchend", handleTouchEnd, {
+      passive: false,
+    });
 
     return () => {
       containerEl.removeEventListener("wheel", handleWheel);
@@ -335,13 +355,18 @@ const ReviewImagePanel = ({
           className="w-full h-full flex items-center justify-center p-2 sm:p-4"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px)`,
-            transition: (draggingRef.current || touchStartRef.current)
-              ? "none"
-              : "transform 0.1s ease-out",
+            transition:
+              draggingRef.current || touchStartRef.current
+                ? "none"
+                : "transform 0.1s ease-out",
           }}
         >
-          {loading && <div className="text-sm text-gray-500">Loading image...</div>}
-          {isProcessing && <div className="text-sm text-gray-500">Processing image...</div>}
+          {loading && (
+            <div className="text-sm text-gray-500">Loading image...</div>
+          )}
+          {isProcessing && (
+            <div className="text-sm text-gray-500">Processing image...</div>
+          )}
           {!loading && !isProcessing && signedUrl && !imgError && (
             <img
               ref={imgRef}
@@ -351,7 +376,10 @@ const ReviewImagePanel = ({
               style={{
                 transform: `scale(${internalZoom * externalZoom})`,
                 transformOrigin: "center",
-                transition: (draggingRef.current || touchStartRef.current) ? "none" : "transform 0.2s",
+                transition:
+                  draggingRef.current || touchStartRef.current
+                    ? "none"
+                    : "transform 0.2s",
                 maxWidth: "100%",
                 maxHeight: "100%",
                 objectFit: "contain",
@@ -368,10 +396,14 @@ const ReviewImagePanel = ({
             />
           )}
           {!loading && !isProcessing && imgError && (
-            <div className="text-red-500 text-sm text-center p-4">Failed to load image.</div>
+            <div className="text-red-500 text-sm text-center p-4">
+              Failed to load image.
+            </div>
           )}
           {!loading && !isProcessing && !signedUrl && !imgError && (
-            <div className="text-gray-500 text-sm text-center p-4">No image available.</div>
+            <div className="text-gray-500 text-sm text-center p-4">
+              No image available.
+            </div>
           )}
         </div>
       </div>
