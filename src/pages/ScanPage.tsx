@@ -55,30 +55,51 @@ const ScanPage: React.FC = () => {
   // Utility to resize an image file or dataUrl to max 2048px and JPEG quality 0.85
   async function resizeImage(fileOrDataUrl: File | string): Promise<File> {
     let file: File;
+    let originalSize = 0;
+    let originalWidth = 0;
+    let originalHeight = 0;
     if (typeof fileOrDataUrl === 'string') {
       // Convert dataUrl to File
       const res = await fetch(fileOrDataUrl);
       const blob = await res.blob();
       file = new File([blob], `capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      originalSize = blob.size;
+      // Get dimensions
+      const img = new window.Image();
+      img.src = fileOrDataUrl;
+      await new Promise((resolve) => { img.onload = resolve; });
+      originalWidth = img.width;
+      originalHeight = img.height;
     } else {
       file = fileOrDataUrl;
+      originalSize = file.size;
+      // Get dimensions
+      const img = new window.Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise((resolve) => { img.onload = resolve; });
+      originalWidth = img.width;
+      originalHeight = img.height;
     }
+    console.log('Original file size (MB):', (originalSize / 1024 / 1024).toFixed(2));
+    console.log('Original image dimensions:', originalWidth + 'x' + originalHeight);
     const options = {
       maxWidthOrHeight: 2048,
       initialQuality: 0.85,
       useWebWorker: true,
     };
-    return await imageCompression(file, options);
+    const resizedFile = await imageCompression(file, options);
+    // Get resized dimensions
+    const resizedImg = new window.Image();
+    resizedImg.src = URL.createObjectURL(resizedFile);
+    await new Promise((resolve) => { resizedImg.onload = resolve; });
+    console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
+    console.log('Resized image dimensions:', resizedImg.width + 'x' + resizedImg.height);
+    return resizedFile;
   }
 
   // Process the captured image
   const processImage = async (file: File) => {
-    console.log('processImage called with file:', {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      lastModified: file.lastModified
-    });
+    console.log('Uploading file:', file.name, 'size (MB):', (file.size / 1024 / 1024).toFixed(2));
 
     if (!selectedEventId) {
       console.error('No event selected');
@@ -136,6 +157,7 @@ const ScanPage: React.FC = () => {
   const handleImageCaptured = async (imageDataUrl: string) => {
     // Resize the image before upload
     const resizedFile = await resizeImage(imageDataUrl);
+    console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
     setCapturedImage(imageDataUrl);
     processImage(resizedFile);
   };
@@ -146,6 +168,7 @@ const ScanPage: React.FC = () => {
     if (file) {
       // Resize the image before upload
       const resizedFile = await resizeImage(file);
+      console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
       setCapturedImage(URL.createObjectURL(resizedFile));
       processImage(resizedFile);
     }
