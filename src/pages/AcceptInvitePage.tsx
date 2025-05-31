@@ -20,53 +20,84 @@ const AcceptInvitePage = () => {
   // Handle hash fragment redirect from Supabase
   useEffect(() => {
     const handleHashRedirect = async () => {
+      console.log('🔍 Current URL:', window.location.href);
+      console.log('🔍 Hash:', location.hash);
+      
       // If we have a hash in the URL, we were redirected from Supabase auth
       if (location.hash) {
         try {
-          // Parse the hash fragment to get the access token
+          // Parse the hash fragment to get the tokens
           const hashParams = new URLSearchParams(location.hash.substring(1));
+          console.log('🔍 Hash params:', Object.fromEntries(hashParams));
+          
           const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
           const type = hashParams.get('type');
           
-          if (accessToken && type === 'invite') {
+          if (accessToken && (type === 'invite' || type === 'recovery')) {
+            console.log('✅ Found tokens, type:', type);
+            
             // First, clear any existing session to avoid conflicts
             await supabase.auth.signOut();
             
-            // Set the session manually
+            // Set the session with both tokens
             const { data, error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
-              refresh_token: hashParams.get('refresh_token') || ''
+              refresh_token: refreshToken || ''
             });
             
             if (sessionError) {
-              console.error('Error setting session:', sessionError);
+              console.error('❌ Error setting session:', sessionError);
               setError('Error processing invite link. Please try again or contact support.');
               return;
             }
             
-            // Extract email from the JWT token
-            if (data.session?.user?.email) {
-              setEmail(data.session.user.email);
+            console.log('✅ Session set successfully:', data);
+            
+            // Get the user details
+            const { data: userData, error: userError } = await supabase.auth.getUser();
+            
+            if (userError) {
+              console.error('❌ Error getting user:', userError);
+              setError('Could not verify your identity. Please try again or contact support.');
+              return;
+            }
+            
+            // Extract email from the user data
+            if (userData?.user?.email) {
+              console.log('✅ User email:', userData.user.email);
+              setEmail(userData.user.email);
               // Clear the hash without triggering a reload
               window.history.replaceState(null, '', location.pathname + location.search);
             } else {
               setError('Could not verify your email. Please try again or contact support.');
             }
           } else {
+            console.error('❌ Missing tokens or wrong type. Type:', type);
             setError('Invalid invite link. Please check the link and try again.');
           }
         } catch (err) {
-          console.error('Error handling hash redirect:', err);
+          console.error('❌ Error handling hash redirect:', err);
           setError('Error processing invite link. Please try again or contact support.');
         }
       } else {
-        // No hash fragment found
-        setError('Invalid invite link. Please check the link and try again.');
+        // Check if we have query parameters instead (some email clients might convert hash to query)
+        const queryToken = searchParams.get('access_token');
+        const queryType = searchParams.get('type');
+        
+        if (queryToken && (queryType === 'invite' || queryType === 'recovery')) {
+          console.log('🔍 Found tokens in query params, redirecting to hash format');
+          // Redirect to hash format
+          window.location.hash = `#${searchParams.toString()}`;
+        } else {
+          console.error('❌ No hash fragment or query params found');
+          setError('Invalid invite link. Please check the link and try again.');
+        }
       }
     };
 
     handleHashRedirect();
-  }, [location]);
+  }, [location, searchParams]);
 
   const passwordRequirements = [
     {

@@ -17,10 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
   Dialog,
@@ -372,7 +372,7 @@ const Dashboard = () => {
   const reviewProgress = useMemo(() => {
     if (!selectedCardForReview)
       return { reviewedCount: 0, totalFields: 0, allReviewed: false };
-
+    
     const fieldsNeedingReview = new Set<string>();
 
     // First pass: collect all fields that need or needed review
@@ -462,19 +462,19 @@ const Dashboard = () => {
   // --- Callbacks & Effects ---
   const handleRowClick = useCallback(
     (card: ProspectCard) => {
-      // Store a local copy of the card that won't be affected by updates
-      localCardRef.current = card;
-      setSelectedCardForReview(card);
-      selectedCardIdRef.current = card.id;
-      imageKeyRef.current = `image-${card.id}-${Date.now()}`;
+    // Store a local copy of the card that won't be affected by updates
+    localCardRef.current = card;
+    setSelectedCardForReview(card); 
+    selectedCardIdRef.current = card.id;
+    imageKeyRef.current = `image-${card.id}-${Date.now()}`;
       // Initialize formData with the card's field values
       const initialFormData: Record<string, string> = {};
       Object.entries(card.fields).forEach(([fieldKey, fieldData]) => {
         initialFormData[fieldKey] = fieldData.value || '';
       });
       setFormData(initialFormData);
-      setIsReviewModalOpen(true);
-      setReviewModalState(true);
+    setIsReviewModalOpen(true);
+    setReviewModalState(true);
     },
     [setReviewModalState, localCardRef, setSelectedCardForReview, selectedCardIdRef, imageKeyRef, setFormData, setIsReviewModalOpen]
   );
@@ -533,33 +533,33 @@ const Dashboard = () => {
     () => [
       {
         id: "select",
-        header: ({ table }) => (
-          <div className="flex justify-center">
-            <input
-              type="checkbox"
+      header: ({ table }) => (
+        <div className="flex justify-center">
+          <input
+            type="checkbox"
               checked={bulkSelection.isAllSelected}
-              ref={(input) => {
-                if (input) {
+            ref={(input) => {
+              if (input) {
                   input.indeterminate = bulkSelection.isSomeSelected;
-                }
-              }}
+              }
+            }}
               onChange={bulkSelection.toggleAll}
-              className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
-            />
-          </div>
-        ),
-        cell: ({ row }) => (
-          <div className="flex justify-center">
-            <input
-              type="checkbox"
+            className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <input
+            type="checkbox"
               checked={bulkSelection.isSelected(row.original.document_id)}
               onChange={() => bulkSelection.toggleSelection(row.original.document_id)}
-              onClick={(e) => e.stopPropagation()}
-              className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
-            />
-          </div>
-        ),
-      },
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+          />
+        </div>
+      ),
+    },
       {
         accessorKey: "created_at",
         header: "Date added",
@@ -570,10 +570,10 @@ const Dashboard = () => {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => {
-          const card = row.original;
-          const currentStatus = determineCardStatus(card);
-          const exportedAt = card.exported_at;
-          let displayText: string;
+      const card = row.original;
+      const currentStatus = determineCardStatus(card);
+      const exportedAt = card.exported_at;
+      let displayText: string;
           if (currentStatus === "needs_human_review") {
             displayText = "Needs Review";
           } else if (currentStatus === "reviewed") {
@@ -582,13 +582,13 @@ const Dashboard = () => {
             displayText = "Exported";
           } else if (currentStatus === "archived") {
             displayText = "Archived";
-          } else {
+      } else {
             displayText = currentStatus
               ? currentStatus.charAt(0).toUpperCase() +
                 currentStatus.slice(1).replace(/_/g, " ")
               : "Unknown";
-          }
-          const getBadgeClasses = () => {
+      }
+      const getBadgeClasses = () => {
             if (currentStatus === "reviewed") {
               return "border-green-500 text-green-700 bg-green-50 font-semibold text-xs px-3 py-1 rounded-full";
             } else if (currentStatus === "needs_human_review") {
@@ -601,78 +601,78 @@ const Dashboard = () => {
             return "border-slate-200 text-slate-600 bg-white font-semibold text-xs px-3 py-1 rounded-full";
           };
           if (currentStatus === "exported" && exportedAt) {
-            return (
-              <TooltipProvider delayDuration={100}>
-                <Tooltip>
-                  <TooltipTrigger>
+        return (
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger>
                     <Badge variant="outline" className={getBadgeClasses()}>
                       {displayText}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Exported at {formatDateOrTimeAgo(exportedAt)}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          }
-          return (
-            <div className="flex flex-col gap-1">
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Exported at {formatDateOrTimeAgo(exportedAt)}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+      return (
+        <div className="flex flex-col gap-1">
               <Badge variant="outline" className={getBadgeClasses()}>{displayText}</Badge>
-            </div>
-          );
+        </div>
+      );
         },
         enableSorting: true,
         sortDescFirst: true,
         sortingFn: (rowA, rowB) => {
-          const getStatusValue = (row) => {
-            const status = determineCardStatus(row.original);
+      const getStatusValue = (row) => {
+        const status = determineCardStatus(row.original);
             if (status === "reviewed") return 1; // Ready to Export
             if (status === "exported") return 0;
-            return -1; // All others
-          };
-          return getStatusValue(rowA) - getStatusValue(rowB);
+        return -1; // All others
+      };
+      return getStatusValue(rowA) - getStatusValue(rowB);
         },
       },
       ...reviewFieldOrder.map((fieldKey) => ({
-        accessorKey: fieldKey,
+      accessorKey: fieldKey,
         header: dataFieldsMap.get(fieldKey) || fieldKey.replace(/_/g, " "),
         accessorFn: (row) => row.fields?.[fieldKey]?.value ?? "",
-        cell: ({ getValue, row }) => {
-          const value = getValue();
-          const fieldData = row.original.fields?.[fieldKey];
-          const needsReview = fieldData?.requires_human_review === true;
-          const isReviewed = fieldData?.reviewed === true;
-          const reviewNotes = fieldData?.review_notes;
-          const showIcon = needsReview;
+      cell: ({ getValue, row }) => {
+        const value = getValue();
+        const fieldData = row.original.fields?.[fieldKey];
+        const needsReview = fieldData?.requires_human_review === true;
+        const isReviewed = fieldData?.reviewed === true;
+        const reviewNotes = fieldData?.review_notes;
+        const showIcon = needsReview;
           let formattedValue = value ?? "";
           if (fieldKey === "cell") formattedValue = formatPhoneNumber(value);
           if (fieldKey === "date_of_birth")
             formattedValue = formatBirthday(value);
           const tooltipContent =
             reviewNotes || (needsReview ? "Needs human review" : null);
-          return (
-            <TooltipProvider delayDuration={100}>
-              <div className="flex items-center gap-1.5">
-                {showIcon && (
-                  <Tooltip>
-                    <TooltipTrigger>
+        return (
+          <TooltipProvider delayDuration={100}>
+            <div className="flex items-center gap-1.5">
+              {showIcon && (
+                <Tooltip>
+                  <TooltipTrigger>
                       <div className="flex h-3 w-3 items-center justify-center rounded-full bg-red-400 flex-shrink-0 text-white text-[8px] font-bold leading-none">
                         !
                       </div>
-                    </TooltipTrigger>
-                    {tooltipContent && (
-                      <TooltipContent side="top">
-                        <p>{tooltipContent}</p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                )}
-                <span>{formattedValue}</span>
-              </div>
-            </TooltipProvider>
-          );
-        },
+                  </TooltipTrigger>
+                  {tooltipContent && (
+                    <TooltipContent side="top">
+                      <p>{tooltipContent}</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              )}
+              <span>{formattedValue}</span>
+            </div>
+          </TooltipProvider>
+        );
+      },
         enableSorting: true,
       })),
       ...(selectedTab === "exported"
@@ -680,7 +680,7 @@ const Dashboard = () => {
             {
               accessorKey: "exported_at",
               header: "Exported at",
-              cell: ({ row }) => formatDateOrTimeAgo(row.original.exported_at),
+          cell: ({ row }) => formatDateOrTimeAgo(row.original.exported_at),
               enableSorting: true,
             },
           ]
@@ -693,7 +693,7 @@ const Dashboard = () => {
   const table = useReactTable({
     data: paginatedCards,
     columns,
-    state: {
+    state: { 
       sorting,
     },
     enableRowSelection: false, // Disable built-in row selection
@@ -970,7 +970,7 @@ const Dashboard = () => {
                     <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
                     <span className="hidden sm:inline">Needs Review:</span>
                     <span>{getStatusCount('needs_human_review')}</span>
-                  </Badge>
+              </Badge>
                 </button>
                 <button
                   type="button"
@@ -983,7 +983,7 @@ const Dashboard = () => {
                     <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
                     <span className="hidden sm:inline">Ready:</span>
                     <span>{getStatusCount('reviewed')}</span>
-                  </Badge>
+              </Badge>
                 </button>
                 <button
                   type="button"
@@ -996,7 +996,7 @@ const Dashboard = () => {
                     <Download className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
                     <span className="hidden sm:inline">Exported:</span>
                     <span>{getStatusCount('exported')}</span>
-                  </Badge>
+              </Badge>
                 </button>
                 <button
                   type="button"
@@ -1009,9 +1009,9 @@ const Dashboard = () => {
                     <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                     <span className="hidden sm:inline">Archived:</span>
                     <span>{getStatusCount('archived')}</span>
-                  </Badge>
+              </Badge>
                 </button>
-              </div>
+            </div>
           </CardContent>
         </Card>
         </div>
@@ -1173,22 +1173,22 @@ const Dashboard = () => {
                   selectedTab={selectedTab}
                   dataFieldsMap={dataFieldsMap}
                 />
-              </div>
-            </div>
+                        </div>
+                      </div>
             <DialogFooter className="px-4 sm:px-6 py-3 border-t flex-shrink-0">
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleArchiveCard}
-                  disabled={!selectedCardForReview?.id}
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleArchiveCard} 
+                  disabled={!selectedCardForReview?.id} 
                   className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50 w-full sm:w-auto min-h-[44px]"
                 >
                   Archive Card
                 </Button>
-                <Button
-                  type="button"
-                  onClick={handleReviewSave}
+                <Button 
+                  type="button" 
+                  onClick={handleReviewSave} 
                   disabled={!selectedCardForReview?.id || isSaving}
                   className="w-full sm:w-auto min-h-[44px]"
                 >
@@ -1197,7 +1197,7 @@ const Dashboard = () => {
               </div>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+      </Dialog>
 
         {/* Camera Capture Modal */}
         <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
@@ -1214,7 +1214,7 @@ const Dashboard = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Archive Confirmation Dialog */}
+      {/* Archive Confirmation Dialog */}
         <ArchiveConfirmDialog
           open={isArchiveConfirmOpen}
           onOpenChange={setIsArchiveConfirmOpen}
@@ -1223,7 +1223,7 @@ const Dashboard = () => {
           singleCard={!!selectedCardForReview}
         />
 
-        {/* Move Confirmation Dialog */}
+      {/* Move Confirmation Dialog */}
         <MoveConfirmDialog
           open={isMoveConfirmOpen}
           onOpenChange={setIsMoveConfirmOpen}
@@ -1234,7 +1234,7 @@ const Dashboard = () => {
           count={Object.keys(rowSelection).length}
         />
 
-        {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog */}
         <DeleteConfirmDialog
           open={isDeleteConfirmOpen}
           onOpenChange={setIsDeleteConfirmOpen}
@@ -1245,7 +1245,7 @@ const Dashboard = () => {
           count={Object.keys(rowSelection).length}
         />
 
-        {/* Add the Manual Entry Modal */}
+      {/* Add the Manual Entry Modal */}
         <ManualEntryModal
           open={isManualEntryModalOpen}
           onOpenChange={setIsManualEntryModalOpen}
@@ -1253,7 +1253,7 @@ const Dashboard = () => {
           onChange={handleManualEntryChange}
           onSubmit={handleManualEntrySubmit}
         />
-      </div>
+    </div>
     </ErrorBoundary>
   );
 };
