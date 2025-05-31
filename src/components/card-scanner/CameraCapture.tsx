@@ -19,8 +19,9 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
         const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'environment',
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
+            width: { ideal: 3840 },
+            height: { ideal: 2160 },
+            aspectRatio: { ideal: 4/3 }
           }
         });
         setStream(mediaStream);
@@ -59,7 +60,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Convert canvas to data URL
-    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    const imageDataUrl = canvas.toDataURL('image/png');
     
     // Stop the camera stream
     if (stream) {

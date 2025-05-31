@@ -29,6 +29,9 @@ const AcceptInvitePage = () => {
           const type = hashParams.get('type');
           
           if (accessToken && type === 'invite') {
+            // First, clear any existing session to avoid conflicts
+            await supabase.auth.signOut();
+            
             // Set the session manually
             const { data, error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
@@ -37,22 +40,28 @@ const AcceptInvitePage = () => {
             
             if (sessionError) {
               console.error('Error setting session:', sessionError);
-              setError('Error processing invite link');
+              setError('Error processing invite link. Please try again or contact support.');
               return;
             }
             
             // Extract email from the JWT token
             if (data.session?.user?.email) {
               setEmail(data.session.user.email);
+              // Clear the hash without triggering a reload
+              window.history.replaceState(null, '', location.pathname + location.search);
+            } else {
+              setError('Could not verify your email. Please try again or contact support.');
             }
-            
-            // Clear the hash without triggering a reload
-            window.history.replaceState(null, '', location.pathname + location.search);
+          } else {
+            setError('Invalid invite link. Please check the link and try again.');
           }
         } catch (err) {
           console.error('Error handling hash redirect:', err);
-          setError('Error processing invite link');
+          setError('Error processing invite link. Please try again or contact support.');
         }
+      } else {
+        // No hash fragment found
+        setError('Invalid invite link. Please check the link and try again.');
       }
     };
 
