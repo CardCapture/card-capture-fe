@@ -17,7 +17,7 @@ import { useCardUpload } from '@/hooks/useCardUpload';
 import { Event } from '@/types/event';
 import { CreateEventModal } from '@/components/CreateEventModal';
 import CameraCapture from '@/components/card-scanner/CameraCapture';
-import pica from 'pica';
+import imageCompression from 'browser-image-compression';
 
 const ScanPage: React.FC = () => {
   const { events, fetchEvents } = useEvents();
@@ -54,41 +54,21 @@ const ScanPage: React.FC = () => {
 
   // Utility to resize an image file or dataUrl to max 2048px and JPEG quality 0.85
   async function resizeImage(fileOrDataUrl: File | string): Promise<File> {
-    return new Promise(async (resolve, reject) => {
-      let img = new window.Image();
-      img.crossOrigin = 'Anonymous';
-      img.onload = async () => {
-        const maxDim = 2048;
-        let { width, height } = img;
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        await pica().resize(img, canvas);
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) return reject(new Error('Failed to create blob'));
-            resolve(new File([blob], `resized-${Date.now()}.jpg`, { type: 'image/jpeg' }));
-          },
-          'image/jpeg',
-          0.85
-        );
-      };
-      img.onerror = reject;
-      if (typeof fileOrDataUrl === 'string') {
-        img.src = fileOrDataUrl;
-      } else {
-        img.src = URL.createObjectURL(fileOrDataUrl);
-      }
-    });
+    let file: File;
+    if (typeof fileOrDataUrl === 'string') {
+      // Convert dataUrl to File
+      const res = await fetch(fileOrDataUrl);
+      const blob = await res.blob();
+      file = new File([blob], `capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    } else {
+      file = fileOrDataUrl;
+    }
+    const options = {
+      maxWidthOrHeight: 2048,
+      initialQuality: 0.85,
+      useWebWorker: true,
+    };
+    return await imageCompression(file, options);
   }
 
   // Process the captured image
