@@ -163,20 +163,17 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
             </DialogPrimitive.Title>
           </div>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="john@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <form onSubmit={form.handleSubmit((data) => {
+              // Trim whitespace from all fields
+              const trimmedData = {
+                ...data,
+                email: data.email.trim(),
+                firstName: data.firstName.trim(),
+                lastName: data.lastName.trim(),
+                roles: data.roles,
+              };
+              onSubmit(trimmedData);
+            })} className="space-y-6">
               <FormField
                 control={form.control}
                 name="firstName"
@@ -205,6 +202,19 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
               />
               <FormField
                 control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="john@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="roles"
                 render={({ field }) => (
                   <FormItem>
@@ -213,29 +223,21 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
                       {roleOptions.map((role) => {
                         const isSelected = field.value?.includes(role.value as any) || false;
                         const IconComponent = role.icon;
-                        
                         return (
                           <div
                             key={role.value}
                             onClick={() => {
                               const currentRoles = field.value || [];
-                              
                               if (role.value === 'admin') {
-                                // If clicking admin, either select only admin or deselect admin
                                 if (currentRoles.includes('admin')) {
-                                  // Deselect admin, keep others if any
                                   field.onChange(currentRoles.filter(r => r !== 'admin'));
                                 } else {
-                                  // Select only admin, deselect recruiter/reviewer
                                   field.onChange(['admin']);
                                 }
                               } else {
-                                // If clicking recruiter or reviewer
                                 if (currentRoles.includes('admin')) {
-                                  // If admin is selected, replace with the clicked role
                                   field.onChange([role.value]);
                                 } else {
-                                  // Normal toggle behavior for recruiter/reviewer
                                   if (currentRoles.includes(role.value as any)) {
                                     field.onChange(currentRoles.filter(r => r !== role.value));
                                   } else {

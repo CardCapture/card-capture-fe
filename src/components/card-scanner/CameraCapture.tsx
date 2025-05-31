@@ -1,86 +1,100 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Camera, X } from 'lucide-react';
+import { Camera, ArrowLeft } from 'lucide-react';
 
 interface CameraCaptureProps {
   onCapture: (imageDataUrl: string) => void;
   onCancel: () => void;
 }
 
+const CAMERA_PERMISSION_KEY = 'camera_permission_granted';
+
 const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [permissionChecked, setPermissionChecked] = useState(false);
 
   useEffect(() => {
-    const startCamera = async () => {
+    const checkAndStartCamera = async () => {
+      // Only ask for permission if not already granted in this browser
+      const alreadyGranted = localStorage.getItem(CAMERA_PERMISSION_KEY) === 'true';
+      let permissionStatus: PermissionStatus | undefined = undefined;
       try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 3840 },
-            height: { ideal: 2160 },
-            aspectRatio: { ideal: 4/3 }
-          }
-        });
-        setStream(mediaStream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
+        if (navigator.permissions) {
+          permissionStatus = await navigator.permissions.query({ name: 'camera' as PermissionName });
         }
-      } catch (err) {
-        console.error('Error accessing camera:', err);
-        setError('Unable to access camera. Please ensure you have granted camera permissions.');
+      } catch {}
+      if (alreadyGranted || permissionStatus?.state === 'granted') {
+        startCamera();
+      } else {
+        try {
+          await startCamera();
+          localStorage.setItem(CAMERA_PERMISSION_KEY, 'true');
+        } catch (err) {
+          setError('Unable to access camera. Please ensure you have granted camera permissions.');
+        }
+      }
+      setPermissionChecked(true);
+    };
+
+    const startCamera = async () => {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 3840 },
+          height: { ideal: 2160 },
+          aspectRatio: { ideal: 4/3 }
+        }
+      });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
       }
     };
 
-    startCamera();
+    checkAndStartCamera();
 
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const captureImage = () => {
     if (!videoRef.current || !canvasRef.current) return;
-
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
-
     if (!context) return;
-
-    // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-
-    // Draw the current video frame to the canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Convert canvas to data URL
     const imageDataUrl = canvas.toDataURL('image/png');
-    
-    // Stop the camera stream
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
     }
-    
     onCapture(imageDataUrl);
   };
 
   return (
-    <div className="relative w-full aspect-[4/3] bg-black rounded-lg overflow-hidden">
+    <div className="relative w-full h-full bg-black rounded-xl overflow-hidden flex flex-col">
+      {/* Back arrow in top-left */}
+      <button
+        type="button"
+        className="absolute top-4 left-4 z-20 bg-black/60 rounded-full p-2 text-white hover:bg-black/80"
+        onClick={onCancel}
+        aria-label="Back"
+      >
+        <ArrowLeft className="h-6 w-6" />
+      </button>
+      {/* Camera preview */}
       {error ? (
-        <div className="absolute inset-0 flex items-center justify-center p-4 text-center">
-          <div className="text-red-500">
-            <p>{error}</p>
-            <Button onClick={onCancel} variant="outline" className="mt-4">
-              <X className="mr-2 h-4 w-4" />
-              Close
-            </Button>
-          </div>
+        <div className="flex-1 flex items-center justify-center text-red-500 text-center p-4">
+          <p>{error}</p>
         </div>
       ) : (
         <>
@@ -88,17 +102,18 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
             ref={videoRef}
             autoPlay
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover rounded-xl"
+            style={{ minHeight: 320 }}
           />
           <canvas ref={canvasRef} className="hidden" />
-          <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-4">
-            <Button onClick={onCancel} variant="outline" className="bg-white/90 backdrop-blur-sm hover:bg-white">
-              <X className="mr-2 h-4 w-4" />
-              Cancel
-            </Button>
-            <Button onClick={captureImage} className="bg-green-600 hover:bg-green-700">
-              <Camera className="mr-2 h-4 w-4" />
-              Capture
+          {/* Minimal overlay for capture button */}
+          <div className="absolute bottom-8 left-0 right-0 flex justify-center z-20">
+            <Button
+              onClick={captureImage}
+              className="rounded-full bg-green-600 hover:bg-green-700 shadow-lg w-16 h-16 flex items-center justify-center text-white text-lg"
+              style={{ fontSize: 24 }}
+            >
+              <Camera className="h-8 w-8" />
             </Button>
           </div>
         </>

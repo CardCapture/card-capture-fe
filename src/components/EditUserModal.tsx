@@ -188,7 +188,16 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
               </DialogPrimitive.Title>
             </div>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={form.handleSubmit((data) => {
+                // Trim whitespace from all fields
+                const trimmedData = {
+                  ...data,
+                  firstName: data.firstName.trim(),
+                  lastName: data.lastName.trim(),
+                  roles: data.roles,
+                };
+                onSubmit(trimmedData);
+              })} className="space-y-6">
                 <FormField
                   control={form.control}
                   name="firstName"
@@ -215,11 +224,15 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
                     </FormItem>
                   )}
                 />
-                {/* Read-only email field */}
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <Input value={user?.email || ""} disabled />
-                </FormItem>
+                {/* Email is not editable, but show it */}
+                {user?.email && (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input value={user.email} disabled />
+                    </FormControl>
+                  </FormItem>
+                )}
                 <FormField
                   control={form.control}
                   name="roles"
@@ -230,29 +243,21 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
                         {roleOptions.map((role) => {
                           const isSelected = field.value?.includes(role.value as any) || false;
                           const IconComponent = role.icon;
-                          
                           return (
                             <div
                               key={role.value}
                               onClick={() => {
                                 const currentRoles = field.value || [];
-                                
                                 if (role.value === 'admin') {
-                                  // If clicking admin, either select only admin or deselect admin
                                   if (currentRoles.includes('admin')) {
-                                    // Deselect admin, keep others if any
                                     field.onChange(currentRoles.filter(r => r !== 'admin'));
                                   } else {
-                                    // Select only admin, deselect recruiter/reviewer
                                     field.onChange(['admin']);
                                   }
                                 } else {
-                                  // If clicking recruiter or reviewer
                                   if (currentRoles.includes('admin')) {
-                                    // If admin is selected, replace with the clicked role
                                     field.onChange([role.value]);
                                   } else {
-                                    // Normal toggle behavior for recruiter/reviewer
                                     if (currentRoles.includes(role.value as any)) {
                                       field.onChange(currentRoles.filter(r => r !== role.value));
                                     } else {

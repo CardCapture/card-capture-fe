@@ -169,19 +169,6 @@ const ScanPage: React.FC = () => {
   if (isCameraOpen) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col z-50">
-        {/* Back button in top-left corner */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="absolute top-4 left-4 z-10 bg-black/70 backdrop-blur-sm rounded-full text-white hover:bg-black/80"
-          onClick={() => {
-            setIsCameraOpen(false);
-            navigate('/scan');
-          }}
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        
         {/* Event selector in top-right corner - responsive */}
         <div className="absolute top-4 right-4 z-10">
           <Select value={selectedEventId} onValueChange={handleEventChange}>
@@ -203,7 +190,6 @@ const ScanPage: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
-        
         {/* Camera Capture Component */}
         <div className="flex-1 flex items-center justify-center p-4">
           <CameraCapture

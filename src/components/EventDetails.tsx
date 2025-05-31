@@ -1212,7 +1212,7 @@ const Dashboard = () => {
               />
             </div>
           </DialogContent>
-        </Dialog>
+      </Dialog>
 
       {/* Archive Confirmation Dialog */}
         <ArchiveConfirmDialog
