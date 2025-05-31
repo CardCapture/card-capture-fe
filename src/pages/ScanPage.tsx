@@ -17,6 +17,7 @@ import { useCardUpload } from '@/hooks/useCardUpload';
 import { Event } from '@/types/event';
 import { CreateEventModal } from '@/components/CreateEventModal';
 import CameraCapture from '@/components/card-scanner/CameraCapture';
+import pica from 'pica';
 
 const ScanPage: React.FC = () => {
   const { events, fetchEvents } = useEvents();
@@ -50,6 +51,45 @@ const ScanPage: React.FC = () => {
       }
     }
   }, [isCameraOpen, events]);
+
+  // Utility to resize an image file or dataUrl to max 2048px and JPEG quality 0.85
+  async function resizeImage(fileOrDataUrl: File | string): Promise<File> {
+    return new Promise(async (resolve, reject) => {
+      let img = new window.Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = async () => {
+        const maxDim = 2048;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        await pica().resize(img, canvas);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return reject(new Error('Failed to create blob'));
+            resolve(new File([blob], `resized-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+          },
+          'image/jpeg',
+          0.85
+        );
+      };
+      img.onerror = reject;
+      if (typeof fileOrDataUrl === 'string') {
+        img.src = fileOrDataUrl;
+      } else {
+        img.src = URL.createObjectURL(fileOrDataUrl);
+      }
+    });
+  }
 
   // Process the captured image
   const processImage = async (file: File) => {
@@ -113,30 +153,21 @@ const ScanPage: React.FC = () => {
   };
 
   // Handle image captured from CameraCapture component
-  const handleImageCaptured = (imageDataUrl: string) => {
-    // Convert base64 to File object
-    const byteString = atob(imageDataUrl.split(',')[1]);
-    const mimeString = imageDataUrl.split(',')[0].split(':')[1].split(';')[0];
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    
-    for (let i = 0; i < byteString.length; i++) {
-      ia[i] = byteString.charCodeAt(i);
-    }
-    
-    const blob = new Blob([ab], { type: mimeString });
-    const file = new File([blob], `capture-${Date.now()}.jpg`, { type: mimeString });
-    
+  const handleImageCaptured = async (imageDataUrl: string) => {
+    // Resize the image before upload
+    const resizedFile = await resizeImage(imageDataUrl);
     setCapturedImage(imageDataUrl);
-    processImage(file);
+    processImage(resizedFile);
   };
 
   // Handle file selection
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setCapturedImage(URL.createObjectURL(file));
-      processImage(file);
+      // Resize the image before upload
+      const resizedFile = await resizeImage(file);
+      setCapturedImage(URL.createObjectURL(resizedFile));
+      processImage(resizedFile);
     }
     if (event.target) event.target.value = '';
   };
