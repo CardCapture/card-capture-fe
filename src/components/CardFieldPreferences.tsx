@@ -1,4 +1,7 @@
 import { Switch } from './ui/switch';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface CardField {
   key: string;
@@ -12,7 +15,23 @@ interface CardFieldPreferencesProps {
   onFieldsChange: (fields: CardField[]) => void;
 }
 
+function DraggableRow({ field, listeners, attributes, isDragging, setNodeRef, style, children }: any) {
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`border-t ${isDragging ? 'bg-gray-100' : ''}`}
+    >
+      {children}
+    </tr>
+  );
+}
+
 export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPreferencesProps) {
+  console.log('[CardFieldPreferences] fields:', fields);
+
   const updateVisible = (key: string, visible: boolean) => {
     onFieldsChange(fields.map(field => {
       if (field.key === key) {
@@ -35,39 +54,46 @@ export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPrefer
     }));
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const oldIndex = fields.findIndex(f => f.key === active.id);
+      const newIndex = fields.findIndex(f => f.key === over.id);
+      const newFields = arrayMove(fields, oldIndex, newIndex);
+      onFieldsChange(newFields);
+    }
+  };
+
   return (
     <>
-      {/* Desktop layout */}
+      {/* Desktop layout with drag-and-drop */}
       <div className="hidden sm:block">
-        <table className="w-full text-sm">
-          <thead className="text-muted-foreground">
-            <tr>
-              <th className="py-2 text-left">Field</th>
-              <th className="py-2 text-center">Visible</th>
-              <th className="py-2 text-center">Required</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fields.map((field) => (
-              <tr key={field.key} className="border-t">
-                <td className="py-2">{field.label}</td>
-                <td className="py-2 text-center">
-                  <Switch
-                    checked={field.visible}
-                    onCheckedChange={(v) => updateVisible(field.key, v)}
-                  />
-                </td>
-                <td className="py-2 text-center">
-                  <Switch
-                    checked={field.required}
-                    onCheckedChange={(v) => updateRequired(field.key, v)}
-                    disabled={!field.visible}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={fields.map(f => f.key)} strategy={verticalListSortingStrategy}>
+            <table className="w-full text-sm">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="py-2 text-left">Field</th>
+                  <th className="py-2 text-center">Visible</th>
+                  <th className="py-2 text-center">Required</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fields.map((field) => (
+                  <SortableRow key={field.key} id={field.key} field={field} updateVisible={updateVisible} updateRequired={updateRequired} />
+                ))}
+              </tbody>
+            </table>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Mobile layout */}
@@ -94,5 +120,51 @@ export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPrefer
         ))}
       </div>
     </>
+  );
+}
+
+function SortableRow({ id, field, updateVisible, updateRequired }: any) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    cursor: 'grab',
+  };
+  return (
+    <DraggableRow
+      field={field}
+      listeners={listeners}
+      attributes={attributes}
+      isDragging={isDragging}
+      setNodeRef={setNodeRef}
+      style={style}
+    >
+      <td className="py-2 flex items-center gap-2">
+        <span className="cursor-grab text-gray-400" aria-label="Drag handle">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="7" cy="6" r="1.5" fill="currentColor"/>
+            <circle cx="7" cy="10" r="1.5" fill="currentColor"/>
+            <circle cx="7" cy="14" r="1.5" fill="currentColor"/>
+            <circle cx="13" cy="6" r="1.5" fill="currentColor"/>
+            <circle cx="13" cy="10" r="1.5" fill="currentColor"/>
+            <circle cx="13" cy="14" r="1.5" fill="currentColor"/>
+          </svg>
+        </span>
+        {field.label}
+      </td>
+      <td className="py-2 text-center">
+        <Switch
+          checked={field.visible}
+          onCheckedChange={(v) => updateVisible(field.key, v)}
+        />
+      </td>
+      <td className="py-2 text-center">
+        <Switch
+          checked={field.required}
+          onCheckedChange={(v) => updateRequired(field.key, v)}
+          disabled={!field.visible}
+        />
+      </td>
+    </DraggableRow>
   );
 } 

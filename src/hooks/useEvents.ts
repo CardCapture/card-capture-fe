@@ -16,7 +16,7 @@ interface UseEventsReturn {
     fetchEvents: () => Promise<void>;
 }
 
-export function useEvents(): UseEventsReturn {
+export function useEvents(schoolId?: string): UseEventsReturn {
     const [events, setEvents] = useState<EventWithStats[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -25,19 +25,27 @@ export function useEvents(): UseEventsReturn {
         try {
             setLoading(true);
             
-            // Fetch all events without filtering out archived ones
-            const { data: eventsData, error: eventsError } = await supabase
+            // Fetch events filtered by school_id if provided
+            let query = supabase
                 .from('events')
                 .select('*, school_id')
                 .order('date', { ascending: false });
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
+            }
+            const { data: eventsData, error: eventsError } = await query;
 
             if (eventsError) throw eventsError;
 
             // Then fetch associated reviewed_data in a separate query, excluding deleted cards
-            const { data: reviewedData, error: reviewedError } = await supabase
+            let reviewedQuery = supabase
                 .from('reviewed_data')
                 .select('*')
                 .neq('review_status', 'deleted');
+            if (schoolId) {
+                reviewedQuery = reviewedQuery.eq('school_id', schoolId);
+            }
+            const { data: reviewedData, error: reviewedError } = await reviewedQuery;
 
             if (reviewedError) {
                 console.error('Error fetching reviewed_data:', reviewedError);
@@ -77,7 +85,7 @@ export function useEvents(): UseEventsReturn {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [schoolId]);
 
     const createEvent = useCallback(async (eventData: Omit<Event, 'id' | 'created_at' | 'updated_at'>) => {
         try {

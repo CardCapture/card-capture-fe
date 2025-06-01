@@ -13,6 +13,7 @@ interface UserProfile {
   last_name: string;
   role: string | string[];
   last_sign_in_at?: string | null;
+  school_id?: string;
 }
 
 const UserManagement = () => {
@@ -21,7 +22,7 @@ const UserManagement = () => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -48,6 +49,11 @@ const UserManagement = () => {
     setEditModalOpen(true);
   };
 
+  // Filter users to only those with the same school_id as the current user
+  const filteredUsers = users.filter(
+    (user: any) => user.school_id === profile?.school_id
+  );
+
   return (
     <div className="w-full max-w-4xl mx-auto mt-10">
       <div className="flex justify-between items-center mb-6">
@@ -71,14 +77,14 @@ const UserManagement = () => {
                   Loading users...
                 </TableCell>
               </TableRow>
-            ) : users.length === 0 ? (
+            ) : filteredUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-8 text-sm text-gray-500">
                   No users found.
                 </TableCell>
               </TableRow>
             ) : (
-              users.map(user => (
+              filteredUsers.map(user => (
                 <TableRow 
                   key={user.id} 
                   onClick={() => handleRowClick(user)}
