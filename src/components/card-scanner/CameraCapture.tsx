@@ -1,68 +1,63 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Camera, ArrowLeft } from 'lucide-react';
+import { useCameraPermission } from '@/hooks/useCameraPermission';
 
 interface CameraCaptureProps {
   onCapture: (imageDataUrl: string) => void;
   onCancel: () => void;
 }
 
-const CAMERA_PERMISSION_KEY = 'camera_permission_granted';
-
 const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [permissionChecked, setPermissionChecked] = useState(false);
+  const { hasPermission, isChecking, requestPermission } = useCameraPermission();
 
+  // Start camera only when permission is granted
   useEffect(() => {
-    const checkAndStartCamera = async () => {
-      // Only ask for permission if not already granted in this browser
-      const alreadyGranted = localStorage.getItem(CAMERA_PERMISSION_KEY) === 'true';
-      let permissionStatus: PermissionStatus | undefined = undefined;
-      try {
-        if (navigator.permissions) {
-          permissionStatus = await navigator.permissions.query({ name: 'camera' as PermissionName });
-        }
-      } catch {}
-      if (alreadyGranted || permissionStatus?.state === 'granted') {
-        startCamera();
-      } else {
-        try {
-          await startCamera();
-          localStorage.setItem(CAMERA_PERMISSION_KEY, 'true');
-        } catch (err) {
-          setError('Unable to access camera. Please ensure you have granted camera permissions.');
-        }
-      }
-      setPermissionChecked(true);
-    };
+    let localStream: MediaStream | null = null;
+    let cancelled = false;
 
     const startCamera = async () => {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 3840 },
-          height: { ideal: 2160 },
-          aspectRatio: { ideal: 4/3 }
+      if (!hasPermission || isChecking) return;
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 3840 },
+            height: { ideal: 2160 },
+            aspectRatio: { ideal: 4/3 }
+          }
+        });
+        if (!cancelled) {
+          setStream(localStream);
+        } else {
+          // If effect was cleaned up before stream was set, stop tracks
+          localStream.getTracks().forEach(track => track.stop());
         }
-      });
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
+      } catch (err) {
+        setError('Unable to access camera. Please ensure you have granted camera permissions.');
       }
     };
 
-    checkAndStartCamera();
+    startCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      cancelled = true;
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasPermission, isChecking]);
+
+  // Assign stream to video element
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
 
   const captureImage = () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -76,9 +71,18 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
     const imageDataUrl = canvas.toDataURL('image/png');
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
+      setStream(null);
     }
     onCapture(imageDataUrl);
   };
+
+  if (isChecking) {
+    return (
+      <div className="relative w-full h-full bg-black rounded-xl overflow-hidden flex flex-col items-center justify-center">
+        <p className="text-white">Checking camera permissions...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-full bg-black rounded-xl overflow-hidden flex flex-col">

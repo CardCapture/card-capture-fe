@@ -101,6 +101,9 @@ export function useCardReviewModal(
         initialFormData[fieldKey] =
           selectedCardForReview.fields?.[fieldKey]?.value ?? "";
       });
+      if (selectedCardForReview.fields?.mapped_major) {
+        initialFormData["mapped_major"] = selectedCardForReview.fields.mapped_major.value ?? "";
+      }
       setFormData(initialFormData);
     } else {
       setFormData({});

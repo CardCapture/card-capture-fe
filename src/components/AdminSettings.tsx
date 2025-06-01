@@ -185,14 +185,13 @@ const AdminSettings: React.FC = () => {
   const [majorsList, setMajorsList] = useState<string[]>([]);
   const [editedMajors, setEditedMajors] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [addMajorInput, setAddMajorInput] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [initialMajors, setInitialMajors] = useState<string>("");
   const [loadingMajors, setLoadingMajors] = useState(true);
-  const [addMode, setAddMode] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [addMajorsInput, setAddMajorsInput] = useState("");
 
   // Scroll to top when fields are updated after a save (field-preferences tab only)
   useEffect(() => {
@@ -568,7 +567,7 @@ const AdminSettings: React.FC = () => {
   };
 
   // Save majors (from editedMajors or textarea)
-  const saveMajors = async () => {
+  const saveMajors = async (majorsOverride?: string[]) => {
     if (!session?.user?.id) return;
     try {
       const { data: profile } = await supabase
@@ -583,6 +582,8 @@ const AdminSettings: React.FC = () => {
           .split("\n")
           .map(major => major.trim())
           .filter(major => major.length > 0);
+      } else if (majorsOverride) {
+        majorsToSave = majorsOverride.map(m => m.trim()).filter(m => m.length > 0);
       } else {
         majorsToSave = editedMajors.map(m => m.trim()).filter(m => m.length > 0);
       }
@@ -597,7 +598,6 @@ const AdminSettings: React.FC = () => {
       setInitialMajors(majorsToSave.join("\n"));
       setIsDirty(false);
       setShowImport(false);
-      setAddMajorInput("");
       toast.success("Majors updated successfully");
     } catch (error) {
       console.error("Error saving majors:", error);
@@ -612,18 +612,6 @@ const AdminSettings: React.FC = () => {
     }
   }, [session, activeTab]);
 
-  // Add major handler
-  const handleAddMajor = () => {
-    const newMajor = addMajorInput.trim();
-    if (newMajor && !editedMajors.includes(newMajor)) {
-      setEditedMajors([newMajor, ...editedMajors]);
-      setAddMajorInput("");
-      setAddMode(false);
-      setIsDirty(true);
-      toast.success("New major added");
-    }
-  };
-
   // Edit major handler
   const handleEditMajor = (idx: number) => {
     if (editValue.trim() && !editedMajors.includes(editValue.trim())) {
@@ -633,6 +621,7 @@ const AdminSettings: React.FC = () => {
       setEditIndex(null);
       setEditValue("");
       setIsDirty(true);
+      saveMajors(newMajors);
       toast.success("Major updated successfully");
     }
   };
@@ -719,7 +708,8 @@ const AdminSettings: React.FC = () => {
         content = <div>Loading majors...</div>;
         break;
       }
-      if (showImport || majorsList.length === 0) {
+      // If there are no majors, just show the add majors box
+      if (majorsList.length === 0) {
         content = (
           <Card>
             <CardHeader>
@@ -745,7 +735,7 @@ const AdminSettings: React.FC = () => {
               </p>
               <div className="flex justify-start">
                 <Button
-                  onClick={saveMajors}
+                  onClick={() => saveMajors()}
                   disabled={!majors.trim() || majors === initialMajors || !isDirty}
                 >
                   Save Majors
@@ -756,17 +746,70 @@ const AdminSettings: React.FC = () => {
         );
         break;
       }
-      // Dynamic majors management UI
+      // If there are majors, show the add box above the table if showImport is true
       content = (
-        <div className="space-y-2">
+        <div className="space-y-4">
+          {showImport && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Add Majors</CardTitle>
+                <CardDescription>
+                  Paste in one or more majors (one per line) to add to your list.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Label htmlFor="add-majors-input" className="text-sm font-medium">Majors (one per line)</Label>
+                <Textarea
+                  id="add-majors-input"
+                  value={addMajorsInput}
+                  onChange={e => setAddMajorsInput(e.target.value)}
+                  placeholder={`Biology\nComputer Science\nBusiness Administration\nMechanical Engineering`}
+                  className="min-h-[200px]"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      // Parse and add new majors
+                      const newMajors = addMajorsInput
+                        .split("\n")
+                        .map(m => m.trim())
+                        .filter(m => m.length > 0 && !editedMajors.includes(m));
+                      if (newMajors.length > 0) {
+                        const updatedMajors = [...newMajors, ...editedMajors];
+                        setEditedMajors(updatedMajors);
+                        setMajorsList(updatedMajors);
+                        setIsDirty(true);
+                        toast.success(`${newMajors.length} major${newMajors.length > 1 ? 's' : ''} added`);
+                      }
+                      setShowImport(false);
+                      setAddMajorsInput("");
+                    }}
+                    disabled={!addMajorsInput.trim()}
+                  >
+                    Save Majors
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowImport(false);
+                      setAddMajorsInput("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {/* Majors table always visible if there are majors */}
           <Card className="shadow-sm rounded-xl">
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Manage Majors</CardTitle>
               <button
                 className="text-primary hover:bg-muted rounded-full p-1 transition"
                 onClick={() => {
-                  setAddMode(true);
-                  setAddMajorInput("");
+                  setShowImport(true);
+                  setAddMajorsInput("");
                 }}
                 aria-label="Add major"
                 type="button"
@@ -782,38 +825,6 @@ const AdminSettings: React.FC = () => {
                 className="mb-2"
               />
               <div className="max-h-[500px] overflow-y-auto rounded-md border border-muted-foreground/10 bg-muted/50 divide-y divide-muted-foreground/10">
-                {/* Add mode input */}
-                {addMode && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-white/80 sticky top-0 z-10">
-                    <Input
-                      autoFocus
-                      value={addMajorInput}
-                      onChange={e => setAddMajorInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === "Enter") handleAddMajor();
-                        if (e.key === "Escape") setAddMode(false);
-                      }}
-                      placeholder="Enter new major..."
-                      className="flex-1 border-none bg-transparent px-0 py-0 text-base font-normal focus:ring-0 focus-visible:ring-0 focus:outline-none shadow-none"
-                    />
-                    <button
-                      className="text-green-600 hover:bg-green-100 rounded-full p-1"
-                      onClick={handleAddMajor}
-                      type="button"
-                      aria-label="Confirm add major"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      className="text-muted-foreground hover:bg-muted rounded-full p-1"
-                      onClick={() => setAddMode(false)}
-                      type="button"
-                      aria-label="Cancel add major"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
                 {editedMajors
                   .filter(m => m.toLowerCase().includes(search.toLowerCase()))
                   .map((major, idx) => (
@@ -887,7 +898,7 @@ const AdminSettings: React.FC = () => {
               {isDirty && (
                 <div className="sticky bottom-0 left-0 w-full flex justify-end pt-4 bg-gradient-to-t from-white via-white/80 to-transparent z-10">
                   <Button
-                    onClick={saveMajors}
+                    onClick={() => saveMajors()}
                     className="shadow-md"
                     variant="default"
                   >

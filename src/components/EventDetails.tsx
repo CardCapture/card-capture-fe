@@ -124,6 +124,7 @@ const Dashboard = () => {
       "student_type",
       "entry_term",
       "major",
+      "mapped_major",
     ],
     []
   );
@@ -149,6 +150,7 @@ const Dashboard = () => {
       { key: "students_in_class", label: "Students in Class" },
       { key: "major", label: "Major" },
       { key: "permission_to_text", label: "Permission to Text" },
+      { key: "mapped_major", label: "Mapped Major" },
     ].forEach((field) => map.set(field.key, field.label));
     return map;
   }, []);
@@ -873,6 +875,35 @@ const Dashboard = () => {
     console.log("Cards after fetch:", cards);
   }, [cards]);
 
+  // --- State Declarations (consolidated here) ---
+  const [majorsList, setMajorsList] = useState<string[]>([]);
+  const [loadingMajors, setLoadingMajors] = useState(false);
+
+  // --- Fetch majors for mapped_major dropdown ---
+  useEffect(() => {
+    async function fetchMajors() {
+      if (!selectedEvent?.school_id) return;
+      setLoadingMajors(true);
+      try {
+        const { data: schoolData } = await supabase
+          .from("schools")
+          .select("majors")
+          .eq("id", selectedEvent.school_id)
+          .single();
+        setMajorsList(schoolData?.majors || []);
+      } catch (error) {
+        setMajorsList([]);
+        toast.error("Failed to load majors");
+    } finally {
+        setLoadingMajors(false);
+      }
+    }
+    // Only fetch if review modal is open and majors are enabled
+    if (isReviewModalOpen && cardFieldPrefs?.major !== false) {
+      fetchMajors();
+    }
+  }, [isReviewModalOpen, selectedEvent?.school_id, cardFieldPrefs]);
+
   return (
     <ErrorBoundary>
       <div className="w-full p-2 sm:p-4 md:p-8 relative pb-20">
@@ -1172,6 +1203,8 @@ const Dashboard = () => {
                   handleFieldReview={handleFieldReview}
                   selectedTab={selectedTab}
                   dataFieldsMap={dataFieldsMap}
+                  majorsList={majorsList}
+                  loadingMajors={loadingMajors}
                 />
                         </div>
                       </div>
