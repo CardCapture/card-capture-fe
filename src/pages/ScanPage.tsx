@@ -114,42 +114,21 @@ const ScanPage: React.FC = () => {
     }
 
     setIsProcessing(true);
-    setProcessingProgress(0);
 
     try {
-      // Start progress animation
-      const progressInterval = setInterval(() => {
-        setProcessingProgress(prev => {
-          if (prev < 90) {
-            return prev + Math.random() * 10;
-          }
-          return prev;
-        });
-      }, 500);
-
       // Use the uploadCard hook
       const data = await uploadCard(file, selectedEventId, selectedEvent.school_id);
-
-      clearInterval(progressInterval);
-
       setDocumentId(data.document_id);
-      setProcessingProgress(100);
-
-      // Reset the camera state and prepare for next photo
-      setTimeout(() => {
-        setCapturedImage(null);
-        setIsProcessing(false);
-        setProcessingProgress(0);
-      }, 1500);
-
+      toast.success("Card captured successfully. Processing in background...");
     } catch (error: any) {
       console.error("Upload error details:", {
         error,
         message: error.message,
         stack: error.stack
       });
+      toast.error("Failed to process card. Please try again.");
+    } finally {
       setIsProcessing(false);
-      setProcessingProgress(0);
     }
   };
 
@@ -158,7 +137,6 @@ const ScanPage: React.FC = () => {
     // Resize the image before upload
     const resizedFile = await resizeImage(imageDataUrl);
     console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
-    setCapturedImage(imageDataUrl);
     processImage(resizedFile);
   };
 

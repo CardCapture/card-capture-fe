@@ -165,6 +165,8 @@ const AdminSettings: React.FC = () => {
   const [school, setSchool] = useState<SchoolRecord | null>(null);
   const [schoolLoading, setSchoolLoading] = useState(false);
   const [schoolError, setSchoolError] = useState<string | null>(null);
+  const [isSchoolNameDirty, setIsSchoolNameDirty] = useState(false);
+  const [initialSchoolName, setInitialSchoolName] = useState<string>("");
 
   // SFTP state
   const [sftpConfig, setSftpConfig] = useState<SFTPConfig>({
@@ -321,7 +323,7 @@ const AdminSettings: React.FC = () => {
   // Fetch school record for subscription tab
   useEffect(() => {
     const fetchSchool = async () => {
-      if ((activeTab !== "subscription" && activeTab !== "field-preferences") || !session?.user?.id) {
+      if ((activeTab !== "subscription" && activeTab !== "field-preferences" && activeTab !== "account-settings") || !session?.user?.id) {
         console.log("Debug - Not fetching school:", {
           activeTab,
           userId: session?.user?.id,
@@ -370,6 +372,9 @@ const AdminSettings: React.FC = () => {
         const data = await res.json();
         console.log("Debug - School data:", data);
         setSchool(data.school || null);
+        if (data.school?.name) {
+          setInitialSchoolName(data.school.name);
+        }
       } catch (err: unknown) {
         const errorMsg =
           err instanceof Error ? err.message : "Error fetching school record";
@@ -653,23 +658,36 @@ const AdminSettings: React.FC = () => {
               <Input
                 id="school_name"
                 value={school?.name || ""}
-                onChange={(e) => setSchool({ ...school, name: e.target.value })}
+                onChange={(e) => {
+                  setSchool({ ...school, name: e.target.value });
+                  setIsSchoolNameDirty(e.target.value !== initialSchoolName);
+                }}
                 placeholder="Enter your school name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="school_email">School Email</Label>
-              <Input
-                id="school_email"
-                type="email"
-                value={school?.email || ""}
-                onChange={(e) => setSchool({ ...school, email: e.target.value })}
-                placeholder="Enter your school email"
               />
             </div>
           </CardContent>
           <CardFooter className="justify-end">
-            <Button onClick={() => {}} disabled={schoolLoading}>
+            <Button 
+              onClick={async () => {
+                if (!school?.id) return;
+                try {
+                  const { error } = await supabase
+                    .from("schools")
+                    .update({ name: school.name })
+                    .eq("id", school.id);
+                  
+                  if (error) throw error;
+                  
+                  setInitialSchoolName(school.name);
+                  setIsSchoolNameDirty(false);
+                  toast.success("School name updated successfully");
+                } catch (error) {
+                  console.error("Error updating school name:", error);
+                  toast.error("Failed to update school name");
+                }
+              }} 
+              disabled={schoolLoading || !isSchoolNameDirty}
+            >
               {schoolLoading ? "Saving..." : "Save Changes"}
             </Button>
           </CardFooter>

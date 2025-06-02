@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Input } from "./input";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,8 @@ export function PhoneNumberInput({
   className,
   ...props
 }: PhoneNumberInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   // Format the phone number as the user types
   const formatPhoneNumber = (input: string) => {
     // Remove all non-numeric characters
@@ -33,10 +35,46 @@ export function PhoneNumberInput({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
+    const oldValue = input.value;
     const newValue = e.target.value;
+    
     // Only format if we have a value
     const formatted = newValue ? formatPhoneNumber(newValue) : '';
+    
+    // Calculate cursor position adjustment
+    let newCursorPos = start;
+    if (start === end) { // Only adjust if there's no selection
+      const oldFormatted = formatPhoneNumber(oldValue);
+      const oldDigits = oldValue.replace(/\D/g, '');
+      const newDigits = newValue.replace(/\D/g, '');
+      
+      // If we're adding a digit
+      if (newDigits.length > oldDigits.length) {
+        // Count hyphens before cursor in old and new formatted values
+        const oldHyphensBeforeCursor = (oldFormatted.slice(0, start).match(/-/g) || []).length;
+        const newHyphensBeforeCursor = (formatted.slice(0, start).match(/-/g) || []).length;
+        newCursorPos = start + (newHyphensBeforeCursor - oldHyphensBeforeCursor);
+      }
+      // If we're removing a digit
+      else if (newDigits.length < oldDigits.length) {
+        // Count hyphens before cursor in old and new formatted values
+        const oldHyphensBeforeCursor = (oldFormatted.slice(0, start).match(/-/g) || []).length;
+        const newHyphensBeforeCursor = (formatted.slice(0, start).match(/-/g) || []).length;
+        newCursorPos = start - (oldHyphensBeforeCursor - newHyphensBeforeCursor);
+      }
+    }
+    
     onChange(formatted);
+    
+    // Restore cursor position after React re-render
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    });
   };
 
   // Format the initial value if it exists
@@ -44,6 +82,7 @@ export function PhoneNumberInput({
 
   return (
     <Input
+      ref={inputRef}
       type="tel"
       inputMode="numeric"
       value={displayValue}
