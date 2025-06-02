@@ -137,6 +137,7 @@ const ScanPage: React.FC = () => {
     // Resize the image before upload
     const resizedFile = await resizeImage(imageDataUrl);
     console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
+    setIsCameraOpen(false); // Close camera after capture
     processImage(resizedFile);
   };
 

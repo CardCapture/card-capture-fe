@@ -13,16 +13,16 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { hasPermission, isChecking, requestPermission } = useCameraPermission();
+  const { hasPermission, requestPermission } = useCameraPermission();
 
-  // Start camera only when permission is granted
+  // Initialize camera
   useEffect(() => {
     let localStream: MediaStream | null = null;
     let cancelled = false;
 
-    const startCamera = async () => {
-      if (!hasPermission || isChecking) return;
+    const initializeCamera = async () => {
       try {
+        // Get camera stream
         localStream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'environment',
@@ -31,10 +31,10 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
             aspectRatio: { ideal: 4/3 }
           }
         });
+
         if (!cancelled) {
           setStream(localStream);
         } else {
-          // If effect was cleaned up before stream was set, stop tracks
           localStream.getTracks().forEach(track => track.stop());
         }
       } catch (err) {
@@ -42,7 +42,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
       }
     };
 
-    startCamera();
+    initializeCamera();
 
     return () => {
       cancelled = true;
@@ -50,7 +50,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
         localStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [hasPermission, isChecking]);
+  }, []);
 
   // Assign stream to video element
   useEffect(() => {
@@ -75,14 +75,6 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
     }
     onCapture(imageDataUrl);
   };
-
-  if (isChecking) {
-    return (
-      <div className="relative w-full h-full bg-black rounded-xl overflow-hidden flex flex-col items-center justify-center">
-        <p className="text-white">Checking camera permissions...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="relative w-full h-full bg-black rounded-xl overflow-hidden flex flex-col">
