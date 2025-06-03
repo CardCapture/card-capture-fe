@@ -1,9 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
-import { Plus, Camera, Upload, CheckCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState, useRef, useEffect } from "react";
+import { Plus, Camera, Upload, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/lib/toast";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -11,27 +15,43 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import CardScanner from '@/components/CardScanner';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useEvents } from '@/hooks/useEvents';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import CardScanner from "@/components/CardScanner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useEvents } from "@/hooks/useEvents";
 import { authFetch } from "@/lib/authFetch";
 
 // Helper function
 const dataURLtoFile = (dataurl: string, filename: string): File | null => {
-     const arr = dataurl.split(',');
-     if (!arr[0] || !arr[1]) return null;
-     const mimeMatch = arr[0].match(/:(.*?);/);
-     if (!mimeMatch) return null;
-     const mime = mimeMatch[1];
-     try {
-         const bstr = atob(arr[1]);
-         let n = bstr.length;
-         const u8arr = new Uint8Array(n);
-         while(n--){ u8arr[n] = bstr.charCodeAt(n); }
-         return new File([u8arr], filename, {type:mime});
-     } catch (e) { console.error("Error converting data URL:", e); return null; }
-}
+  const arr = dataurl.split(",");
+  if (!arr[0] || !arr[1]) return null;
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  if (!mimeMatch) return null;
+  const mime = mimeMatch[1];
+  try {
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  } catch (e) {
+    console.error("Error converting data URL:", e);
+    return null;
+  }
+};
 
 // No props needed from parent for this version
 interface ScanFabProps {
@@ -40,11 +60,15 @@ interface ScanFabProps {
   uploadProgress?: number;
 }
 
-const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress: parentUploadProgress }: ScanFabProps) => {
+const ScanFab = ({
+  onUploadRequested,
+  isUploadInProgress = false,
+  uploadProgress: parentUploadProgress,
+}: ScanFabProps) => {
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [localUploadProgress, setLocalUploadProgress] = useState(0);
-  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [selectedEventId, setSelectedEventId] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -52,7 +76,10 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
   const { events, loading: eventsLoading, fetchEvents } = useEvents();
 
   // Use parent progress if provided, otherwise use local progress
-  const effectiveProgress = typeof parentUploadProgress === 'number' ? parentUploadProgress : localUploadProgress;
+  const effectiveProgress =
+    typeof parentUploadProgress === "number"
+      ? parentUploadProgress
+      : localUploadProgress;
 
   // Fetch events when component mounts
   useEffect(() => {
@@ -66,9 +93,9 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    console.log('File selected:', file);
+    console.log("File selected:", file);
     if (file) {
-      console.log('Selected event ID:', selectedEventId);
+      console.log("Selected event ID:", selectedEventId);
       if (!selectedEventId) {
         toast.required("Event selection");
         return;
@@ -76,7 +103,7 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
       setShowUploadDialog(false);
       startProcessing(file);
     }
-    if (event.target) event.target.value = '';
+    if (event.target) event.target.value = "";
   };
 
   const openCameraModal = () => {
@@ -85,9 +112,9 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
   };
 
   const startProcessing = async (file: File | null) => {
-    console.log('Starting processing with file:', file);
-    console.log('Selected event ID:', selectedEventId);
-    
+    console.log("Starting processing with file:", file);
+    console.log("Selected event ID:", selectedEventId);
+
     if (!file) {
       toast.error("No valid file provided.", "File Error");
       return;
@@ -105,19 +132,26 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
     formData.append("event_id", selectedEventId);
     // Add school_id if available (optional, adjust as needed)
     // formData.append("school_id", selectedSchoolId);
-    console.log('FormData created:', {
+    console.log("FormData created:", {
       file: file.name,
-      event_id: selectedEventId
+      event_id: selectedEventId,
     });
-    const timer = setTimeout(() => setLocalUploadProgress(50 + Math.random() * 20), 600);
+    const timer = setTimeout(
+      () => setLocalUploadProgress(50 + Math.random() * 20),
+      600
+    );
 
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       let endpoint = "/upload";
-      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
-        endpoint = "/bulk-upload";
+      if (
+        file.type === "application/pdf" ||
+        file.name.toLowerCase().endsWith(".pdf")
+      ) {
+        endpoint = "/upload";
       }
-      console.log('Making upload request to:', `${apiBaseUrl}${endpoint}`);
+      console.log("Making upload request to:", `${apiBaseUrl}${endpoint}`);
       const response = await authFetch(`${apiBaseUrl}${endpoint}`, {
         method: "POST",
         body: formData,
@@ -125,22 +159,32 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+        throw new Error(
+          errorData.error || `Upload failed with status ${response.status}`
+        );
       }
 
       const data = await response.json();
       setLocalUploadProgress(100);
-      
-      if (endpoint === "/bulk-upload") {
-        toast.success(`Bulk upload successful. ${data.jobs_created} cards queued.`);
+
+      if (endpoint === "/upload") {
+        toast.success(
+          `Bulk upload successful. ${data.jobs_created} cards queued.`
+        );
       } else {
         toast.success("Card uploaded successfully");
       }
-      
-      setTimeout(() => { setIsUploading(false); setLocalUploadProgress(0); }, 1500);
+
+      setTimeout(() => {
+        setIsUploading(false);
+        setLocalUploadProgress(0);
+      }, 1500);
     } catch (error: any) {
       console.error("Upload failed:", error);
-      toast.error(error.message || "An error occurred during upload.", "Upload Failed");
+      toast.error(
+        error.message || "An error occurred during upload.",
+        "Upload Failed"
+      );
       setIsUploading(false);
       setLocalUploadProgress(0);
     }
@@ -148,37 +192,53 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
 
   const handleImageCaptured = (imageDataUrl: string) => {
     setIsCameraModalOpen(false);
-    const capturedFile = dataURLtoFile(imageDataUrl, `capture-${Date.now()}.png`);
+    const capturedFile = dataURLtoFile(
+      imageDataUrl,
+      `capture-${Date.now()}.png`
+    );
     startProcessing(capturedFile);
-  }
+  };
 
   const testBackendConnection = async () => {
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      console.log("ScanFab: Testing backend connection to:", `${apiBaseUrl}/test-connection`);
-      
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      console.log(
+        "ScanFab: Testing backend connection to:",
+        `${apiBaseUrl}/test-connection`
+      );
+
       const response = await authFetch(`${apiBaseUrl}/test-connection`);
       console.log("ScanFab: Test connection response", {
         status: response.status,
         statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
+        headers: Object.fromEntries(response.headers.entries()),
       });
-      
+
       if (!response.ok) {
-        throw new Error(`Test connection failed with status ${response.status}`);
+        throw new Error(
+          `Test connection failed with status ${response.status}`
+        );
       }
-      
+
       const data = await response.json();
       console.log("ScanFab: Test connection successful", data);
-      
-      toast.success("Backend connection test completed successfully.", "Connection Successful");
+
+      toast.success(
+        "Backend connection test completed successfully.",
+        "Connection Successful"
+      );
     } catch (error: any) {
       console.error("ScanFab: Test connection failed", {
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
-      
-      toast.error(error.message || "Unable to connect to the backend server. Please check your connection.", "Connection Failed");
+
+      toast.error(
+        error.message ||
+          "Unable to connect to the backend server. Please check your connection.",
+        "Connection Failed"
+      );
     }
   };
 
@@ -203,14 +263,17 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
                 <SelectValue placeholder="Select an event" />
               </SelectTrigger>
               <SelectContent>
-                {events.map(event => (
+                {events.map((event) => (
                   <SelectItem key={event.id} value={event.id}>
                     {event.name} ({new Date(event.date).toLocaleDateString()})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <CardScanner onImageCaptured={handleImageCaptured} onScanComplete={() => setIsCameraModalOpen(false)} />
+            <CardScanner
+              onImageCaptured={handleImageCaptured}
+              onScanComplete={() => setIsCameraModalOpen(false)}
+            />
           </div>
         </DialogContent>
       </Dialog>
@@ -226,7 +289,7 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
                 <SelectValue placeholder="Select an event" />
               </SelectTrigger>
               <SelectContent>
-                {events.map(event => (
+                {events.map((event) => (
                   <SelectItem key={event.id} value={event.id}>
                     {event.name} ({new Date(event.date).toLocaleDateString()})
                   </SelectItem>
@@ -236,7 +299,10 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
             <Button onClick={() => fileInputRef.current?.click()}>
               Upload Image or PDF
             </Button>
-            <span className="text-xs text-muted-foreground">Accepted file types: Images (JPG, PNG, etc.) or PDF (one or more cards)</span>
+            <span className="text-xs text-muted-foreground">
+              Accepted file types: Images (JPG, PNG, etc.) or PDF (one or more
+              cards)
+            </span>
           </div>
         </DialogContent>
       </Dialog>
@@ -254,12 +320,14 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
           <div className="bg-white rounded-lg shadow-lg p-4 w-64">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm font-medium">Uploading...</span>
-              <span className="text-sm text-gray-500">{Math.round(effectiveProgress)}%</span>
+              <span className="text-sm text-gray-500">
+                {Math.round(effectiveProgress)}%
+              </span>
             </div>
             <Progress value={effectiveProgress} className="w-full" />
           </div>
         )}
-        
+
         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           <PopoverTrigger asChild>
             <Button size="icon" className="h-14 w-14 rounded-full shadow-lg">
@@ -268,11 +336,19 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
           </PopoverTrigger>
           <PopoverContent side="top" className="w-48">
             <div className="flex flex-col gap-2">
-              <Button onClick={openCameraModal} variant="ghost" className="justify-start">
+              <Button
+                onClick={openCameraModal}
+                variant="ghost"
+                className="justify-start"
+              >
                 <Camera className="mr-2 h-4 w-4" />
                 Take Photo
               </Button>
-              <Button onClick={triggerFileInput} variant="ghost" className="justify-start">
+              <Button
+                onClick={triggerFileInput}
+                variant="ghost"
+                className="justify-start"
+              >
                 <Upload className="mr-2 h-4 w-4" />
                 Upload Image
               </Button>
@@ -282,6 +358,6 @@ const ScanFab = ({ onUploadRequested, isUploadInProgress = false, uploadProgress
       </div>
     </>
   );
-}
+};
 
 export default ScanFab;
