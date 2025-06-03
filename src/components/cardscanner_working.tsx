@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { ScannerResult } from '@/types/card';
-import { toast } from '@/lib/toast';
-import CameraCapture from './card-scanner/CameraCapture';
-import ImagePreview from './card-scanner/ImagePreview';
-import UploadPanel from './card-scanner/UploadPanel';
+import { ScannerResult } from "@/types/card";
+import { toast } from "@/lib/toast";
+import CameraCapture from "./card-scanner/CameraCapture";
+import ImagePreview from "./card-scanner/ImagePreview";
+import UploadPanel from "./card-scanner/UploadPanel";
 import { authFetch } from "@/lib/authFetch";
 
 interface CardScannerProps {
-  initialMode?: 'upload' | 'camera';
+  initialMode?: "upload" | "camera";
 }
 
 const CardScanner = ({ initialMode }: CardScannerProps) => {
@@ -19,7 +19,7 @@ const CardScanner = ({ initialMode }: CardScannerProps) => {
   const [scanResult, setScanResult] = useState<ScannerResult | null>(null);
 
   useEffect(() => {
-    if (initialMode === 'camera') {
+    if (initialMode === "camera") {
       handleCameraStart();
     }
   }, [initialMode]);
@@ -31,13 +31,16 @@ const CardScanner = ({ initialMode }: CardScannerProps) => {
       setImage(null);
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { facingMode: "environment" },
       });
 
       return stream;
     } catch (error) {
-      console.error('Error accessing camera:', error);
-      toast.error("Could not access your camera. Please check permissions.", "Camera Error");
+      console.error("Error accessing camera:", error);
+      toast.error(
+        "Could not access your camera. Please check permissions.",
+        "Camera Error"
+      );
       setIsCapturing(false);
       return null;
     }
@@ -61,58 +64,67 @@ const CardScanner = ({ initialMode }: CardScannerProps) => {
       setIsCapturing(false);
       setIsProcessing(true);
       setProcessingProgress(0);
-  
+
       const formData = new FormData();
       formData.append("file", file);
-  
+
       // Simulate progress bar
       const progressInterval = setInterval(() => {
-        setProcessingProgress(prev => {
+        setProcessingProgress((prev) => {
           const next = prev + Math.random() * 10;
           return next > 95 ? 95 : next;
         });
       }, 300);
-  
+
       try {
         // Determine endpoint based on file type
         let endpoint = "/upload";
-        if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
-          endpoint = "/bulk-upload";
+        if (
+          file.type === "application/pdf" ||
+          file.name.toLowerCase().endsWith(".pdf")
+        ) {
+          endpoint = "/upload";
         }
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const apiBaseUrl =
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
         // Send the image or PDF to the backend
         const response = await authFetch(`${apiBaseUrl}${endpoint}`, {
           method: "POST",
           body: formData,
         });
-  
+
         const data = await response.json();
         console.log("✅ Upload success:", data.message);
-  
+
         // Handle the document_id returned from the backend
         if (data.document_id) {
-          toast.success("Your card has been sent for processing!", "Upload Successful");
-  
+          toast.success(
+            "Your card has been sent for processing!",
+            "Upload Successful"
+          );
+
           // Store document_id in state if needed
           console.log("Document ID:", data.document_id);
         } else {
           console.error("❌ No document_id returned.");
           toast.error("No document_id received from the backend.", "Error");
         }
-  
+
         setProcessingProgress(100); // Update the progress to 100%
-  
       } catch (error) {
         console.error("❌ Upload failed:", error);
-        toast.error("An error occurred while uploading the image.", "Upload Failed");
+        toast.error(
+          "An error occurred while uploading the image.",
+          "Upload Failed"
+        );
       } finally {
         clearInterval(progressInterval); // Clear progress interval
         setTimeout(() => setIsProcessing(false), 500); // Reset processing state
       }
     };
-  
+
     reader.readAsDataURL(file); // Start reading the file
-  };  
+  };
 
   const resetScan = () => {
     setImage(null);
