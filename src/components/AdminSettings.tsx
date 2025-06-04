@@ -344,13 +344,13 @@ const AdminSettings: React.FC = () => {
     try {
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${apiBaseUrl}/users`, {
-        headers: session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : {},
-      });
+      const response = await authFetch(
+        `${apiBaseUrl}/users`,
+        {},
+        session?.access_token
+      );
       const data = await response.json();
-      setUsers(data.users || []);
+      setUsers(data || []);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {

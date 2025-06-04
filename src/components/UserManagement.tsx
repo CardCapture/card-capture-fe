@@ -1,5 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useEffect, useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { InviteUserDialog } from "./InviteUserDialog";
@@ -27,10 +34,15 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await authFetch(`${apiBaseUrl}/users`, {}, session?.access_token);
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const response = await authFetch(
+        `${apiBaseUrl}/users`,
+        {},
+        session?.access_token
+      );
       const data = await response.json();
-      setUsers(data.users || []);
+      setUsers(data || []);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {
@@ -51,7 +63,7 @@ const UserManagement = () => {
 
   // Filter users to only those with the same school_id as the current user
   const filteredUsers = users.filter(
-    (user: any) => user.school_id === profile?.school_id
+    (user: UserProfile) => user.school_id === profile?.school_id
   );
 
   return (
@@ -73,31 +85,46 @@ const UserManagement = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-sm text-gray-500">
+                <TableCell
+                  colSpan={4}
+                  className="text-center py-8 text-sm text-gray-500"
+                >
                   Loading users...
                 </TableCell>
               </TableRow>
             ) : filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-sm text-gray-500">
+                <TableCell
+                  colSpan={4}
+                  className="text-center py-8 text-sm text-gray-500"
+                >
                   No users found.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredUsers.map(user => (
-                <TableRow 
-                  key={user.id} 
+              filteredUsers.map((user) => (
+                <TableRow
+                  key={user.id}
                   onClick={() => handleRowClick(user)}
                   className="cursor-pointer hover:bg-gray-100"
                 >
-                  <TableCell>{user.first_name} {user.last_name}</TableCell>
+                  <TableCell>
+                    {user.first_name} {user.last_name}
+                  </TableCell>
                   <TableCell>{user.email}</TableCell>
-                  <TableCell>{
-                    Array.isArray(user.role)
-                      ? user.role.join(', ')
-                      : user.role
-                  }</TableCell>
-                  <TableCell>{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '-'}</TableCell>
+                  <TableCell>
+                    {Array.isArray(user.role)
+                      ? user.role.join(", ")
+                      : user.role}
+                  </TableCell>
+                  <TableCell>
+                    {user.last_sign_in_at
+                      ? new Date(user.last_sign_in_at).toLocaleDateString(
+                          undefined,
+                          { month: "short", day: "2-digit", year: "numeric" }
+                        )
+                      : "-"}
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -112,16 +139,26 @@ const UserManagement = () => {
       <EditUserModal
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
-        user={selectedUser ? {
-          ...selectedUser,
-          role: Array.isArray(selectedUser.role)
-            ? selectedUser.role.filter((r): r is 'admin' | 'recruiter' | 'reviewer' => ['admin', 'recruiter', 'reviewer'].includes(r))
-            : [selectedUser.role].filter((r): r is 'admin' | 'recruiter' | 'reviewer' => ['admin', 'recruiter', 'reviewer'].includes(r))
-        } : null}
+        user={
+          selectedUser
+            ? {
+                ...selectedUser,
+                role: Array.isArray(selectedUser.role)
+                  ? selectedUser.role.filter(
+                      (r): r is "admin" | "recruiter" | "reviewer" =>
+                        ["admin", "recruiter", "reviewer"].includes(r)
+                    )
+                  : [selectedUser.role].filter(
+                      (r): r is "admin" | "recruiter" | "reviewer" =>
+                        ["admin", "recruiter", "reviewer"].includes(r)
+                    ),
+              }
+            : null
+        }
         onSuccess={fetchUsers}
       />
     </div>
   );
 };
 
-export default UserManagement; 
+export default UserManagement;
