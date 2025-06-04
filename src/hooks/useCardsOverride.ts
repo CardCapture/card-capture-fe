@@ -1,17 +1,44 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { ProspectCard, CardStatus } from "@/types/card";
+import { ProspectCard, CardStatus, FieldData } from "@/types/card";
 import { supabase } from "@/lib/supabaseClient";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { determineCardStatus } from "@/lib/cardUtils";
 import { authFetch } from "@/lib/authFetch";
+import { useLoader } from "@/contexts/LoaderContext";
+
+// Define proper interface for raw card data from API
+interface RawCardData {
+  document_id?: string;
+  id?: string;
+  review_status?: string;
+  created_at?: string;
+  uploaded_at?: string;
+  updated_at?: string;
+  reviewed_at?: string;
+  exported_at?: string | null;
+  fields?: Record<
+    string,
+    FieldData | { value: string; [key: string]: unknown }
+  >; // Allow flexible field structure
+  missing_fields?: string[];
+  image_path?: string;
+  event_id?: string;
+  school_id?: string;
+  user_id?: string;
+  trimmed_image_path?: string;
+  [key: string]: unknown; // More specific than any
+}
 
 export function useCardsOverride(eventId?: string) {
   const [cards, setCards] = useState<ProspectCard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [reviewModalState, setReviewModalState] = useState(false);
   const fetchInProgressRef = useRef(false);
   const lastFetchTimeRef = useRef<number>(0);
   const DEBOUNCE_DELAY = 1000; // 1 second debounce
+
+  // Use global loader instead of local loading state
+  const { showTableLoader, hideTableLoader, isLoading } = useLoader();
+  const LOADER_ID = `cards-${eventId || "default"}`;
 
   const fetchCards = useCallback(async () => {
     // Prevent parallel requests and implement debouncing
@@ -34,7 +61,7 @@ export function useCardsOverride(eventId?: string) {
     try {
       fetchInProgressRef.current = true;
       lastFetchTimeRef.current = now;
-      setIsLoading(true);
+      showTableLoader(LOADER_ID, "Loading cards...");
 
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -53,14 +80,14 @@ export function useCardsOverride(eventId?: string) {
         throw new Error("Failed to fetch cards");
       }
 
-      const data = await response.json();
-      console.log("useCardsOverride: Cards data received", {
+      const data: RawCardData[] = await response.json();
+      console.log("✅ [CARDS OVERRIDE] Cards data received", {
         count: data.length,
         firstCard: data.length > 0 ? data[0] : null,
       });
 
       // Map the data to ensure all required fields are properly set
-      const mappedCards = data.map((card: any) => {
+      const mappedCards = data.map((card: RawCardData) => {
         // Debug log the raw card data
         console.log("Raw card data:", card);
 
@@ -102,8 +129,7 @@ export function useCardsOverride(eventId?: string) {
           }
         });
 
-        const mappedCard = {
-          ...card,
+        const mappedCard: ProspectCard = {
           id:
             card.document_id ||
             card.id ||
@@ -113,14 +139,17 @@ export function useCardsOverride(eventId?: string) {
             card.id ||
             `unknown-${Math.random().toString(36).substring(7)}`,
           review_status: card.review_status || "needs_human_review",
-          createdAt:
+          created_at:
             card.created_at || card.uploaded_at || new Date().toISOString(),
-          updatedAt: card.updated_at || card.reviewed_at,
-          exported_at: card.exported_at || null,
-          fields: fields,
-          missingFields: card.missing_fields || [],
+          updated_at:
+            card.updated_at || card.reviewed_at || new Date().toISOString(),
+          exported_at: card.exported_at || undefined,
+          fields: fields as Record<string, FieldData>,
           image_path: card.image_path,
           event_id: card.event_id,
+          school_id: card.school_id || "",
+          user_id: card.user_id,
+          trimmed_image_path: card.trimmed_image_path,
         };
 
         // Debug log the mapped card
@@ -133,10 +162,10 @@ export function useCardsOverride(eventId?: string) {
     } catch (error) {
       console.error("Error fetching cards:", error);
     } finally {
-      setIsLoading(false);
+      hideTableLoader(LOADER_ID);
       fetchInProgressRef.current = false;
     }
-  }, [eventId]);
+  }, [eventId, showTableLoader, hideTableLoader, LOADER_ID]);
 
   // Effect for initial fetch and eventId changes
   useEffect(() => {
@@ -146,7 +175,7 @@ export function useCardsOverride(eventId?: string) {
       // Clear cards when no eventId is provided
       setCards([]);
     }
-  }, [eventId, fetchCards]);
+  }, [eventId]);
 
   // Effect for periodic polling (fallback for realtime issues)
   useEffect(() => {
@@ -205,7 +234,7 @@ export function useCardsOverride(eventId?: string) {
       }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [eventId, fetchCards]);
+  }, [eventId]);
 
   // Add getStatusCount function
   const getStatusCount = useCallback(
@@ -236,7 +265,7 @@ export function useCardsOverride(eventId?: string) {
   return {
     cards,
     fetchCards,
-    isLoading,
+    isLoading: isLoading(LOADER_ID), // Use global loader state
     setReviewModalState,
     reviewModalState,
     getStatusCount,

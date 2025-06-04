@@ -42,6 +42,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import { downloadCSV } from "@/utils/csvExport";
 import { useCardTableActions } from "@/hooks/useCardTableActions";
+import { useLoader, TableLoader } from "@/contexts/LoaderContext";
 
 // Add any additional imports as needed
 
@@ -73,13 +74,18 @@ const CardTable = ({
   handleManualEntry,
   fetchCards, // Add this prop for refreshing data
   bulkSelection, // Add bulkSelection as a prop
+  isLoading = false, // Add isLoading prop for the loader
 }) => {
-  // Remove the local useBulkSelection hook since we're getting it as a prop
-  // const bulkSelection = useBulkSelection(filteredCards);
-  
-  // Use our new bulk actions hook  
+  // Get loader context to check cards loading state
+  const { isLoading: isGlobalLoading } = useLoader();
+  const CARDS_LOADER_ID = `cards-${selectedEvent?.id || "default"}`;
+
+  // Use the actual loading state from the cards hook
+  const cardsLoading = isGlobalLoading(CARDS_LOADER_ID);
+
+  // Use our new bulk actions hook
   const bulkActions = useBulkActions(fetchCards, bulkSelection.clearSelection);
-  
+
   // Use the card table actions hook for export functionality
   const { handleExportToSlate } = useCardTableActions(
     filteredCards,
@@ -88,7 +94,7 @@ const CardTable = ({
     selectedEvent,
     dataFieldsMap
   );
-  
+
   // Handle CSV export
   const handleExportClick = () => {
     if (bulkSelection.selectedCount === 0) {
@@ -99,30 +105,30 @@ const CardTable = ({
       });
       return;
     }
-    
+
     console.log(`📊 Exporting ${bulkSelection.selectedCount} cards to CSV`);
     const eventName = selectedEvent?.name || "Unknown Event";
     downloadCSV(
-      bulkSelection.selectedCards, 
-      `cards-export-${new Date().toISOString().split('T')[0]}.csv`,
+      bulkSelection.selectedCards,
+      `cards-export-${new Date().toISOString().split("T")[0]}.csv`,
       eventName
     );
-    
+
     // Mark as exported via API
     bulkActions.exportCards(bulkSelection.selectedIds);
   };
-  
+
   // Handle Slate export
   const handleExportToSlateClick = () => {
     if (bulkSelection.selectedCount === 0) {
       toast({
-        title: "No Cards Selected", 
+        title: "No Cards Selected",
         description: "Please select at least one card to export.",
         variant: "destructive",
       });
       return;
     }
-    
+
     console.log(`🎯 Exporting ${bulkSelection.selectedCount} cards to Slate`);
     handleExportToSlate(bulkSelection.selectedIds);
   };
@@ -168,7 +174,7 @@ const CardTable = ({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        
+
         {selectedTab === "ready_to_export" && (
           <div
             className={`flex items-center gap-3 text-xs text-gray-500 ${
@@ -189,7 +195,7 @@ const CardTable = ({
             </Label>
           </div>
         )}
-        
+
         <input
           type="file"
           ref={fileInputRef}
@@ -197,7 +203,7 @@ const CardTable = ({
           accept=".pdf,image/*"
           className="hidden"
         />
-        
+
         {/* Mobile-Responsive Selection Action Bar */}
         {bulkSelection.selectedCount > 0 ? (
           <div className="bg-blue-50 border border-blue-200 rounded-lg shadow-sm sticky top-0 z-10 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-top-2">
@@ -226,7 +232,12 @@ const CardTable = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => bulkActions.moveCards(bulkSelection.selectedIds, "reviewed")}
+                      onClick={() =>
+                        bulkActions.moveCards(
+                          bulkSelection.selectedIds,
+                          "reviewed"
+                        )
+                      }
                       disabled={bulkActions.isLoading}
                       className="text-gray-700 hover:text-gray-900 gap-1.5 flex-1 sm:flex-none min-h-[40px]"
                     >
@@ -240,7 +251,9 @@ const CardTable = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => bulkActions.deleteCards(bulkSelection.selectedIds)}
+                      onClick={() =>
+                        bulkActions.deleteCards(bulkSelection.selectedIds)
+                      }
                       disabled={bulkActions.isLoading}
                       className="text-red-600 hover:text-red-700 gap-1.5 flex-1 sm:flex-none min-h-[40px]"
                     >
@@ -285,7 +298,9 @@ const CardTable = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => bulkActions.archiveCards(bulkSelection.selectedIds)}
+                      onClick={() =>
+                        bulkActions.archiveCards(bulkSelection.selectedIds)
+                      }
                       disabled={bulkActions.isLoading}
                       className="text-gray-700 hover:text-gray-900 gap-1.5 flex-1 sm:flex-none min-h-[40px]"
                     >
@@ -302,11 +317,15 @@ const CardTable = ({
             </div>
           </div>
         ) : null}
-        
+
         {/* Mobile-Responsive Table Container */}
         <div className="overflow-hidden rounded-lg border border-gray-200">
           <div className="relative w-full overflow-x-auto">
-            <Table className={`min-w-full ${bulkSelection.selectedCount > 0 ? "" : "mt-0"}`}>
+            <Table
+              className={`min-w-full ${
+                bulkSelection.selectedCount > 0 ? "" : "mt-0"
+              }`}
+            >
               {bulkSelection.selectedCount === 0 && (
                 <TableHeader className="bg-gray-50 sticky top-0 z-10">
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -337,73 +356,81 @@ const CardTable = ({
                 </TableHeader>
               )}
               <TableBody>
-                {paginatedCards.length > 0 ? (
-                  table.getRowModel().rows.map((tableRow) => (
-                    <TableRow
-                      key={tableRow.id}
-                      data-state={bulkSelection.isSelected(tableRow.original.document_id) && "selected"}
-                      className="hover:bg-gray-100 cursor-pointer"
-                      onClick={() => handleRowClick(tableRow.original)}
-                    >
-                      {tableRow.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          className="px-2 sm:px-4 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700"
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
+                <TableLoader id={CARDS_LOADER_ID} rowCount={5} colCount={12} />
+                {!cardsLoading && paginatedCards.length > 0
+                  ? table.getRowModel().rows.map((tableRow) => (
+                      <TableRow
+                        key={tableRow.id}
+                        data-state={
+                          bulkSelection.isSelected(
+                            tableRow.original.document_id
+                          ) && "selected"
+                        }
+                        className="hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleRowClick(tableRow.original)}
+                      >
+                        {tableRow.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className="px-2 sm:px-4 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700"
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  : !cardsLoading && (
+                      <TableRow>
+                        <TableCell colSpan={13} className="h-24">
+                          <div className="flex flex-col items-center justify-center h-full gap-2 p-4">
+                            {selectedTab === "needs_human_review" ? (
+                              <>
+                                <div className="text-sm font-medium text-gray-900 text-center">
+                                  Nice work! No cards need review right now.
+                                </div>
+                                <div className="text-xs sm:text-sm text-gray-500 text-center">
+                                  Upload more cards to get started.
+                                </div>
+                              </>
+                            ) : selectedTab === "ready_to_export" ? (
+                              <>
+                                <div className="text-sm font-medium text-gray-900 text-center">
+                                  No cards ready to export yet
+                                </div>
+                                <div className="text-xs sm:text-sm text-gray-500 text-center">
+                                  Review cards first to prepare them for export.
+                                </div>
+                              </>
+                            ) : selectedTab === "archived" ? (
+                              <>
+                                <div className="text-sm font-medium text-gray-900 text-center">
+                                  No archived cards
+                                </div>
+                                <div className="text-xs sm:text-sm text-gray-500 text-center">
+                                  Archived cards will appear here.
+                                </div>
+                              </>
+                            ) : null}
+                          </div>
                         </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={13} className="h-24">
-                      <div className="flex flex-col items-center justify-center h-full gap-2 p-4">
-                        {selectedTab === "needs_human_review" ? (
-                          <>
-                            <div className="text-sm font-medium text-gray-900 text-center">
-                              Nice work! No cards need review right now.
-                            </div>
-                            <div className="text-xs sm:text-sm text-gray-500 text-center">
-                              Upload more cards to get started.
-                            </div>
-                          </>
-                        ) : selectedTab === "ready_to_export" ? (
-                          <>
-                            <div className="text-sm font-medium text-gray-900 text-center">
-                              No cards ready to export yet
-                            </div>
-                            <div className="text-xs sm:text-sm text-gray-500 text-center">
-                              Review cards first to prepare them for export.
-                            </div>
-                          </>
-                        ) : selectedTab === "archived" ? (
-                          <>
-                            <div className="text-sm font-medium text-gray-900 text-center">
-                              No archived cards
-                            </div>
-                            <div className="text-xs sm:text-sm text-gray-500 text-center">
-                              Archived cards will appear here.
-                            </div>
-                          </>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
+                      </TableRow>
+                    )}
               </TableBody>
             </Table>
           </div>
         </div>
-        
+
         {/* Mobile-Responsive Pagination Controls */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t px-4 sm:px-6 py-4">
           <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
             <span>Rows per page:</span>
-            <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+            <Select
+              value={pageSize.toString()}
+              onValueChange={(value) => setPageSize(Number(value))}
+            >
               <SelectTrigger className="w-16 sm:w-20 h-8">
                 <SelectValue />
               </SelectTrigger>
@@ -417,20 +444,24 @@ const CardTable = ({
           </div>
 
           <div className="flex items-center gap-2 text-xs sm:text-sm">
-            <span className="text-muted-foreground">Page {currentPage} of {totalPages}</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <span className="text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
               className="min-h-[36px] px-3"
             >
               Prev
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              onClick={() =>
+                setCurrentPage(Math.min(totalPages, currentPage + 1))
+              }
               disabled={currentPage === totalPages}
               className="min-h-[36px] px-3"
             >

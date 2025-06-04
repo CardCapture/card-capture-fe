@@ -52,6 +52,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  useLoader,
+  TableLoader,
+  InlineLoader,
+  OverlayLoader,
+} from "@/contexts/LoaderContext";
 
 const NAV_ITEMS = [
   {
@@ -175,11 +181,6 @@ const AdminSettings: React.FC = () => {
   // Get the active tab from the URL
   const activeTab = location.pathname.split("/").pop() || "account-settings";
 
-  // If we're at /settings, redirect to /settings/account-settings
-  if (location.pathname === "/settings") {
-    return <Navigate to="/settings/account-settings" replace />;
-  }
-
   // User management state
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -227,6 +228,215 @@ const AdminSettings: React.FC = () => {
       contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [fields, activeTab]);
+
+  // Fetch SFTP config
+  useEffect(() => {
+    const fetchSftpConfig = async () => {
+      if (!session?.user?.id) return;
+
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("school_id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (!profile?.school_id) {
+          throw new Error("No school ID found");
+        }
+
+        const { data: sftpData } = await supabase
+          .from("sftp_configs")
+          .select("*")
+          .eq("school_id", profile.school_id)
+          .single();
+
+        if (sftpData) {
+          setSftpConfig({
+            host: sftpData.host || "",
+            username: sftpData.username || "",
+            password: sftpData.password || "",
+            upload_path: sftpData.upload_path || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching SFTP config:", error);
+      }
+    };
+
+    fetchSftpConfig();
+  }, [session]);
+
+  // Fetch school record for subscription tab
+  useEffect(() => {
+    const fetchSchool = async () => {
+      if (
+        (activeTab !== "subscription" &&
+          activeTab !== "field-preferences" &&
+          activeTab !== "account-settings") ||
+        !session?.user?.id
+      ) {
+        console.log("Debug - Not fetching school:", {
+          activeTab,
+          userId: session?.user?.id,
+        });
+        return;
+      }
+
+      setSchoolLoading(true);
+      setSchoolError(null);
+      try {
+        // First fetch the school_id from profiles table
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("school_id")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          throw new Error("Failed to fetch profile");
+        }
+
+        if (!profile?.school_id) {
+          throw new Error("No school ID found in profile");
+        }
+
+        console.log("Debug - School ID from profile:", profile.school_id);
+
+        // Now fetch the school details
+        const apiBaseUrl =
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+        console.log(
+          "Debug - Fetching school from:",
+          `${apiBaseUrl}/schools/${profile.school_id}`
+        );
+        const res = await fetch(`${apiBaseUrl}/schools/${profile.school_id}`, {
+          headers: session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {},
+        });
+        console.log(
+          "Debug - School fetch response:",
+          res.status,
+          res.statusText
+        );
+        if (!res.ok) throw new Error("Failed to fetch school record");
+        const data = await res.json();
+        console.log("Debug - School data:", JSON.stringify(data, null, 2));
+        setSchool(data.school || null);
+        if (data.school?.name) {
+          setInitialSchoolName(data.school.name);
+        }
+      } catch (err: unknown) {
+        const errorMsg =
+          err instanceof Error ? err.message : "Error fetching school record";
+        console.error("Debug - School fetch error:", err);
+        setSchoolError(errorMsg);
+        setSchool(null);
+      } finally {
+        setSchoolLoading(false);
+      }
+    };
+    fetchSchool();
+  }, [activeTab, session]);
+
+  useEffect(() => {
+    if (activeTab === "user-management" && session?.access_token) {
+      fetchUsers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, session]);
+
+  // Call loadFieldPreferences when school changes and activeTab is 'field-preferences'
+  useEffect(() => {
+    if (school && activeTab === "field-preferences") {
+      loadFieldPreferences();
+    }
+  }, [school, activeTab]);
+
+  // Add useEffect for loading majors
+  useEffect(() => {
+    if (session?.user?.id && activeTab === "majors") {
+      loadMajors();
+    }
+  }, [session, activeTab]);
+
+  // If we're at /settings, redirect to /settings/account-settings
+  if (location.pathname === "/settings") {
+    return <Navigate to="/settings/account-settings" replace />;
+  }
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const response = await authFetch(
+        `${apiBaseUrl}/users`,
+        {},
+        session?.access_token
+      );
+      const data = await response.json();
+      setUsers(data || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRowClick = (user: UserProfile) => {
+    // Convert UserProfile to UserToEdit format
+    const userToEdit = {
+      id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      role: Array.isArray(user.role)
+        ? user.role
+        : ([user.role] as ("admin" | "recruiter" | "reviewer")[]),
+    };
+    setSelectedUser(userToEdit);
+    setEditModalOpen(true);
+  };
+
+  // Stripe Checkout handler
+  const handleStripeCheckout = async () => {
+    try {
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const response = await authFetch(
+        `${apiBaseUrl}/stripe/create-portal-session`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+        session?.access_token
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(
+          errorData?.detail || "Failed to create Stripe portal session"
+        );
+      }
+
+      const data = await response.json();
+      window.open(data.url, "_blank");
+    } catch (error) {
+      console.error("Error creating Stripe portal session:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to open billing portal"
+      );
+    }
+  };
+
+  // Update the navigation handler
+  const handleTabChange = (tabId: string) => {
+    navigate(`/settings/${tabId}`);
+  };
 
   // SFTP functions
   const saveSftpConfig = async () => {
@@ -301,197 +511,6 @@ const AdminSettings: React.FC = () => {
     }
   };
 
-  // Fetch SFTP config
-  useEffect(() => {
-    const fetchSftpConfig = async () => {
-      if (!session?.user?.id) return;
-
-      try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("school_id")
-          .eq("id", session.user.id)
-          .single();
-
-        if (!profile?.school_id) {
-          throw new Error("No school ID found");
-        }
-
-        const { data: sftpData } = await supabase
-          .from("sftp_configs")
-          .select("*")
-          .eq("school_id", profile.school_id)
-          .single();
-
-        if (sftpData) {
-          setSftpConfig({
-            host: sftpData.host || "",
-            username: sftpData.username || "",
-            password: sftpData.password || "",
-            upload_path: sftpData.upload_path || "",
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching SFTP config:", error);
-      }
-    };
-
-    fetchSftpConfig();
-  }, [session]);
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await authFetch(
-        `${apiBaseUrl}/users`,
-        {},
-        session?.access_token
-      );
-      const data = await response.json();
-      setUsers(data || []);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch school record for subscription tab
-  useEffect(() => {
-    const fetchSchool = async () => {
-      if (
-        (activeTab !== "subscription" &&
-          activeTab !== "field-preferences" &&
-          activeTab !== "account-settings") ||
-        !session?.user?.id
-      ) {
-        console.log("Debug - Not fetching school:", {
-          activeTab,
-          userId: session?.user?.id,
-        });
-        return;
-      }
-
-      setSchoolLoading(true);
-      setSchoolError(null);
-      try {
-        // First fetch the school_id from profiles table
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("school_id")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          throw new Error("Failed to fetch profile");
-        }
-
-        if (!profile?.school_id) {
-          throw new Error("No school ID found in profile");
-        }
-
-        console.log("Debug - School ID from profile:", profile.school_id);
-
-        // Now fetch the school details
-        const apiBaseUrl =
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-        console.log(
-          "Debug - Fetching school from:",
-          `${apiBaseUrl}/schools/${profile.school_id}`
-        );
-        const res = await fetch(`${apiBaseUrl}/schools/${profile.school_id}`, {
-          headers: session?.access_token
-            ? { Authorization: `Bearer ${session.access_token}` }
-            : {},
-        });
-        console.log(
-          "Debug - School fetch response:",
-          res.status,
-          res.statusText
-        );
-        if (!res.ok) throw new Error("Failed to fetch school record");
-        const data = await res.json();
-        console.log("Debug - School data:", JSON.stringify(data, null, 2));
-        setSchool(data.school || null);
-        if (data.school?.name) {
-          setInitialSchoolName(data.school.name);
-        }
-      } catch (err: unknown) {
-        const errorMsg =
-          err instanceof Error ? err.message : "Error fetching school record";
-        console.error("Debug - School fetch error:", err);
-        setSchoolError(errorMsg);
-        setSchool(null);
-      } finally {
-        setSchoolLoading(false);
-      }
-    };
-    fetchSchool();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, session]);
-
-  useEffect(() => {
-    if (activeTab === "user-management" && session?.access_token) {
-      fetchUsers();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, session]);
-
-  const handleRowClick = (user: UserProfile) => {
-    // Convert UserProfile to UserToEdit format
-    const userToEdit = {
-      id: user.id,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      role: Array.isArray(user.role)
-        ? user.role
-        : ([user.role] as ("admin" | "recruiter" | "reviewer")[]),
-    };
-    setSelectedUser(userToEdit);
-    setEditModalOpen(true);
-  };
-
-  // Stripe Checkout handler
-  const handleStripeCheckout = async () => {
-    try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await authFetch(
-        `${apiBaseUrl}/stripe/create-portal-session`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-        session?.access_token
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.detail || "Failed to create Stripe portal session"
-        );
-      }
-
-      const data = await response.json();
-      window.open(data.url, "_blank");
-    } catch (error) {
-      console.error("Error creating Stripe portal session:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to open billing portal"
-      );
-    }
-  };
-
-  // Update the navigation handler
-  const handleTabChange = (tabId: string) => {
-    navigate(`/settings/${tabId}`);
-  };
-
   // Add loadFieldPreferences function
   const loadFieldPreferences = async () => {
     if (!school?.card_fields) {
@@ -500,11 +519,14 @@ const AdminSettings: React.FC = () => {
       setLoadingFields(false);
       return;
     }
-    // card_fields is now an array
-    const cardFields = school.card_fields;
-    const formattedFields = cardFields.map((field: any) => ({
-      key: field.key,
-      label: field.key
+    // card_fields is a Record/object, convert to array
+    const cardFields = school.card_fields as Record<
+      string,
+      { enabled: boolean; required: boolean }
+    >;
+    const formattedFields = Object.entries(cardFields).map(([key, field]) => ({
+      key,
+      label: key
         .split("_")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" "),
@@ -515,13 +537,6 @@ const AdminSettings: React.FC = () => {
     setInitialFields(formattedFields);
     setLoadingFields(false);
   };
-
-  // Call loadFieldPreferences when school changes and activeTab is 'field-preferences'
-  useEffect(() => {
-    if (school && activeTab === "field-preferences") {
-      loadFieldPreferences();
-    }
-  }, [school, activeTab]);
 
   // Add handleSave function
   const handleSave = async (updatedFields: CardField[]) => {
@@ -624,13 +639,6 @@ const AdminSettings: React.FC = () => {
       toast.error("Failed to save majors");
     }
   };
-
-  // Add useEffect for loading majors
-  useEffect(() => {
-    if (session?.user?.id && activeTab === "majors") {
-      loadMajors();
-    }
-  }, [session, activeTab]);
 
   // Edit major handler
   const handleEditMajor = (idx: number) => {

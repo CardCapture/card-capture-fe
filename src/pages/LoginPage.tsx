@@ -14,14 +14,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useLoader, ButtonLoader } from "@/contexts/LoaderContext";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signInWithPassword, profile, user } = useAuth(); // Get function from context
   const navigate = useNavigate();
+
+  // Use global loader instead of local loading state
+  const { showButtonLoader, hideButtonLoader, isLoading } = useLoader();
+  const LOADER_ID = "login-button";
 
   // Redirect if user is already logged in
   useEffect(() => {
@@ -33,9 +37,10 @@ const LoginPage = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
+    showButtonLoader(LOADER_ID);
     setError(null);
     console.log("Signing in with email:", email, "and password:", password);
+
     const { error: signInError } = await signInWithPassword({
       email,
       password,
@@ -43,13 +48,15 @@ const LoginPage = () => {
 
     if (signInError) {
       setError(signInError.message); // Show Supabase error message
-      setLoading(false);
+      hideButtonLoader(LOADER_ID);
     } else {
       // Login successful! The useEffect above will handle the redirect
       // once the profile is loaded
-      setLoading(false);
+      hideButtonLoader(LOADER_ID);
     }
   };
+
+  const loading = isLoading(LOADER_ID);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted p-4">
@@ -109,21 +116,16 @@ const LoginPage = () => {
               )}
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button
-                type="submit"
-                className="w-full transition-all duration-200"
-                disabled={loading}
-                size="lg"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    <span>Signing In...</span>
-                  </div>
-                ) : (
-                  "Sign In"
-                )}
-              </Button>
+              <ButtonLoader id={LOADER_ID}>
+                <Button
+                  type="submit"
+                  className="w-full transition-all duration-200"
+                  disabled={loading}
+                  size="lg"
+                >
+                  {loading ? "Signing In..." : "Sign In"}
+                </Button>
+              </ButtonLoader>
             </CardFooter>
           </form>
         </Card>

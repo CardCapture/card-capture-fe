@@ -17,10 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
   Dialog,
@@ -82,6 +82,7 @@ import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import { toast } from "@/lib/toast"; // Updated import
 import CameraCapture from "@/components/card-scanner/CameraCapture";
+import { useLoader } from "@/contexts/LoaderContext";
 
 // === Component Definition ===
 const Dashboard = () => {
@@ -90,12 +91,22 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId?: string }>();
   const { profile, session } = useAuth();
-  const { events, loading: eventsLoading, fetchEvents } = useEvents(profile?.school_id);
+  const {
+    events,
+    loading: eventsLoading,
+    fetchEvents,
+  } = useEvents(profile?.school_id);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const { cards, fetchCards, setReviewModalState } = useCardsOverride(
-    selectedEvent?.id
-  );
+  const {
+    cards,
+    fetchCards,
+    setReviewModalState,
+    isLoading: cardsLoading,
+  } = useCardsOverride(selectedEvent?.id);
   const { uploadCard } = useCardUpload();
+
+  // Global loader for full page when events are loading
+  const { showFullPageLoader, hideFullPageLoader } = useLoader();
 
   // Status Tabs
   const { selectedTab, setSelectedTab, getStatusCount } = useStatusTabs(
@@ -188,8 +199,13 @@ const Dashboard = () => {
   const [eventNameError, setEventNameError] = useState<string | null>(null);
 
   // Settings/preferences
-  const [cardFieldPrefs, setCardFieldPrefs] = useState<Record<string, boolean> | null>(null);
-  const [school, setSchool] = useState<{ card_fields?: Record<string, { enabled: boolean; required: boolean }> } | null>(null);
+  const [cardFieldPrefs, setCardFieldPrefs] = useState<Record<
+    string,
+    boolean
+  > | null>(null);
+  const [school, setSchool] = useState<{
+    card_fields?: Record<string, { enabled: boolean; required: boolean }>;
+  } | null>(null);
 
   // --- Refs ---
   const imageUrlRef = useRef<string>("");
@@ -212,12 +228,7 @@ const Dashboard = () => {
     startUploadProcess,
     isCameraModalOpen,
     setIsCameraModalOpen,
-  } = useCardUploadActions(
-    selectedEvent,
-    uploadCard,
-    fetchCards,
-    fileInputRef
-  );
+  } = useCardUploadActions(selectedEvent, uploadCard, fetchCards, fileInputRef);
   const {
     isReviewModalOpen,
     setIsReviewModalOpen,
@@ -234,12 +245,7 @@ const Dashboard = () => {
     fieldsWithToastRef,
     isSaving,
     setIsSaving,
-  } = useCardReviewModal(
-    cards,
-    reviewFieldOrder,
-    fetchCards,
-    dataFieldsMap
-  );
+  } = useCardReviewModal(cards, reviewFieldOrder, fetchCards, dataFieldsMap);
   const {
     isManualEntryModalOpen,
     setIsManualEntryModalOpen,
@@ -248,10 +254,7 @@ const Dashboard = () => {
     handleManualEntry,
     handleManualEntrySubmit,
     handleManualEntryChange,
-  } = useManualEntryModal(
-    selectedEvent,
-    fetchCards
-  );
+  } = useManualEntryModal(selectedEvent, fetchCards);
 
   // --- Callbacks ---
   const debouncedSearch = useCallback((query: string) => {
@@ -270,14 +273,23 @@ const Dashboard = () => {
   // --- Filtered Cards ---
   useEffect(() => {
     if (cards) {
-      console.log('All cards review_status:', cards.map(card => ({id: card.id, review_status: card.review_status})));
       console.log(
-        'Archived cards event_id:',
-        cards.filter(card => card.review_status === 'archived').map(card => ({
+        "All cards review_status:",
+        cards.map((card) => ({
           id: card.id,
-          event_id: card.event_id
-        })),
-        'Selected event id:', selectedEvent?.id
+          review_status: card.review_status,
+        }))
+      );
+      console.log(
+        "Archived cards event_id:",
+        cards
+          .filter((card) => card.review_status === "archived")
+          .map((card) => ({
+            id: card.id,
+            event_id: card.event_id,
+          })),
+        "Selected event id:",
+        selectedEvent?.id
       );
     }
   }, [cards, selectedEvent]);
@@ -299,7 +311,11 @@ const Dashboard = () => {
       const currentStatus = determineCardStatus(card);
 
       // Only apply hideExported in the ready_to_export tab
-      if (selectedTab === "ready_to_export" && hideExported && currentStatus === "exported") {
+      if (
+        selectedTab === "ready_to_export" &&
+        hideExported &&
+        currentStatus === "exported"
+      ) {
         return false;
       }
 
@@ -349,7 +365,12 @@ const Dashboard = () => {
   const bulkActions = useBulkActions(fetchCards, bulkSelection.clearSelection);
 
   // Now that filteredCards is defined, we can use it in useCardTableActions
-  const { handleExportSelected, handleMoveSelected, handleArchiveSelected, handleDeleteSelected } = useCardTableActions(
+  const {
+    handleExportSelected,
+    handleMoveSelected,
+    handleArchiveSelected,
+    handleDeleteSelected,
+  } = useCardTableActions(
     filteredCards,
     fetchCards,
     oldToast,
@@ -374,7 +395,7 @@ const Dashboard = () => {
   const reviewProgress = useMemo(() => {
     if (!selectedCardForReview)
       return { reviewedCount: 0, totalFields: 0, allReviewed: false };
-    
+
     const fieldsNeedingReview = new Set<string>();
 
     // First pass: collect all fields that need or needed review
@@ -408,6 +429,15 @@ const Dashboard = () => {
     fetchEvents();
   }, [fetchEvents]);
 
+  // Effect to control full page loader for events loading
+  useEffect(() => {
+    if (eventsLoading) {
+      showFullPageLoader("Loading events...");
+    } else {
+      hideFullPageLoader();
+    }
+  }, [eventsLoading, showFullPageLoader, hideFullPageLoader]);
+
   // Effect to handle event selection based on URL params
   useEffect(() => {
     if (events.length > 0) {
@@ -420,7 +450,10 @@ const Dashboard = () => {
           // If event not found, redirect to first event
           const firstEvent = events[0];
           navigate(`/events/${firstEvent.id}`);
-          toast.error("The requested event could not be found. Redirected to the first available event.", "Event Not Found");
+          toast.error(
+            "The requested event could not be found. Redirected to the first available event.",
+            "Event Not Found"
+          );
         }
       } else {
         // No eventId in URL, redirect to first event
@@ -433,7 +466,7 @@ const Dashboard = () => {
   // Effect to refetch cards when selected event changes
   useEffect(() => {
     fetchCards();
-  }, [selectedEvent, fetchCards]);
+  }, [selectedEvent]);
 
   // Add this after filteredCards is defined and before JSX return
   useEffect(() => {
@@ -451,34 +484,47 @@ const Dashboard = () => {
 
   // Add effect to update selected card IDs when row selection changes
   useEffect(() => {
-    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-    console.log('=== Row Selection Debug ===');
-    console.log('rowSelection state:', rowSelection);
-    console.log('Selected card IDs:', selectedIds);
-    console.log('paginatedCards length:', paginatedCards.length);
-    console.log('paginatedCards IDs:', paginatedCards.map(card => card.id));
-    console.log('filteredCards length:', filteredCards.length);
-    console.log('Current page:', currentPage, 'Page size:', pageSize);
+    const selectedIds = Object.keys(rowSelection).filter(
+      (id) => rowSelection[id]
+    );
+    console.log("=== Row Selection Debug ===");
+    console.log("rowSelection state:", rowSelection);
+    console.log("Selected card IDs:", selectedIds);
+    console.log("paginatedCards length:", paginatedCards.length);
+    console.log(
+      "paginatedCards IDs:",
+      paginatedCards.map((card) => card.id)
+    );
+    console.log("filteredCards length:", filteredCards.length);
+    console.log("Current page:", currentPage, "Page size:", pageSize);
   }, [rowSelection, paginatedCards, filteredCards, currentPage, pageSize]);
 
   // --- Callbacks & Effects ---
   const handleRowClick = useCallback(
     (card: ProspectCard) => {
-    // Store a local copy of the card that won't be affected by updates
-    localCardRef.current = card;
-    setSelectedCardForReview(card); 
-    selectedCardIdRef.current = card.id;
-    imageKeyRef.current = `image-${card.id}-${Date.now()}`;
+      // Store a local copy of the card that won't be affected by updates
+      localCardRef.current = card;
+      setSelectedCardForReview(card);
+      selectedCardIdRef.current = card.id;
+      imageKeyRef.current = `image-${card.id}-${Date.now()}`;
       // Initialize formData with the card's field values
       const initialFormData: Record<string, string> = {};
       Object.entries(card.fields).forEach(([fieldKey, fieldData]) => {
-        initialFormData[fieldKey] = fieldData.value || '';
+        initialFormData[fieldKey] = fieldData.value || "";
       });
       setFormData(initialFormData);
-    setIsReviewModalOpen(true);
-    setReviewModalState(true);
+      setIsReviewModalOpen(true);
+      setReviewModalState(true);
     },
-    [setReviewModalState, localCardRef, setSelectedCardForReview, selectedCardIdRef, imageKeyRef, setFormData, setIsReviewModalOpen]
+    [
+      setReviewModalState,
+      localCardRef,
+      setSelectedCardForReview,
+      selectedCardIdRef,
+      imageKeyRef,
+      setFormData,
+      setIsReviewModalOpen,
+    ]
   );
 
   // Reset the fields with toast when the modal is closed
@@ -535,33 +581,35 @@ const Dashboard = () => {
     () => [
       {
         id: "select",
-      header: ({ table }) => (
-        <div className="flex justify-center">
-          <input
-            type="checkbox"
+        header: ({ table }) => (
+          <div className="flex justify-center">
+            <input
+              type="checkbox"
               checked={bulkSelection.isAllSelected}
-            ref={(input) => {
-              if (input) {
+              ref={(input) => {
+                if (input) {
                   input.indeterminate = bulkSelection.isSomeSelected;
-              }
-            }}
+                }
+              }}
               onChange={bulkSelection.toggleAll}
-            className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
-          />
-        </div>
-      ),
-      cell: ({ row }) => (
-        <div className="flex justify-center">
-          <input
-            type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+            />
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div className="flex justify-center">
+            <input
+              type="checkbox"
               checked={bulkSelection.isSelected(row.original.document_id)}
-              onChange={() => bulkSelection.toggleSelection(row.original.document_id)}
-            onClick={(e) => e.stopPropagation()}
-            className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
-          />
-        </div>
-      ),
-    },
+              onChange={() =>
+                bulkSelection.toggleSelection(row.original.document_id)
+              }
+              onClick={(e) => e.stopPropagation()}
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+            />
+          </div>
+        ),
+      },
       {
         accessorKey: "created_at",
         header: "Date added",
@@ -572,10 +620,10 @@ const Dashboard = () => {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => {
-      const card = row.original;
-      const currentStatus = determineCardStatus(card);
-      const exportedAt = card.exported_at;
-      let displayText: string;
+          const card = row.original;
+          const currentStatus = determineCardStatus(card);
+          const exportedAt = card.exported_at;
+          let displayText: string;
           if (currentStatus === "needs_human_review") {
             displayText = "Needs Review";
           } else if (currentStatus === "reviewed") {
@@ -584,13 +632,13 @@ const Dashboard = () => {
             displayText = "Exported";
           } else if (currentStatus === "archived") {
             displayText = "Archived";
-      } else {
+          } else {
             displayText = currentStatus
               ? currentStatus.charAt(0).toUpperCase() +
                 currentStatus.slice(1).replace(/_/g, " ")
               : "Unknown";
-      }
-      const getBadgeClasses = () => {
+          }
+          const getBadgeClasses = () => {
             if (currentStatus === "reviewed") {
               return "border-green-500 text-green-700 bg-green-50 font-semibold text-xs px-3 py-1 rounded-full";
             } else if (currentStatus === "needs_human_review") {
@@ -603,78 +651,80 @@ const Dashboard = () => {
             return "border-slate-200 text-slate-600 bg-white font-semibold text-xs px-3 py-1 rounded-full";
           };
           if (currentStatus === "exported" && exportedAt) {
-        return (
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger>
+            return (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger>
                     <Badge variant="outline" className={getBadgeClasses()}>
                       {displayText}
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Exported at {formatDateOrTimeAgo(exportedAt)}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      }
-      return (
-        <div className="flex flex-col gap-1">
-              <Badge variant="outline" className={getBadgeClasses()}>{displayText}</Badge>
-        </div>
-      );
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Exported at {formatDateOrTimeAgo(exportedAt)}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          }
+          return (
+            <div className="flex flex-col gap-1">
+              <Badge variant="outline" className={getBadgeClasses()}>
+                {displayText}
+              </Badge>
+            </div>
+          );
         },
         enableSorting: true,
         sortDescFirst: true,
         sortingFn: (rowA, rowB) => {
-      const getStatusValue = (row) => {
-        const status = determineCardStatus(row.original);
+          const getStatusValue = (row) => {
+            const status = determineCardStatus(row.original);
             if (status === "reviewed") return 1; // Ready to Export
             if (status === "exported") return 0;
-        return -1; // All others
-      };
-      return getStatusValue(rowA) - getStatusValue(rowB);
+            return -1; // All others
+          };
+          return getStatusValue(rowA) - getStatusValue(rowB);
         },
       },
       ...reviewFieldOrder.map((fieldKey) => ({
-      accessorKey: fieldKey,
+        accessorKey: fieldKey,
         header: dataFieldsMap.get(fieldKey) || fieldKey.replace(/_/g, " "),
         accessorFn: (row) => row.fields?.[fieldKey]?.value ?? "",
-      cell: ({ getValue, row }) => {
-        const value = getValue();
-        const fieldData = row.original.fields?.[fieldKey];
-        const needsReview = fieldData?.requires_human_review === true;
-        const isReviewed = fieldData?.reviewed === true;
-        const reviewNotes = fieldData?.review_notes;
-        const showIcon = needsReview;
+        cell: ({ getValue, row }) => {
+          const value = getValue();
+          const fieldData = row.original.fields?.[fieldKey];
+          const needsReview = fieldData?.requires_human_review === true;
+          const isReviewed = fieldData?.reviewed === true;
+          const reviewNotes = fieldData?.review_notes;
+          const showIcon = needsReview;
           let formattedValue = value ?? "";
           if (fieldKey === "cell") formattedValue = formatPhoneNumber(value);
           if (fieldKey === "date_of_birth")
             formattedValue = formatBirthday(value);
           const tooltipContent =
             reviewNotes || (needsReview ? "Needs human review" : null);
-        return (
-          <TooltipProvider delayDuration={100}>
-            <div className="flex items-center gap-1.5">
-              {showIcon && (
-                <Tooltip>
-                  <TooltipTrigger>
+          return (
+            <TooltipProvider delayDuration={100}>
+              <div className="flex items-center gap-1.5">
+                {showIcon && (
+                  <Tooltip>
+                    <TooltipTrigger>
                       <div className="flex h-3 w-3 items-center justify-center rounded-full bg-red-400 flex-shrink-0 text-white text-[8px] font-bold leading-none">
                         !
                       </div>
-                  </TooltipTrigger>
-                  {tooltipContent && (
-                    <TooltipContent side="top">
-                      <p>{tooltipContent}</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              )}
-              <span>{formattedValue}</span>
-            </div>
-          </TooltipProvider>
-        );
-      },
+                    </TooltipTrigger>
+                    {tooltipContent && (
+                      <TooltipContent side="top">
+                        <p>{tooltipContent}</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+                <span>{formattedValue}</span>
+              </div>
+            </TooltipProvider>
+          );
+        },
         enableSorting: true,
       })),
       ...(selectedTab === "exported"
@@ -682,7 +732,7 @@ const Dashboard = () => {
             {
               accessorKey: "exported_at",
               header: "Exported at",
-          cell: ({ row }) => formatDateOrTimeAgo(row.original.exported_at),
+              cell: ({ row }) => formatDateOrTimeAgo(row.original.exported_at),
               enableSorting: true,
             },
           ]
@@ -695,7 +745,7 @@ const Dashboard = () => {
   const table = useReactTable({
     data: paginatedCards,
     columns,
-    state: { 
+    state: {
       sorting,
     },
     enableRowSelection: false, // Disable built-in row selection
@@ -708,7 +758,7 @@ const Dashboard = () => {
   // Fields to show in the review panel
   const fieldsToShow = selectedCardForReview
     ? Array.isArray(school?.card_fields)
-      ? school.card_fields.filter(f => f.enabled).map(f => f.key)
+      ? school.card_fields.filter((f) => f.enabled).map((f) => f.key)
       : []
     : [];
 
@@ -726,7 +776,9 @@ const Dashboard = () => {
       setIsReviewModalOpen(false);
     } else {
       // Archive multiple selected cards from the table
-      const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+      const selectedIds = Object.keys(rowSelection).filter(
+        (id) => rowSelection[id]
+      );
       if (selectedIds.length > 0) {
         handleArchiveSelected(selectedIds);
       } else {
@@ -784,9 +836,10 @@ const Dashboard = () => {
       setEventNameError(
         error instanceof Error ? error.message : "Failed to update event name"
       );
-      toast.error(error instanceof Error
-          ? error.message
-          : "Failed to update event name", "Error");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update event name",
+        "Error"
+      );
     } finally {
       setEventNameLoading(false);
     }
@@ -896,7 +949,7 @@ const Dashboard = () => {
       } catch (error) {
         setMajorsList([]);
         toast.error("Failed to load majors");
-    } finally {
+      } finally {
         setLoadingMajors(false);
       }
     }
@@ -911,15 +964,21 @@ const Dashboard = () => {
     async function fetchSchool() {
       if (!selectedEvent?.school_id) return;
       try {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-        const response = await fetch(`${apiBaseUrl}/schools/${selectedEvent.school_id}`, {
-          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-        });
-        if (!response.ok) throw new Error('Failed to fetch school');
+        const apiBaseUrl =
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+        const response = await fetch(
+          `${apiBaseUrl}/schools/${selectedEvent.school_id}`,
+          {
+            headers: session?.access_token
+              ? { Authorization: `Bearer ${session.access_token}` }
+              : {},
+          }
+        );
+        if (!response.ok) throw new Error("Failed to fetch school");
         const data = await response.json();
         setSchool(data.school || null);
       } catch (error) {
-        console.error('Error fetching school:', error);
+        console.error("Error fetching school:", error);
       }
     }
     fetchSchool();
@@ -929,7 +988,10 @@ const Dashboard = () => {
     <ErrorBoundary>
       <div className="w-full p-2 sm:p-4 md:p-8 relative pb-20">
         <div className="space-y-4">
-          <nav aria-label="Breadcrumb" className="mb-2 text-xs sm:text-sm text-gray-500">
+          <nav
+            aria-label="Breadcrumb"
+            className="mb-2 text-xs sm:text-sm text-gray-500"
+          >
             <ol className="flex items-center space-x-1">
               <li className="flex items-center">
                 <a href="/events" className="text-blue-600 hover:underline">
@@ -951,121 +1013,155 @@ const Dashboard = () => {
               {/* Event Name Section */}
               <div className="flex flex-col text-left w-full">
                 <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2 flex-wrap">
-                {isEditingEventName ? (
-                  <>
-                    <input
+                  {isEditingEventName ? (
+                    <>
+                      <input
                         className="border rounded px-2 py-1 text-base sm:text-lg font-semibold w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={eventNameInput}
-                      onChange={(e) => setEventNameInput(e.target.value)}
-                      disabled={eventNameLoading}
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSaveEventName();
-                        if (e.key === "Escape") handleCancelEditEventName();
-                      }}
-                    />
+                        value={eventNameInput}
+                        onChange={(e) => setEventNameInput(e.target.value)}
+                        disabled={eventNameLoading}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveEventName();
+                          if (e.key === "Escape") handleCancelEditEventName();
+                        }}
+                      />
                       <div className="flex items-center gap-1">
-                    <button
+                        <button
                           className="text-green-600 hover:text-green-800 disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      onClick={handleSaveEventName}
-                      disabled={eventNameLoading || !eventNameInput.trim()}
-                      aria-label="Save event name"
-                    >
-                      {eventNameLoading ? (
-                        <Loader2 className="animate-spin w-5 h-5" />
-                      ) : (
-                        <Check className="w-5 h-5" />
-                      )}
-                    </button>
-                    <button
+                          onClick={handleSaveEventName}
+                          disabled={eventNameLoading || !eventNameInput.trim()}
+                          aria-label="Save event name"
+                        >
+                          {eventNameLoading ? (
+                            <Loader2 className="animate-spin w-5 h-5" />
+                          ) : (
+                            <Check className="w-5 h-5" />
+                          )}
+                        </button>
+                        <button
                           className="text-gray-500 hover:text-red-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      onClick={handleCancelEditEventName}
-                      disabled={eventNameLoading}
-                      aria-label="Cancel edit"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+                          onClick={handleCancelEditEventName}
+                          disabled={eventNameLoading}
+                          aria-label="Cancel edit"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
                       </div>
-                  </>
-                ) : (
-                  <>
+                    </>
+                  ) : (
+                    <>
                       <span className="break-words">
-                      {selectedEvent ? selectedEvent.name : "All Events"}
-                    </span>
-                    <button
+                        {selectedEvent ? selectedEvent.name : "All Events"}
+                      </span>
+                      <button
                         className="text-gray-400 hover:text-blue-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      onClick={handleEditEventName}
-                      aria-label="Edit event name"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                  </>
+                        onClick={handleEditEventName}
+                        aria-label="Edit event name"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                </h1>
+                {eventNameError && (
+                  <div className="text-sm text-red-600 mt-1">
+                    {eventNameError}
+                  </div>
                 )}
-              </h1>
-              {eventNameError && (
-                <div className="text-sm text-red-600 mt-1">
-                  {eventNameError}
-                </div>
-              )}
-            </div>
-              
+              </div>
+
               {/* Status Badges - Mobile Responsive Grid */}
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedTab('needs_human_review')}
+                  onClick={() => setSelectedTab("needs_human_review")}
                   className="focus:outline-none rounded cursor-pointer"
-                  style={{ touchAction: 'manipulation' }}
+                  style={{ touchAction: "manipulation" }}
                   aria-label="Show Needs Review"
                 >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'needs_human_review' ? 'border-2 border-indigo-500 text-indigo-700 bg-indigo-50' : ''}`}> 
+                  <Badge
+                    variant="outline"
+                    className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${
+                      selectedTab === "needs_human_review"
+                        ? "border-2 border-indigo-500 text-indigo-700 bg-indigo-50"
+                        : ""
+                    }`}
+                  >
                     <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
                     <span className="hidden sm:inline">Needs Review:</span>
-                    <span>{getStatusCount('needs_human_review')}</span>
-              </Badge>
+                    <span>{getStatusCount("needs_human_review")}</span>
+                  </Badge>
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setSelectedTab('ready_to_export'); setHideExported(true); }}
+                  onClick={() => {
+                    setSelectedTab("ready_to_export");
+                    setHideExported(true);
+                  }}
                   className="focus:outline-none rounded cursor-pointer"
-                  style={{ touchAction: 'manipulation' }}
+                  style={{ touchAction: "manipulation" }}
                   aria-label="Show Ready to Export"
                 >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'ready_to_export' && hideExported ? 'border-2 border-green-500 text-green-700 bg-green-50' : ''}`}> 
+                  <Badge
+                    variant="outline"
+                    className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${
+                      selectedTab === "ready_to_export" && hideExported
+                        ? "border-2 border-green-500 text-green-700 bg-green-50"
+                        : ""
+                    }`}
+                  >
                     <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
                     <span className="hidden sm:inline">Ready:</span>
-                    <span>{getStatusCount('reviewed')}</span>
-              </Badge>
+                    <span>{getStatusCount("reviewed")}</span>
+                  </Badge>
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setSelectedTab('ready_to_export'); setHideExported(false); }}
+                  onClick={() => {
+                    setSelectedTab("ready_to_export");
+                    setHideExported(false);
+                  }}
                   className="focus:outline-none rounded cursor-pointer"
-                  style={{ touchAction: 'manipulation' }}
+                  style={{ touchAction: "manipulation" }}
                   aria-label="Show Exported"
                 >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'ready_to_export' && !hideExported ? 'border-2 border-blue-500 text-blue-700 bg-blue-50' : ''}`}> 
+                  <Badge
+                    variant="outline"
+                    className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${
+                      selectedTab === "ready_to_export" && !hideExported
+                        ? "border-2 border-blue-500 text-blue-700 bg-blue-50"
+                        : ""
+                    }`}
+                  >
                     <Download className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
                     <span className="hidden sm:inline">Exported:</span>
-                    <span>{getStatusCount('exported')}</span>
-              </Badge>
+                    <span>{getStatusCount("exported")}</span>
+                  </Badge>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSelectedTab('archived')}
+                  onClick={() => setSelectedTab("archived")}
                   className="focus:outline-none rounded cursor-pointer"
-                  style={{ touchAction: 'manipulation' }}
+                  style={{ touchAction: "manipulation" }}
                   aria-label="Show Archived"
                 >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'archived' ? 'border-2 border-gray-500 text-gray-700 bg-gray-50' : ''}`}> 
+                  <Badge
+                    variant="outline"
+                    className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${
+                      selectedTab === "archived"
+                        ? "border-2 border-gray-500 text-gray-700 bg-gray-50"
+                        : ""
+                    }`}
+                  >
                     <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                     <span className="hidden sm:inline">Archived:</span>
-                    <span>{getStatusCount('archived')}</span>
-              </Badge>
+                    <span>{getStatusCount("archived")}</span>
+                  </Badge>
                 </button>
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Main Content - Mobile Responsive */}
@@ -1076,60 +1172,60 @@ const Dashboard = () => {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b">
                 {/* Main Tabs - Left side */}
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 w-full sm:w-auto">
-                <button
-                  onClick={() => setSelectedTab("needs_human_review")}
+                  <button
+                    onClick={() => setSelectedTab("needs_human_review")}
                     className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                    selectedTab === "needs_human_review"
-                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
+                      selectedTab === "needs_human_review"
+                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
                     <span>Needs Review</span>
-                  <Badge
-                    variant="outline"
+                    <Badge
+                      variant="outline"
                       className="ml-2 text-indigo-700 border-indigo-200 bg-white text-xs"
-                  >
-                    {getStatusCount("needs_human_review")}
-                  </Badge>
-                </button>
-                <button
-                  onClick={() => setSelectedTab("ready_to_export")}
+                    >
+                      {getStatusCount("needs_human_review")}
+                    </Badge>
+                  </button>
+                  <button
+                    onClick={() => setSelectedTab("ready_to_export")}
                     className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                    selectedTab === "ready_to_export"
-                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                    <span>Ready to Export</span>
-                  <Badge
-                    variant="outline"
-                      className="ml-2 text-blue-700 border-blue-200 bg-white text-xs"
+                      selectedTab === "ready_to_export"
+                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
                   >
-                    {getStatusCount("reviewed")}
-                  </Badge>
-                </button>
-              </div>
-                
+                    <span>Ready to Export</span>
+                    <Badge
+                      variant="outline"
+                      className="ml-2 text-blue-700 border-blue-200 bg-white text-xs"
+                    >
+                      {getStatusCount("reviewed")}
+                    </Badge>
+                  </button>
+                </div>
+
                 {/* Archived Tab - Right side */}
                 <div className="w-full sm:w-auto mt-2 sm:mt-0">
-                <button
-                  onClick={() => setSelectedTab("archived")}
+                  <button
+                    onClick={() => setSelectedTab("archived")}
                     className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                    selectedTab === "archived"
-                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                    <span>Archived</span>
-                  <Badge
-                    variant="outline"
-                      className="ml-2 text-gray-600 border-gray-200 bg-white text-xs"
+                      selectedTab === "archived"
+                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
                   >
-                    {getStatusCount("archived")}
-                  </Badge>
-                </button>
+                    <span>Archived</span>
+                    <Badge
+                      variant="outline"
+                      className="ml-2 text-gray-600 border-gray-200 bg-white text-xs"
+                    >
+                      {getStatusCount("archived")}
+                    </Badge>
+                  </button>
+                </div>
               </div>
-            </div>
               <CardTable
                 table={table}
                 handleRowClick={handleRowClick}
@@ -1158,6 +1254,7 @@ const Dashboard = () => {
                 handleManualEntry={handleManualEntry}
                 fetchCards={fetchCards}
                 bulkSelection={bulkSelection}
+                isLoading={cardsLoading}
               />
             </CardContent>
           </Card>
@@ -1173,7 +1270,8 @@ const Dashboard = () => {
                     Review Card Data
                   </DialogTitle>
                   <DialogDescription className="text-xs sm:text-sm text-gray-500">
-                    Review and edit the extracted information from the card image.
+                    Review and edit the extracted information from the card
+                    image.
                   </DialogDescription>
                 </div>
                 <div className="flex flex-col items-start sm:items-end space-y-1 w-full sm:w-auto">
@@ -1209,7 +1307,11 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 h-full">
                 {/* Image Panel - Mobile: Full width, Desktop: Half width */}
                 <ReviewImagePanel
-                  imagePath={selectedCardForReview?.trimmed_image_path || selectedCardForReview?.image_path || ""}
+                  imagePath={
+                    selectedCardForReview?.trimmed_image_path ||
+                    selectedCardForReview?.image_path ||
+                    ""
+                  }
                   zoom={zoom}
                   zoomIn={zoomIn}
                   zoomOut={zoomOut}
@@ -1227,22 +1329,22 @@ const Dashboard = () => {
                   majorsList={majorsList}
                   loadingMajors={loadingMajors}
                 />
-                        </div>
-                      </div>
+              </div>
+            </div>
             <DialogFooter className="px-4 sm:px-6 py-3 border-t flex-shrink-0">
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:justify-end">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleArchiveCard} 
-                  disabled={!selectedCardForReview?.id} 
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleArchiveCard}
+                  disabled={!selectedCardForReview?.id}
                   className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50 w-full sm:w-auto min-h-[44px]"
                 >
                   Archive Card
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={handleReviewSave} 
+                <Button
+                  type="button"
+                  onClick={handleReviewSave}
                   disabled={!selectedCardForReview?.id || isSaving}
                   className="w-full sm:w-auto min-h-[44px]"
                 >
@@ -1251,7 +1353,7 @@ const Dashboard = () => {
               </div>
             </DialogFooter>
           </DialogContent>
-      </Dialog>
+        </Dialog>
 
         {/* Camera Capture Modal */}
         <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
@@ -1266,9 +1368,9 @@ const Dashboard = () => {
               />
             </div>
           </DialogContent>
-      </Dialog>
+        </Dialog>
 
-      {/* Archive Confirmation Dialog */}
+        {/* Archive Confirmation Dialog */}
         <ArchiveConfirmDialog
           open={isArchiveConfirmOpen}
           onOpenChange={setIsArchiveConfirmOpen}
@@ -1277,29 +1379,33 @@ const Dashboard = () => {
           singleCard={!!selectedCardForReview}
         />
 
-      {/* Move Confirmation Dialog */}
+        {/* Move Confirmation Dialog */}
         <MoveConfirmDialog
           open={isMoveConfirmOpen}
           onOpenChange={setIsMoveConfirmOpen}
           onConfirm={() => {
-            const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+            const selectedIds = Object.keys(rowSelection).filter(
+              (id) => rowSelection[id]
+            );
             handleMoveSelected(selectedIds);
           }}
           count={Object.keys(rowSelection).length}
         />
 
-      {/* Delete Confirmation Dialog */}
+        {/* Delete Confirmation Dialog */}
         <DeleteConfirmDialog
           open={isDeleteConfirmOpen}
           onOpenChange={setIsDeleteConfirmOpen}
           onConfirm={() => {
-            const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+            const selectedIds = Object.keys(rowSelection).filter(
+              (id) => rowSelection[id]
+            );
             handleDeleteSelected(selectedIds);
           }}
           count={Object.keys(rowSelection).length}
         />
 
-      {/* Add the Manual Entry Modal */}
+        {/* Add the Manual Entry Modal */}
         <ManualEntryModal
           open={isManualEntryModalOpen}
           onOpenChange={setIsManualEntryModalOpen}
@@ -1307,7 +1413,7 @@ const Dashboard = () => {
           onChange={handleManualEntryChange}
           onSubmit={handleManualEntrySubmit}
         />
-    </div>
+      </div>
     </ErrorBoundary>
   );
 };
