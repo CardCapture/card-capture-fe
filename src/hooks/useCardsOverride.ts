@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { ProspectCard, CardStatus } from '@/types/card';
-import { supabase } from '@/lib/supabaseClient';
-import type { RealtimeChannel } from '@supabase/supabase-js';
-import { determineCardStatus } from '@/lib/cardUtils';
+import { useState, useCallback, useEffect, useRef } from "react";
+import { ProspectCard, CardStatus } from "@/types/card";
+import { supabase } from "@/lib/supabaseClient";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { determineCardStatus } from "@/lib/cardUtils";
 import { authFetch } from "@/lib/authFetch";
 
 export function useCardsOverride(eventId?: string) {
@@ -16,7 +16,10 @@ export function useCardsOverride(eventId?: string) {
   const fetchCards = useCallback(async () => {
     // Prevent parallel requests and implement debouncing
     const now = Date.now();
-    if (fetchInProgressRef.current || (now - lastFetchTimeRef.current < DEBOUNCE_DELAY)) {
+    if (
+      fetchInProgressRef.current ||
+      now - lastFetchTimeRef.current < DEBOUNCE_DELAY
+    ) {
       console.log("useCardsOverride: Fetch skipped - too soon or in progress");
       return;
     }
@@ -32,82 +35,103 @@ export function useCardsOverride(eventId?: string) {
       fetchInProgressRef.current = true;
       lastFetchTimeRef.current = now;
       setIsLoading(true);
-      
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const url = new URL(`${apiBaseUrl}/cards`);
-      url.searchParams.append('event_id', eventId);
+      url.searchParams.append("event_id", eventId);
       console.log("useCardsOverride: Fetching cards from", url.toString());
-      
+
       const response = await authFetch(url.toString());
       console.log("useCardsOverride: Cards response", {
         status: response.status,
         statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
+        headers: Object.fromEntries(response.headers.entries()),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to fetch cards');
+        throw new Error("Failed to fetch cards");
       }
-      
+
       const data = await response.json();
       console.log("useCardsOverride: Cards data received", {
         count: data.length,
-        firstCard: data.length > 0 ? data[0] : null
+        firstCard: data.length > 0 ? data[0] : null,
       });
-      
+
       // Map the data to ensure all required fields are properly set
       const mappedCards = data.map((card: any) => {
         // Debug log the raw card data
-        console.log('Raw card data:', card);
-        
+        console.log("Raw card data:", card);
+
         // Ensure all expected fields are present
         const fields = card.fields || {};
         const expectedFields = [
-          'name', 'preferred_first_name', 'date_of_birth', 'email', 'cell',
-          'permission_to_text', 'address', 'city', 'state', 'zip_code',
-          'high_school', 'class_rank', 'students_in_class', 'gpa',
-          'student_type', 'entry_term', 'major'
+          "name",
+          "preferred_first_name",
+          "date_of_birth",
+          "email",
+          "cell",
+          "permission_to_text",
+          "address",
+          "city",
+          "state",
+          "zip_code",
+          "high_school",
+          "class_rank",
+          "students_in_class",
+          "gpa",
+          "student_type",
+          "entry_term",
+          "major",
         ];
-        
+
         // Add missing fields with default values
-        expectedFields.forEach(field => {
+        expectedFields.forEach((field) => {
           if (!fields[field]) {
             fields[field] = {
-              value: '',
+              value: "",
               required: false,
               enabled: true,
               review_confidence: 0.0,
               requires_human_review: false,
-              review_notes: '',
+              review_notes: "",
               confidence: 0.0,
-              bounding_box: []
+              bounding_box: [],
             };
           }
         });
-        
+
         const mappedCard = {
           ...card,
-          id: card.document_id || card.id || `unknown-${Math.random().toString(36).substring(7)}`,
-          document_id: card.document_id || card.id || `unknown-${Math.random().toString(36).substring(7)}`,
-          review_status: card.review_status || 'needs_human_review',
-          createdAt: card.created_at || card.uploaded_at || new Date().toISOString(),
+          id:
+            card.document_id ||
+            card.id ||
+            `unknown-${Math.random().toString(36).substring(7)}`,
+          document_id:
+            card.document_id ||
+            card.id ||
+            `unknown-${Math.random().toString(36).substring(7)}`,
+          review_status: card.review_status || "needs_human_review",
+          createdAt:
+            card.created_at || card.uploaded_at || new Date().toISOString(),
           updatedAt: card.updated_at || card.reviewed_at,
           exported_at: card.exported_at || null,
           fields: fields,
           missingFields: card.missing_fields || [],
           image_path: card.image_path,
-          event_id: card.event_id
+          event_id: card.event_id,
         };
-        
+
         // Debug log the mapped card
-        console.log('Mapped card:', mappedCard);
-        
+        console.log("Mapped card:", mappedCard);
+
         return mappedCard;
       });
-      
+
       setCards(mappedCards);
     } catch (error) {
-      console.error('Error fetching cards:', error);
+      console.error("Error fetching cards:", error);
     } finally {
       setIsLoading(false);
       fetchInProgressRef.current = false;
@@ -124,144 +148,90 @@ export function useCardsOverride(eventId?: string) {
     }
   }, [eventId, fetchCards]);
 
-  // Effect for Supabase real-time subscription
+  // Effect for periodic polling (fallback for realtime issues)
   useEffect(() => {
-    if (!supabase || !eventId) {
-      console.warn("Supabase client not available or no eventId, real-time updates disabled.");
+    if (!eventId) {
       return;
     }
 
-    const channelName = 'reviewed_data_changes';
-    let channel: RealtimeChannel | null = null;
-    let updateTimeout: NodeJS.Timeout | null = null;
+    // Disable realtime for now due to RLS policy conflicts causing TIMED_OUT errors
+    const REALTIME_ENABLED = false;
 
-    const handleDbChange = (payload: any) => {
-      // Only process events for the current eventId
-      if (payload.new?.event_id !== eventId && payload.old?.event_id !== eventId) {
-        return;
-      }
+    if (REALTIME_ENABLED) {
+      // Realtime subscription code would go here when RLS issues are resolved
+      console.log("Realtime subscription would be enabled here");
+      return;
+    }
 
-      // Clear any pending updates
-      if (updateTimeout) {
-        clearTimeout(updateTimeout);
-      }
+    // Fallback: Use polling for updates
+    const POLL_INTERVAL = 30000; // 30 seconds
+    let pollInterval: NodeJS.Timeout;
 
-      // Debounce the update to prevent rapid state changes
-      updateTimeout = setTimeout(() => {
-        console.log('useCardsOverride: Processing Supabase change:', payload);
-        
-        // Update local state based on the change type
-        if (payload.eventType === 'UPDATE') {
-          setCards(prevCards => {
-            const updatedCards = prevCards.map(card => 
-              card.id === payload.new.document_id 
-                ? {
-                    ...card,
-                    ...payload.new,
-                    fields: payload.new.fields || card.fields,
-                    review_status: payload.new.review_status || card.review_status,
-                    status: payload.new.status || card.status,
-                    exported_at: payload.new.exported_at,
-                    reviewed_at: payload.new.reviewed_at,
-                    event_id: payload.new.event_id || card.event_id
-                  }
-                : card
-            );
-            
-            // Log the status change for debugging
-            console.log('Card status update:', {
-              cardId: payload.new.document_id,
-              oldStatus: payload.old?.status,
-              newStatus: payload.new.status,
-              oldReviewStatus: payload.old?.review_status,
-              newReviewStatus: payload.new.review_status
-            });
-            
-            // Only update if the card actually changed
-            const hasChanges = JSON.stringify(updatedCards) !== JSON.stringify(prevCards);
-            return hasChanges ? updatedCards : prevCards;
-          });
-        } else if (payload.eventType === 'INSERT') {
-          setCards(prevCards => {
-            const newCard = {
-              ...payload.new,
-              id: payload.new.document_id,
-              document_id: payload.new.document_id,
-              review_status: payload.new.review_status || 'needs_human_review',
-              status: payload.new.status || 'active',
-              createdAt: payload.new.created_at || new Date().toISOString(),
-              updatedAt: payload.new.updated_at || payload.new.reviewed_at,
-              exported_at: payload.new.exported_at || null,
-              fields: payload.new.fields || {},
-              missingFields: payload.new.missing_fields || [],
-              image_path: payload.new.image_path,
-              event_id: payload.new.event_id
-            };
-            
-            // Only add if the card doesn't already exist
-            const exists = prevCards.some(card => card.id === newCard.id);
-            return exists ? prevCards : [...prevCards, newCard];
-          });
-        } else if (payload.eventType === 'DELETE') {
-          setCards(prevCards => prevCards.filter(card => 
-            card.id !== payload.old.document_id
-          ));
+    const startPolling = () => {
+      pollInterval = setInterval(() => {
+        // Only poll if the tab is visible to avoid unnecessary requests
+        if (!document.hidden) {
+          console.log("useCardsOverride: Polling for updates...");
+          fetchCards();
         }
-      }, 100); // 100ms debounce
+      }, POLL_INTERVAL);
     };
 
-    const subscriptionOptions = {
-      event: '*' as const,
-      schema: 'public',
-      table: 'reviewed_data',
-      filter: `event_id=eq.${eventId}`
+    // Start polling after a short delay to avoid immediate fetch conflicts
+    const startTimeout = setTimeout(startPolling, 5000);
+
+    // Handle visibility change to pause/resume polling
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log("useCardsOverride: Tab hidden, pausing polling");
+        if (pollInterval) {
+          clearInterval(pollInterval);
+        }
+      } else {
+        console.log("useCardsOverride: Tab visible, resuming polling");
+        startPolling();
+      }
     };
 
-    // Subscribe (only once per channel instance)
-    channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', subscriptionOptions, handleDbChange)
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`useCardsOverride: Supabase channel '${channelName}' subscribed successfully!`);
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`useCardsOverride: Supabase channel error: ${status}`, err);
-        }
-      });
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // Cleanup function
     return () => {
-      if (updateTimeout) {
-        clearTimeout(updateTimeout);
+      if (startTimeout) {
+        clearTimeout(startTimeout);
       }
-      if (supabase && channel) {
-        console.log(`useCardsOverride: Unsubscribing from Supabase channel '${channelName}'`);
-        supabase.removeChannel(channel)
-          .then(status => console.log(`useCardsOverride: Unsubscribe status: ${status}`))
-          .catch(err => console.error("useCardsOverride: Error unsubscribing from Supabase channel:", err));
+      if (pollInterval) {
+        clearInterval(pollInterval);
       }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [eventId]);
+  }, [eventId, fetchCards]);
 
   // Add getStatusCount function
-  const getStatusCount = useCallback((status: CardStatus) => {
-    if (!Array.isArray(cards)) return 0;
-    
-    // Log the raw review_status of each card for debugging
-    console.log('Raw card review_status:', cards.map(card => ({
-      id: card.id,
-      review_status: card.review_status
-    })));
-    
-    return cards.filter(card => {
-      // For archived status, check the raw review_status directly
-      if (status === 'archived') {
-        return card.review_status === 'archived';
-      }
-      const cardStatus = determineCardStatus(card);
-      return cardStatus === status;
-    }).length;
-  }, [cards]);
+  const getStatusCount = useCallback(
+    (status: CardStatus) => {
+      if (!Array.isArray(cards)) return 0;
+
+      // Log the raw review_status of each card for debugging
+      console.log(
+        "Raw card review_status:",
+        cards.map((card) => ({
+          id: card.id,
+          review_status: card.review_status,
+        }))
+      );
+
+      return cards.filter((card) => {
+        // For archived status, check the raw review_status directly
+        if (status === "archived") {
+          return card.review_status === "archived";
+        }
+        const cardStatus = determineCardStatus(card);
+        return cardStatus === status;
+      }).length;
+    },
+    [cards]
+  );
 
   return {
     cards,
@@ -269,6 +239,6 @@ export function useCardsOverride(eventId?: string) {
     isLoading,
     setReviewModalState,
     reviewModalState,
-    getStatusCount
+    getStatusCount,
   };
-} 
+}
