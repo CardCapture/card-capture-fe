@@ -49,6 +49,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useCardsOverride } from "@/hooks/useCardsOverride";
 import { useEvents } from "@/hooks/useEvents";
+import { useAuth } from "@/contexts/AuthContext";
 // Utilities and Types
 import {
   formatPhoneNumber,
@@ -88,7 +89,8 @@ const Dashboard = () => {
   const { toast: oldToast } = useToast(); // Keep for hooks compatibility
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId?: string }>();
-  const { events, loading: eventsLoading, fetchEvents } = useEvents();
+  const { profile, session } = useAuth();
+  const { events, loading: eventsLoading, fetchEvents } = useEvents(profile?.school_id);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const { cards, fetchCards, setReviewModalState } = useCardsOverride(
     selectedEvent?.id
@@ -186,10 +188,8 @@ const Dashboard = () => {
   const [eventNameError, setEventNameError] = useState<string | null>(null);
 
   // Settings/preferences
-  const [cardFieldPrefs, setCardFieldPrefs] = useState<Record<
-    string,
-    boolean
-  > | null>(null);
+  const [cardFieldPrefs, setCardFieldPrefs] = useState<Record<string, boolean> | null>(null);
+  const [school, setSchool] = useState<{ card_fields?: Record<string, { enabled: boolean; required: boolean }> } | null>(null);
 
   // --- Refs ---
   const imageUrlRef = useRef<string>("");
@@ -707,7 +707,9 @@ const Dashboard = () => {
 
   // Fields to show in the review panel
   const fieldsToShow = selectedCardForReview
-    ? reviewFieldOrder.filter((fieldKey) => cardFieldPrefs?.[fieldKey] !== false)
+    ? Array.isArray(school?.card_fields)
+      ? school.card_fields.filter(f => f.enabled).map(f => f.key)
+      : []
     : [];
 
   // --- Row Selection and Card Actions ---
@@ -903,6 +905,25 @@ const Dashboard = () => {
       fetchMajors();
     }
   }, [isReviewModalOpen, selectedEvent?.school_id, cardFieldPrefs]);
+
+  // Fetch school data when event changes
+  useEffect(() => {
+    async function fetchSchool() {
+      if (!selectedEvent?.school_id) return;
+      try {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const response = await fetch(`${apiBaseUrl}/schools/${selectedEvent.school_id}`, {
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+        });
+        if (!response.ok) throw new Error('Failed to fetch school');
+        const data = await response.json();
+        setSchool(data.school || null);
+      } catch (error) {
+        console.error('Error fetching school:', error);
+      }
+    }
+    fetchSchool();
+  }, [selectedEvent?.school_id, session?.access_token]);
 
   return (
     <ErrorBoundary>

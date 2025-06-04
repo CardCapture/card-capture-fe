@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -12,19 +19,37 @@ import { Button } from "@/components/ui/button";
 import { InviteUserDialog } from "./InviteUserDialog";
 import { EditUserModal } from "./EditUserModal";
 import { useAuth } from "@/contexts/AuthContext";
-import { User, CreditCard, Settings, ListFilter, Users, Database, GraduationCap, Trash2, Plus, PencilLine, Check, X } from "lucide-react";
+import {
+  User,
+  CreditCard,
+  Settings,
+  ListFilter,
+  Users,
+  Database,
+  GraduationCap,
+  Trash2,
+  Plus,
+  PencilLine,
+  Check,
+  X,
+} from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { supabase } from "@/lib/supabaseClient";
 import SettingsPreferences from "./SettingsPreferences";
 import { Link, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from '@/lib/toast';
+import { toast } from "@/lib/toast";
 import { updateSchoolCardFields } from "@/lib/api";
 import { CardFieldPreferences } from "@/components/CardFieldPreferences";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { authFetch } from "@/lib/authFetch";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -72,7 +97,7 @@ interface UserToEdit {
   email: string;
   first_name: string;
   last_name: string;
-  role: ('admin' | 'recruiter' | 'reviewer')[];
+  role: ("admin" | "recruiter" | "reviewer")[];
 }
 
 interface UserProfile {
@@ -91,6 +116,7 @@ interface SchoolRecord {
   email: string;
   stripe_customer_id: string | null;
   created_at: string;
+  card_fields?: Record<string, { enabled: boolean; required: boolean }>;
 }
 
 interface SFTPConfig {
@@ -104,24 +130,24 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
 
 // Add canonical field definitions
 const CANONICAL_CARD_FIELDS = [
-  'name',
-  'preferred_first_name',
-  'date_of_birth',
-  'email',
-  'cell',
-  'permission_to_text',
-  'address',
-  'city',
-  'state',
-  'zip_code',
-  'high_school',
-  'class_rank',
-  'students_in_class',
-  'gpa',
-  'student_type',
-  'entry_term',
-  'major',
-  'city_state',
+  "name",
+  "preferred_first_name",
+  "date_of_birth",
+  "email",
+  "cell",
+  "permission_to_text",
+  "address",
+  "city",
+  "state",
+  "zip_code",
+  "high_school",
+  "class_rank",
+  "students_in_class",
+  "gpa",
+  "student_type",
+  "entry_term",
+  "major",
+  "city_state",
 ];
 
 interface CardField {
@@ -147,10 +173,10 @@ const AdminSettings: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Get the active tab from the URL
-  const activeTab = location.pathname.split('/').pop() || 'account-settings';
+  const activeTab = location.pathname.split("/").pop() || "account-settings";
 
   // If we're at /settings, redirect to /settings/account-settings
-  if (location.pathname === '/settings') {
+  if (location.pathname === "/settings") {
     return <Navigate to="/settings/account-settings" replace />;
   }
 
@@ -206,7 +232,8 @@ const AdminSettings: React.FC = () => {
   const saveSftpConfig = async () => {
     setSaving(true);
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await authFetch(
         `${apiBaseUrl}/sftp/config`,
         {
@@ -221,13 +248,19 @@ const AdminSettings: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || "Failed to save SFTP configuration");
+        throw new Error(
+          errorData?.detail || "Failed to save SFTP configuration"
+        );
       }
 
       toast.saved();
     } catch (error) {
       console.error("Error saving SFTP configuration:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to save SFTP configuration");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to save SFTP configuration"
+      );
     } finally {
       setSaving(false);
     }
@@ -236,7 +269,8 @@ const AdminSettings: React.FC = () => {
   const testSftpConnection = async () => {
     setSaving(true);
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await authFetch(
         `${apiBaseUrl}/sftp/test`,
         {
@@ -257,7 +291,11 @@ const AdminSettings: React.FC = () => {
       toast.success("SFTP connection test successful!");
     } catch (error) {
       console.error("Error testing SFTP connection:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to test SFTP connection");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to test SFTP connection"
+      );
     } finally {
       setSaving(false);
     }
@@ -323,7 +361,12 @@ const AdminSettings: React.FC = () => {
   // Fetch school record for subscription tab
   useEffect(() => {
     const fetchSchool = async () => {
-      if ((activeTab !== "subscription" && activeTab !== "field-preferences" && activeTab !== "account-settings") || !session?.user?.id) {
+      if (
+        (activeTab !== "subscription" &&
+          activeTab !== "field-preferences" &&
+          activeTab !== "account-settings") ||
+        !session?.user?.id
+      ) {
         console.log("Debug - Not fetching school:", {
           activeTab,
           userId: session?.user?.id,
@@ -370,7 +413,7 @@ const AdminSettings: React.FC = () => {
         );
         if (!res.ok) throw new Error("Failed to fetch school record");
         const data = await res.json();
-        console.log("Debug - School data:", data);
+        console.log("Debug - School data:", JSON.stringify(data, null, 2));
         setSchool(data.school || null);
         if (data.school?.name) {
           setInitialSchoolName(data.school.name);
@@ -403,7 +446,9 @@ const AdminSettings: React.FC = () => {
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
-      role: Array.isArray(user.role) ? user.role : [user.role] as ('admin' | 'recruiter' | 'reviewer')[]
+      role: Array.isArray(user.role)
+        ? user.role
+        : ([user.role] as ("admin" | "recruiter" | "reviewer")[]),
     };
     setSelectedUser(userToEdit);
     setEditModalOpen(true);
@@ -412,7 +457,8 @@ const AdminSettings: React.FC = () => {
   // Stripe Checkout handler
   const handleStripeCheckout = async () => {
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const apiBaseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await authFetch(
         `${apiBaseUrl}/stripe/create-portal-session`,
         {
@@ -426,14 +472,18 @@ const AdminSettings: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || "Failed to create Stripe portal session");
+        throw new Error(
+          errorData?.detail || "Failed to create Stripe portal session"
+        );
       }
 
       const data = await response.json();
-      window.open(data.url, '_blank');
+      window.open(data.url, "_blank");
     } catch (error) {
       console.error("Error creating Stripe portal session:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to open billing portal");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to open billing portal"
+      );
     }
   };
 
@@ -444,67 +494,34 @@ const AdminSettings: React.FC = () => {
 
   // Add loadFieldPreferences function
   const loadFieldPreferences = async () => {
-    if (!session?.user?.id) return;
-
-    try {
-      console.log('Loading field preferences for user:', session.user.id);
-      const { data: settings, error } = await supabase
-        .from('settings')
-        .select('preferences, created_at')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
-
-      if (!settings || settings.length === 0) {
-        console.log('No settings found, initializing with defaults');
-        setFields([]);
-        setInitialFields([]);
-        return;
-      }
-
-      console.log('Settings data:', settings[0]);
-      let cardFields: CardFields = {};
-      if (settings[0]?.preferences && settings[0]?.preferences.card_fields) {
-        // Only keep canonical fields, and add any missing ones with defaults
-        for (const field of CANONICAL_CARD_FIELDS) {
-          cardFields[field] = settings[0]?.preferences.card_fields[field] || { enabled: true, required: false };
-        }
-      } else {
-        // If no settings, initialize all canonical fields
-        for (const field of CANONICAL_CARD_FIELDS) {
-          cardFields[field] = { enabled: true, required: false };
-        }
-      }
-      console.log('Card fields:', cardFields);
-
-      const formattedFields = Object.entries(cardFields).map(([key, value]: [string, any]) => ({
-        key,
-        label: key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-        visible: value.enabled,
-        required: value.required
-      }));
-
-      console.log('Formatted fields:', formattedFields);
-      setFields(formattedFields);
-      setInitialFields(formattedFields);
-    } catch (error) {
-      console.error('Error loading field preferences:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
-      toast.error(error instanceof Error ? error.message : "Failed to load field preferences");
-    } finally {
+    if (!school?.card_fields) {
+      setFields([]);
+      setInitialFields([]);
       setLoadingFields(false);
+      return;
     }
+    // card_fields is now an array
+    const cardFields = school.card_fields;
+    const formattedFields = cardFields.map((field: any) => ({
+      key: field.key,
+      label: field.key
+        .split("_")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" "),
+      visible: field.enabled,
+      required: field.required,
+    }));
+    setFields(formattedFields);
+    setInitialFields(formattedFields);
+    setLoadingFields(false);
   };
+
+  // Call loadFieldPreferences when school changes and activeTab is 'field-preferences'
+  useEffect(() => {
+    if (school && activeTab === "field-preferences") {
+      loadFieldPreferences();
+    }
+  }, [school, activeTab]);
 
   // Add handleSave function
   const handleSave = async (updatedFields: CardField[]) => {
@@ -514,11 +531,12 @@ const AdminSettings: React.FC = () => {
         return;
       }
 
-      // Build the card_fields object
-      const cardFields = updatedFields.reduce((acc, field) => {
-        acc[field.key] = { enabled: field.visible, required: field.required };
-        return acc;
-      }, {} as Record<string, { enabled: boolean; required: boolean }>);
+      // Build the card_fields array
+      const cardFields = updatedFields.map((field) => ({
+        key: field.key,
+        enabled: field.visible,
+        required: field.required,
+      }));
 
       const { error } = await supabase
         .from("schools")
@@ -535,13 +553,6 @@ const AdminSettings: React.FC = () => {
       toast.error("Failed to save field preferences");
     }
   };
-
-  // Add useEffect for loading field preferences
-  useEffect(() => {
-    if (session?.user?.id && activeTab === 'field-preferences') {
-      loadFieldPreferences();
-    }
-  }, [session, activeTab]);
 
   // Add loadMajors function
   const loadMajors = async () => {
@@ -585,12 +596,16 @@ const AdminSettings: React.FC = () => {
       if (showImport) {
         majorsToSave = majors
           .split("\n")
-          .map(major => major.trim())
-          .filter(major => major.length > 0);
+          .map((major) => major.trim())
+          .filter((major) => major.length > 0);
       } else if (majorsOverride) {
-        majorsToSave = majorsOverride.map(m => m.trim()).filter(m => m.length > 0);
+        majorsToSave = majorsOverride
+          .map((m) => m.trim())
+          .filter((m) => m.length > 0);
       } else {
-        majorsToSave = editedMajors.map(m => m.trim()).filter(m => m.length > 0);
+        majorsToSave = editedMajors
+          .map((m) => m.trim())
+          .filter((m) => m.length > 0);
       }
       const { error } = await supabase
         .from("schools")
@@ -612,7 +627,7 @@ const AdminSettings: React.FC = () => {
 
   // Add useEffect for loading majors
   useEffect(() => {
-    if (session?.user?.id && activeTab === 'majors') {
+    if (session?.user?.id && activeTab === "majors") {
       loadMajors();
     }
   }, [session, activeTab]);
@@ -667,26 +682,29 @@ const AdminSettings: React.FC = () => {
             </div>
           </CardContent>
           <CardFooter className="justify-end">
-            <Button 
+            <Button
               onClick={async () => {
                 if (!school?.id) return;
-                try {
-                  const { error } = await supabase
-                    .from("schools")
-                    .update({ name: school.name })
-                    .eq("id", school.id);
-                  
-                  if (error) throw error;
-                  
-                  setInitialSchoolName(school.name);
-                  setIsSchoolNameDirty(false);
-                  toast.success("School name updated successfully");
-                } catch (error) {
-                  console.error("Error updating school name:", error);
-                  toast.error("Failed to update school name");
+                const updatePayload = {
+                  name: school.name,
+                  email: school.email,
+                  card_fields: school.card_fields || {},
+                };
+                console.log(
+                  "[Account Settings Save] Updating school with payload:",
+                  updatePayload
+                );
+                const { error } = await supabase
+                  .from("schools")
+                  .update(updatePayload)
+                  .eq("id", school.id);
+                if (error) {
+                  toast.error("Failed to save account settings");
+                } else {
+                  toast.saved();
                 }
-              }} 
-              disabled={schoolLoading || !isSchoolNameDirty}
+              }}
+              disabled={schoolLoading}
             >
               {schoolLoading ? "Saving..." : "Save Changes"}
             </Button>
@@ -696,6 +714,12 @@ const AdminSettings: React.FC = () => {
       break;
     case "field-preferences":
       heading = "Field Preferences";
+      console.log("[AdminSettings] Rendering field-preferences tab:", {
+        loadingFields,
+        fieldsLength: fields.length,
+        activeTab,
+        schoolId: school?.id,
+      });
       content = (
         <div className="flex flex-col min-h-[80vh]">
           <div className="flex-1 space-y-6">
@@ -711,8 +735,15 @@ const AdminSettings: React.FC = () => {
           <div className="bg-white border-t z-50 px-4 py-3 flex justify-end shadow-md">
             <Button
               onClick={() => handleSave(fields)}
-              disabled={loadingFields || JSON.stringify(fields) === JSON.stringify(initialFields)}
-              variant={JSON.stringify(fields) !== JSON.stringify(initialFields) ? "default" : "secondary"}
+              disabled={
+                loadingFields ||
+                JSON.stringify(fields) === JSON.stringify(initialFields)
+              }
+              variant={
+                JSON.stringify(fields) !== JSON.stringify(initialFields)
+                  ? "default"
+                  : "secondary"
+              }
             >
               Save Changes
             </Button>
@@ -733,15 +764,18 @@ const AdminSettings: React.FC = () => {
             <CardHeader>
               <CardTitle>Manage Available Majors</CardTitle>
               <CardDescription>
-                Paste in a list of majors offered at your school. Gemini will use this list to help match student responses.
+                Paste in a list of majors offered at your school. Gemini will
+                use this list to help match student responses.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Label htmlFor="majors" className="text-sm font-medium">Majors (one per line)</Label>
+              <Label htmlFor="majors" className="text-sm font-medium">
+                Majors (one per line)
+              </Label>
               <Textarea
                 id="majors"
                 value={majors}
-                onChange={e => {
+                onChange={(e) => {
                   setMajors(e.target.value);
                   setIsDirty(e.target.value !== initialMajors);
                 }}
@@ -749,12 +783,15 @@ const AdminSettings: React.FC = () => {
                 className="min-h-[200px]"
               />
               <p className="text-xs text-muted-foreground font-normal">
-                Paste or type one major per line. We'll automatically match students' responses to the closest major from this list.
+                Paste or type one major per line. We'll automatically match
+                students' responses to the closest major from this list.
               </p>
               <div className="flex justify-start">
                 <Button
                   onClick={() => saveMajors()}
-                  disabled={!majors.trim() || majors === initialMajors || !isDirty}
+                  disabled={
+                    !majors.trim() || majors === initialMajors || !isDirty
+                  }
                 >
                   Save Majors
                 </Button>
@@ -772,15 +809,21 @@ const AdminSettings: React.FC = () => {
               <CardHeader>
                 <CardTitle>Add Majors</CardTitle>
                 <CardDescription>
-                  Paste in one or more majors (one per line) to add to your list.
+                  Paste in one or more majors (one per line) to add to your
+                  list.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Label htmlFor="add-majors-input" className="text-sm font-medium">Majors (one per line)</Label>
+                <Label
+                  htmlFor="add-majors-input"
+                  className="text-sm font-medium"
+                >
+                  Majors (one per line)
+                </Label>
                 <Textarea
                   id="add-majors-input"
                   value={addMajorsInput}
-                  onChange={e => setAddMajorsInput(e.target.value)}
+                  onChange={(e) => setAddMajorsInput(e.target.value)}
                   placeholder={`Biology\nComputer Science\nBusiness Administration\nMechanical Engineering`}
                   className="min-h-[200px]"
                 />
@@ -790,14 +833,20 @@ const AdminSettings: React.FC = () => {
                       // Parse and add new majors
                       const newMajors = addMajorsInput
                         .split("\n")
-                        .map(m => m.trim())
-                        .filter(m => m.length > 0 && !editedMajors.includes(m));
+                        .map((m) => m.trim())
+                        .filter(
+                          (m) => m.length > 0 && !editedMajors.includes(m)
+                        );
                       if (newMajors.length > 0) {
                         const updatedMajors = [...newMajors, ...editedMajors];
                         setEditedMajors(updatedMajors);
                         setMajorsList(updatedMajors);
                         setIsDirty(true);
-                        toast.success(`${newMajors.length} major${newMajors.length > 1 ? 's' : ''} added`);
+                        toast.success(
+                          `${newMajors.length} major${
+                            newMajors.length > 1 ? "s" : ""
+                          } added`
+                        );
                       }
                       setShowImport(false);
                       setAddMajorsInput("");
@@ -838,22 +887,25 @@ const AdminSettings: React.FC = () => {
             <CardContent className="space-y-4">
               <Input
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search majors..."
                 className="mb-2"
               />
               <div className="max-h-[500px] overflow-y-auto rounded-md border border-muted-foreground/10 bg-muted/50 divide-y divide-muted-foreground/10">
                 {editedMajors
-                  .filter(m => m.toLowerCase().includes(search.toLowerCase()))
+                  .filter((m) => m.toLowerCase().includes(search.toLowerCase()))
                   .map((major, idx) => (
-                    <div key={idx} className="flex items-center gap-2 px-3 py-2 group hover:bg-muted/80 transition">
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 px-3 py-2 group hover:bg-muted/80 transition"
+                    >
                       {editIndex === idx ? (
                         <>
                           <Input
                             autoFocus
                             value={editValue}
-                            onChange={e => setEditValue(e.target.value)}
-                            onKeyDown={e => {
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => {
                               if (e.key === "Enter") handleEditMajor(idx);
                               if (e.key === "Escape") {
                                 setEditIndex(null);
@@ -884,7 +936,9 @@ const AdminSettings: React.FC = () => {
                         </>
                       ) : (
                         <>
-                          <span className="flex-1 truncate text-base font-normal">{major}</span>
+                          <span className="flex-1 truncate text-base font-normal">
+                            {major}
+                          </span>
                           <button
                             className="text-primary hover:bg-muted rounded-full p-1"
                             onClick={() => {
@@ -908,8 +962,12 @@ const AdminSettings: React.FC = () => {
                       )}
                     </div>
                   ))}
-                {editedMajors.filter(m => m.toLowerCase().includes(search.toLowerCase())).length === 0 && (
-                  <div className="text-xs text-muted-foreground px-3 py-4 text-center">No majors found.</div>
+                {editedMajors.filter((m) =>
+                  m.toLowerCase().includes(search.toLowerCase())
+                ).length === 0 && (
+                  <div className="text-xs text-muted-foreground px-3 py-4 text-center">
+                    No majors found.
+                  </div>
                 )}
               </div>
               {/* Sticky Save Button */}
@@ -997,7 +1055,9 @@ const AdminSettings: React.FC = () => {
                           {user.email}
                         </TableCell>
                         <TableCell className="px-5 py-4 text-center">
-                          {Array.isArray(user.role) ? user.role.join(', ') : user.role}
+                          {Array.isArray(user.role)
+                            ? user.role.join(", ")
+                            : user.role}
                         </TableCell>
                         <TableCell className="px-5 py-4 text-right">
                           {user.last_sign_in_at
@@ -1039,7 +1099,9 @@ const AdminSettings: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
               <div>
-                <div className="text-2xl font-semibold">Subscription Details</div>
+                <div className="text-2xl font-semibold">
+                  Subscription Details
+                </div>
                 <div className="text-muted-foreground text-sm mb-4">
                   Manage your billing plan and payment details
                 </div>
@@ -1047,14 +1109,18 @@ const AdminSettings: React.FC = () => {
             </div>
             <div className="space-y-4">
               {schoolLoading ? (
-                <div className="text-muted-foreground text-sm py-8">Loading plan details...</div>
+                <div className="text-muted-foreground text-sm py-8">
+                  Loading plan details...
+                </div>
               ) : schoolError ? (
                 <div className="text-red-500 text-sm py-8">{schoolError}</div>
               ) : school ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
-                      <p className="font-medium capitalize">{school.name} Plan</p>
+                      <p className="font-medium capitalize">
+                        {school.name} Plan
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         {PRICING_DISPLAY[school.name] || "N/A"}
                       </p>
@@ -1068,11 +1134,15 @@ const AdminSettings: React.FC = () => {
                     </Button>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    You're currently on the <strong className="capitalize">{school.name}</strong> plan, billed annually.
+                    You're currently on the{" "}
+                    <strong className="capitalize">{school.name}</strong> plan,
+                    billed annually.
                   </p>
                 </div>
               ) : (
-                <div className="text-muted-foreground text-sm py-8">No school record found.</div>
+                <div className="text-muted-foreground text-sm py-8">
+                  No school record found.
+                </div>
               )}
             </div>
           </CardContent>
@@ -1107,7 +1177,10 @@ const AdminSettings: React.FC = () => {
                 id="username"
                 value={sftpConfig.username}
                 onChange={(e) =>
-                  setSftpConfig((prev) => ({ ...prev, username: e.target.value }))
+                  setSftpConfig((prev) => ({
+                    ...prev,
+                    username: e.target.value,
+                  }))
                 }
                 placeholder="your-username"
               />
@@ -1119,7 +1192,10 @@ const AdminSettings: React.FC = () => {
                 type="password"
                 value={sftpConfig.password}
                 onChange={(e) =>
-                  setSftpConfig((prev) => ({ ...prev, password: e.target.value }))
+                  setSftpConfig((prev) => ({
+                    ...prev,
+                    password: e.target.value,
+                  }))
                 }
                 placeholder="••••••••"
               />
@@ -1130,7 +1206,10 @@ const AdminSettings: React.FC = () => {
                 id="upload_path"
                 value={sftpConfig.upload_path}
                 onChange={(e) =>
-                  setSftpConfig((prev) => ({ ...prev, upload_path: e.target.value }))
+                  setSftpConfig((prev) => ({
+                    ...prev,
+                    upload_path: e.target.value,
+                  }))
                 }
                 placeholder="/test/incoming/cardcapture"
               />
@@ -1200,7 +1279,9 @@ const AdminSettings: React.FC = () => {
 
         {/* Content */}
         <div className="flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">{heading}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">
+            {heading}
+          </h1>
           {content}
         </div>
       </div>

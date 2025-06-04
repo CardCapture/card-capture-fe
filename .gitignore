@@ -55,3 +55,11 @@ firebase-debug.log
 firebase-debug.*.log
 
 .env
+# Ignore node + build artifacts
+node_modules/
+dist/
+build/
+.DS_Store
+.env*
+.vscode/
+.idea/

@@ -15,6 +15,29 @@ import type { ProspectCard } from "@/types/card";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
 
+const FIELD_LABELS: Record<string, string> = {
+  name: "Name",
+  preferred_first_name: "Preferred Name",
+  date_of_birth: "Birthdate",
+  email: "Email",
+  cell: "Cell Phone",
+  permission_to_text: "Permission to Text",
+  address: "Address",
+  city: "City",
+  state: "State",
+  zip_code: "Zip Code",
+  high_school: "High School",
+  class_rank: "Class Rank",
+  students_in_class: "Students in Class",
+  gpa: "GPA",
+  student_type: "Student Type",
+  entry_term: "Entry Term",
+  major: "Major",
+  city_state: "City, State",
+  gender: "Gender",
+  // Add more as needed
+};
+
 interface ReviewFormProps {
   selectedCardForReview: ProspectCard | null;
   fieldsToShow: string[];
@@ -48,6 +71,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
               const fieldData = selectedCardForReview.fields?.[fieldKey] || {};
               const label =
                 ("actual_field_name" in fieldData && (fieldData as any).actual_field_name) ||
+                FIELD_LABELS[fieldKey] ||
                 dataFieldsMap.get(fieldKey) ||
                 fieldKey.replace(/_/g, " ");
               const needsReview = !!(fieldData && (fieldData as any).requires_human_review);
