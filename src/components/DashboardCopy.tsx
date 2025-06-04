@@ -385,9 +385,16 @@ const DashboardCopy = () => {
       accessorKey: "date",
       header: "Event Date",
       accessorFn: (row) => new Date(row.date).getTime(),
-      cell: ({ row }) => (
-        <span className="text-gray-600">{new Date(row.getValue("date")).toLocaleDateString()}</span>
-      ),
+      cell: ({ row }) => {
+        const date = new Date(row.getValue("date"));
+        // Use UTC methods to prevent timezone issues
+        const year = date.getUTCFullYear();
+        const month = date.getUTCMonth() + 1;
+        const day = date.getUTCDate();
+        return (
+          <span className="text-gray-600">{`${month}/${day}/${year}`}</span>
+        );
+      },
       enableSorting: true,
     },
     {
