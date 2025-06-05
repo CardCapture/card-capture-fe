@@ -519,15 +519,38 @@ const AdminSettings: React.FC = () => {
       setLoadingFields(false);
       return;
     }
-    // card_fields is a Record/object, convert to array
-    const cardFields = school.card_fields as Record<
-      string,
-      { enabled: boolean; required: boolean; key: string }
-    >;
-    const formattedFields = Object.entries(cardFields).map(([key, field]) => {
-      console.log({ key, field });
-      return {
+
+    // Handle both array and object formats for backward compatibility
+    let cardFieldsArray: Array<{
+      key: string;
+      enabled: boolean;
+      required: boolean;
+    }>;
+
+    if (Array.isArray(school.card_fields)) {
+      // New format: array of objects
+      cardFieldsArray = school.card_fields as Array<{
+        key: string;
+        enabled: boolean;
+        required: boolean;
+      }>;
+    } else {
+      // Legacy format: object with string keys
+      const cardFieldsObj = school.card_fields as Record<
+        string,
+        { enabled: boolean; required: boolean }
+      >;
+      cardFieldsArray = Object.entries(cardFieldsObj).map(([key, field]) => ({
         key,
+        enabled: field.enabled,
+        required: field.required,
+      }));
+    }
+
+    const formattedFields = cardFieldsArray.map((field) => {
+      console.log({ field });
+      return {
+        key: field.key,
         label: field.key
           .split("_")
           .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -610,26 +633,33 @@ const AdminSettings: React.FC = () => {
         .eq("id", session.user.id)
         .single();
       if (!profile?.school_id) throw new Error("No school ID found");
-      let majorsToSave: string[] = [];
+
+      // Helper function to clean majors array
+      const cleanMajors = (majorsList: string[]): string[] =>
+        majorsList.map((m) => m.trim()).filter((m) => m.length > 0);
+
+      // Determine source of majors based on current flow
+      let rawMajors: string[];
       if (showImport) {
-        majorsToSave = majors
-          .split("\n")
-          .map((major) => major.trim())
-          .filter((major) => major.length > 0);
+        rawMajors = majors.split("\n");
       } else if (majorsOverride) {
-        majorsToSave = majorsOverride
-          .map((m) => m.trim())
-          .filter((m) => m.length > 0);
+        rawMajors = majorsOverride;
+      } else if (majorsList.length === 0) {
+        // Initial state: use textarea content
+        rawMajors = majors.split("\n");
       } else {
-        majorsToSave = editedMajors
-          .map((m) => m.trim())
-          .filter((m) => m.length > 0);
+        rawMajors = editedMajors;
       }
+
+      const majorsToSave = cleanMajors(rawMajors);
+
       const { error } = await supabase
         .from("schools")
         .update({ majors: majorsToSave })
         .eq("id", profile.school_id);
       if (error) throw error;
+
+      // Update all related state
       setMajorsList(majorsToSave);
       setEditedMajors(majorsToSave);
       setMajors(majorsToSave.join("\n"));
