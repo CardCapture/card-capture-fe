@@ -204,7 +204,11 @@ const Dashboard = () => {
     boolean
   > | null>(null);
   const [school, setSchool] = useState<{
-    card_fields?: Record<string, { enabled: boolean; required: boolean }>;
+    id?: string;
+    name?: string;
+    card_fields?:
+      | Record<string, { enabled: boolean; required: boolean }>
+      | Array<{ key: string; enabled: boolean; required: boolean }>;
   } | null>(null);
 
   // --- Refs ---
@@ -246,6 +250,42 @@ const Dashboard = () => {
     isSaving,
     setIsSaving,
   } = useCardReviewModal(cards, reviewFieldOrder, fetchCards, dataFieldsMap);
+  // Extract cardFields from school data
+  const cardFields = useMemo(() => {
+    if (!school?.card_fields) {
+      console.log("No school.card_fields found");
+      return [];
+    }
+
+    console.log("Raw school.card_fields:", school.card_fields);
+
+    // Handle both array and object formats
+    if (Array.isArray(school.card_fields)) {
+      console.log("School card_fields is array format:", school.card_fields);
+      return school.card_fields;
+    } else if (typeof school.card_fields === "object") {
+      // Convert object format to array format
+      const converted = Object.entries(school.card_fields).map(
+        ([key, config]) => ({
+          key,
+          enabled:
+            (config as { enabled?: boolean; required?: boolean })?.enabled ||
+            false,
+          required:
+            (config as { enabled?: boolean; required?: boolean })?.required ||
+            false,
+        })
+      );
+      console.log(
+        "Converted school card_fields from object to array:",
+        converted
+      );
+      return converted;
+    }
+
+    return [];
+  }, [school?.card_fields]);
+
   const {
     isManualEntryModalOpen,
     setIsManualEntryModalOpen,
@@ -254,7 +294,7 @@ const Dashboard = () => {
     handleManualEntry,
     handleManualEntrySubmit,
     handleManualEntryChange,
-  } = useManualEntryModal(selectedEvent, fetchCards);
+  } = useManualEntryModal(selectedEvent, fetchCards, cardFields);
 
   // --- Callbacks ---
   const debouncedSearch = useCallback((query: string) => {
@@ -757,9 +797,7 @@ const Dashboard = () => {
 
   // Fields to show in the review panel
   const fieldsToShow = selectedCardForReview
-    ? Array.isArray(school?.card_fields)
-      ? school.card_fields.filter((f) => f.enabled).map((f) => f.key)
-      : []
+    ? cardFields.filter((f) => f.enabled).map((f) => f.key)
     : [];
 
   // --- Row Selection and Card Actions ---
@@ -976,6 +1014,8 @@ const Dashboard = () => {
         );
         if (!response.ok) throw new Error("Failed to fetch school");
         const data = await response.json();
+        console.log("Fetched school data:", data);
+        console.log("School card_fields:", data.school?.card_fields);
         setSchool(data.school || null);
       } catch (error) {
         console.error("Error fetching school:", error);
@@ -1412,6 +1452,7 @@ const Dashboard = () => {
           form={manualEntryForm}
           onChange={handleManualEntryChange}
           onSubmit={handleManualEntrySubmit}
+          cardFields={cardFields}
         />
       </div>
     </ErrorBoundary>

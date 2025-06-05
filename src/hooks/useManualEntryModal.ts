@@ -1,59 +1,46 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "@/lib/toast";
+import type { Event } from "@/types/event";
+import { useAuth } from "@/contexts/AuthContext";
 
-interface ManualEntryForm {
-  name: string;
-  preferred_first_name: string;
-  date_of_birth: string;
-  email: string;
-  cell: string;
-  permission_to_text: string;
-  address: string;
-  city: string;
-  state: string;
-  zip_code: string;
-  high_school: string;
-  class_rank: string;
-  students_in_class: string;
-  gpa: string;
-  student_type: string;
-  entry_term: string;
-  major: string;
+interface CardField {
+  key: string;
+  enabled: boolean;
+  required: boolean;
 }
 
 export function useManualEntryModal(
-  selectedEvent: any,
-  fetchCards: () => void
+  selectedEvent: Event | null,
+  fetchCards: () => void,
+  cardFields: CardField[] = []
 ) {
+  console.log("useManualEntryModal received cardFields:", cardFields);
+  console.log("useManualEntryModal cardFields length:", cardFields.length);
   const [isManualEntryModalOpen, setIsManualEntryModalOpen] = useState(false);
-  const [manualEntryForm, setManualEntryForm] = useState<ManualEntryForm>({
-    name: "",
-    preferred_first_name: "",
-    date_of_birth: "",
-    email: "",
-    cell: "",
-    permission_to_text: "",
-    address: "",
-    city: "",
-    state: "",
-    zip_code: "",
-    high_school: "",
-    class_rank: "",
-    students_in_class: "",
-    gpa: "",
-    student_type: "",
-    entry_term: "",
-    major: "",
-  });
+  const { profile } = useAuth();
+
+  // Create initial form state based on enabled card fields
+  const initialFormState = useMemo(() => {
+    const enabledFields = cardFields.filter((field) => field.enabled);
+    return enabledFields.reduce((acc, field) => {
+      acc[field.key] = "";
+      return acc;
+    }, {} as Record<string, string>);
+  }, [cardFields]);
+
+  const [manualEntryForm, setManualEntryForm] =
+    useState<Record<string, string>>(initialFormState);
+
+  // Reset form when cardFields change
+  useEffect(() => {
+    setManualEntryForm(initialFormState);
+  }, [initialFormState]);
 
   const handleManualEntry = () => {
     setIsManualEntryModalOpen(true);
   };
 
-  const handleManualEntryChange = (
-    field: keyof ManualEntryForm,
-    value: string
-  ) => {
+  const handleManualEntryChange = (field: string, value: string) => {
     setManualEntryForm((prev) => ({
       ...prev,
       [field]: value,
@@ -61,10 +48,27 @@ export function useManualEntryModal(
   };
 
   const handleManualEntrySubmit = async () => {
-    if (!manualEntryForm.name) {
-      toast.required("name for the contact");
+    // Check if required fields are filled
+    const requiredFields = cardFields.filter(
+      (field) => field.enabled && field.required
+    );
+    const missingRequiredFields = requiredFields.filter(
+      (field) => !manualEntryForm[field.key]?.trim()
+    );
+
+    if (missingRequiredFields.length > 0) {
+      const fieldNames = missingRequiredFields
+        .map((field) =>
+          field.key
+            .split("_")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ")
+        )
+        .join(", ");
+      toast.required(`${fieldNames} for the contact`);
       return;
     }
+
     try {
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -74,11 +78,12 @@ export function useManualEntryModal(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          school_id: profile?.school_id,
           event_id: selectedEvent?.id,
           fields: Object.fromEntries(
             Object.entries(manualEntryForm).map(([key, value]) => [
               key,
-              { value, confidence: 1.0 }
+              { value, confidence: 1.0 },
             ])
           ),
         }),
@@ -87,25 +92,8 @@ export function useManualEntryModal(
         throw new Error("Failed to create manual entry");
       }
       toast.created("Contact");
-      setManualEntryForm({
-        name: "",
-        preferred_first_name: "",
-        date_of_birth: "",
-        email: "",
-        cell: "",
-        permission_to_text: "",
-        address: "",
-        city: "",
-        state: "",
-        zip_code: "",
-        high_school: "",
-        class_rank: "",
-        students_in_class: "",
-        gpa: "",
-        student_type: "",
-        entry_term: "",
-        major: "",
-      });
+      // Reset form to initial state
+      setManualEntryForm(initialFormState);
       setIsManualEntryModalOpen(false);
       fetchCards();
     } catch (error: unknown) {
@@ -123,5 +111,6 @@ export function useManualEntryModal(
     handleManualEntry,
     handleManualEntryChange,
     handleManualEntrySubmit,
+    cardFields,
   };
 }
