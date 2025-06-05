@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   Backdrop,
   CircularProgress,
@@ -125,7 +132,7 @@ export const LoaderProvider: React.FC<{ children: ReactNode }> = ({
   const [loaders, setLoaders] = useState<Map<string, LoaderState>>(new Map());
 
   // Core loader management
-  const showLoader = (id: string, config: LoaderConfig) => {
+  const showLoader = useCallback((id: string, config: LoaderConfig) => {
     setLoaders((prev) => {
       const newLoaders = new Map(prev);
       newLoaders.set(id, {
@@ -135,86 +142,116 @@ export const LoaderProvider: React.FC<{ children: ReactNode }> = ({
       });
       return newLoaders;
     });
-  };
+  }, []);
 
-  const hideLoader = (id: string) => {
+  const hideLoader = useCallback((id: string) => {
     setLoaders((prev) => {
       const newLoaders = new Map(prev);
       newLoaders.delete(id);
       return newLoaders;
     });
-  };
+  }, []);
 
-  const isLoading = (id: string): boolean => {
-    return loaders.has(id);
-  };
+  const isLoading = useCallback(
+    (id: string): boolean => {
+      return loaders.has(id);
+    },
+    [loaders]
+  );
 
   // Convenience methods
-  const showFullPageLoader = (message = "Loading...") => {
-    showLoader("_full_page", {
-      type: LoaderType.FULL_PAGE,
-      message,
-      backdrop: true,
-    });
-  };
+  const showFullPageLoader = useCallback(
+    (message = "Loading...") => {
+      showLoader("_full_page", {
+        type: LoaderType.FULL_PAGE,
+        message,
+        backdrop: true,
+      });
+    },
+    [showLoader]
+  );
 
-  const hideFullPageLoader = () => {
+  const hideFullPageLoader = useCallback(() => {
     hideLoader("_full_page");
-  };
+  }, [hideLoader]);
 
-  const showTableLoader = (id: string, message = "Loading data...") => {
-    showLoader(id, {
-      type: LoaderType.TABLE,
-      message,
-    });
-  };
+  const showTableLoader = useCallback(
+    (id: string, message = "Loading data...") => {
+      showLoader(id, {
+        type: LoaderType.TABLE,
+        message,
+      });
+    },
+    [showLoader]
+  );
 
-  const hideTableLoader = (id: string) => {
-    hideLoader(id);
-  };
+  const hideTableLoader = useCallback(
+    (id: string) => {
+      hideLoader(id);
+    },
+    [hideLoader]
+  );
 
-  const showModalLoader = (id: string, message = "Processing...") => {
-    showLoader(id, {
-      type: LoaderType.MODAL,
-      message,
-    });
-  };
+  const showModalLoader = useCallback(
+    (id: string, message = "Processing...") => {
+      showLoader(id, {
+        type: LoaderType.MODAL,
+        message,
+      });
+    },
+    [showLoader]
+  );
 
-  const hideModalLoader = (id: string) => {
-    hideLoader(id);
-  };
+  const hideModalLoader = useCallback(
+    (id: string) => {
+      hideLoader(id);
+    },
+    [hideLoader]
+  );
 
-  const showButtonLoader = (id: string) => {
-    showLoader(id, {
-      type: LoaderType.BUTTON,
-      size: "small",
-    });
-  };
+  const showButtonLoader = useCallback(
+    (id: string) => {
+      showLoader(id, {
+        type: LoaderType.BUTTON,
+        size: "small",
+      });
+    },
+    [showLoader]
+  );
 
-  const hideButtonLoader = (id: string) => {
-    hideLoader(id);
-  };
+  const hideButtonLoader = useCallback(
+    (id: string) => {
+      hideLoader(id);
+    },
+    [hideLoader]
+  );
 
-  const showInlineLoader = (id: string, message?: string) => {
-    showLoader(id, {
-      type: LoaderType.INLINE,
-      message,
-      size: "small",
-    });
-  };
+  const showInlineLoader = useCallback(
+    (id: string, message?: string) => {
+      showLoader(id, {
+        type: LoaderType.INLINE,
+        message,
+        size: "small",
+      });
+    },
+    [showLoader]
+  );
 
-  const hideInlineLoader = (id: string) => {
-    hideLoader(id);
-  };
+  const hideInlineLoader = useCallback(
+    (id: string) => {
+      hideLoader(id);
+    },
+    [hideLoader]
+  );
 
   // Bulk operations
-  const hideAllLoaders = () => {
+  const hideAllLoaders = useCallback(() => {
     setLoaders(new Map());
-  };
+  }, []);
 
-  const getActiveLoaders = (): string[] => {
+  const getActiveLoaders = useCallback((): string[] => {
     return Array.from(loaders.keys());
-  };
+  }, [loaders]);
 
   // Render full page loader if active
   const renderFullPageLoader = () => {
@@ -233,23 +270,42 @@ export const LoaderProvider: React.FC<{ children: ReactNode }> = ({
     );
   };
 
-  const contextValue: LoaderContextProps = {
-    showLoader,
-    hideLoader,
-    isLoading,
-    showFullPageLoader,
-    hideFullPageLoader,
-    showTableLoader,
-    hideTableLoader,
-    showModalLoader,
-    hideModalLoader,
-    showButtonLoader,
-    hideButtonLoader,
-    showInlineLoader,
-    hideInlineLoader,
-    hideAllLoaders,
-    getActiveLoaders,
-  };
+  const contextValue: LoaderContextProps = useMemo(
+    () => ({
+      showLoader,
+      hideLoader,
+      isLoading,
+      showFullPageLoader,
+      hideFullPageLoader,
+      showTableLoader,
+      hideTableLoader,
+      showModalLoader,
+      hideModalLoader,
+      showButtonLoader,
+      hideButtonLoader,
+      showInlineLoader,
+      hideInlineLoader,
+      hideAllLoaders,
+      getActiveLoaders,
+    }),
+    [
+      showLoader,
+      hideLoader,
+      isLoading,
+      showFullPageLoader,
+      hideFullPageLoader,
+      showTableLoader,
+      hideTableLoader,
+      showModalLoader,
+      hideModalLoader,
+      showButtonLoader,
+      hideButtonLoader,
+      showInlineLoader,
+      hideInlineLoader,
+      hideAllLoaders,
+      getActiveLoaders,
+    ]
+  );
 
   return (
     <LoaderContext.Provider value={contextValue}>
