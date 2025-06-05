@@ -11,8 +11,14 @@ import {
 import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { CheckCircle } from "lucide-react";
 import { formatPhoneNumber, formatBirthday } from "@/lib/utils";
-import type { ProspectCard } from "@/types/card";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import type { ProspectCard, FieldData } from "@/types/card";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -61,32 +67,34 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   majorsList,
   loadingMajors,
 }) => {
-  console.log({ fieldsToShow });
   return (
     <div className="bg-gray-50 rounded-lg p-3 sm:p-4 overflow-y-auto">
       <div className="space-y-3 sm:space-y-4">
         {selectedCardForReview ? (
           <>
             {fieldsToShow.map((fieldKey) => {
-              const fieldData = selectedCardForReview.fields?.[fieldKey] || {};
+              const fieldData: FieldData | undefined =
+                selectedCardForReview.fields?.[fieldKey];
               const label =
-                ("actual_field_name" in fieldData && (fieldData as any).actual_field_name) ||
+                fieldData?.actual_field_name ||
                 FIELD_LABELS[fieldKey] ||
                 dataFieldsMap.get(fieldKey) ||
                 fieldKey.replace(/_/g, " ");
-              const needsReview = !!(fieldData && (fieldData as any).requires_human_review);
-              const isReviewed = !!(fieldData && (fieldData as any).reviewed);
-              const reviewNotes = (fieldData && (fieldData as any).review_notes) || undefined;
+              const needsReview = !!fieldData?.requires_human_review;
+              const isReviewed = !!fieldData?.reviewed;
+              const reviewNotes = fieldData?.review_notes || undefined;
               const showIcon = needsReview;
-              let formattedValue = (fieldData && (fieldData as any).value) ?? "";
+              let formattedValue = fieldData?.value ?? "";
               if (fieldKey === "cell")
-                formattedValue = formatPhoneNumber((fieldData && (fieldData as any).value) ?? "");
+                formattedValue = formatPhoneNumber(fieldData?.value ?? "");
               if (fieldKey === "date_of_birth")
-                formattedValue = formatBirthday((fieldData && (fieldData as any).value) ?? "");
+                formattedValue = formatBirthday(fieldData?.value ?? "");
               const tooltipContent =
-                typeof reviewNotes === 'string' && reviewNotes.length > 0
+                typeof reviewNotes === "string" && reviewNotes.length > 0
                   ? reviewNotes
-                  : needsReview ? "Needs human review" : null;
+                  : needsReview
+                  ? "Needs human review"
+                  : null;
               return (
                 <div
                   key={fieldKey}
@@ -116,6 +124,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                     {fieldKey === "cell" ? (
                       <PhoneNumberInput
                         id={fieldKey}
+                        name={fieldKey}
                         value={formData[fieldKey] ?? ""}
                         onChange={(value) => handleFormChange(fieldKey, value)}
                         className={`h-10 sm:h-8 text-sm flex-1 ${
@@ -126,16 +135,21 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                             : ""
                         }`}
                       />
-                    ) : fieldKey === "mapped_major" && Array.isArray(majorsList) && majorsList.length > 0 ? (
+                    ) : fieldKey === "mapped_major" &&
+                      Array.isArray(majorsList) &&
+                      majorsList.length > 0 ? (
                       <Combobox
                         options={majorsList}
                         value={formData["mapped_major"] ?? ""}
-                        onChange={(value) => handleFormChange("mapped_major", value)}
+                        onChange={(value) =>
+                          handleFormChange("mapped_major", value)
+                        }
                         placeholder="Select Mapped Major"
                       />
                     ) : (
                       <Input
                         id={fieldKey}
+                        name={fieldKey}
                         value={formData[fieldKey] ?? ""}
                         onChange={(e) =>
                           handleFormChange(fieldKey, e.target.value)

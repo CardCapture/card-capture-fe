@@ -522,17 +522,20 @@ const AdminSettings: React.FC = () => {
     // card_fields is a Record/object, convert to array
     const cardFields = school.card_fields as Record<
       string,
-      { enabled: boolean; required: boolean }
+      { enabled: boolean; required: boolean; key: string }
     >;
-    const formattedFields = Object.entries(cardFields).map(([key, field]) => ({
-      key,
-      label: key
-        .split("_")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" "),
-      visible: field.enabled,
-      required: field.required,
-    }));
+    const formattedFields = Object.entries(cardFields).map(([key, field]) => {
+      console.log({ key, field });
+      return {
+        key,
+        label: field.key
+          .split("_")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" "),
+        visible: field.enabled,
+        required: field.required,
+      };
+    });
     setFields(formattedFields);
     setInitialFields(formattedFields);
     setLoadingFields(false);

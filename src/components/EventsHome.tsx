@@ -86,7 +86,7 @@ const DashboardCopy = () => {
 
   // Global loader for table
   const { showTableLoader, hideTableLoader, isLoading } = useLoader();
-  const LOADER_ID = "events-table";
+  const LOADER_ID = useMemo(() => "events-table", []);
 
   // State
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
@@ -132,7 +132,7 @@ const DashboardCopy = () => {
   // Fetch events on mount
   useEffect(() => {
     fetchEvents();
-  }, [fetchEvents]);
+  }, []);
 
   // Control global loader based on events loading state
   useEffect(() => {
@@ -141,7 +141,7 @@ const DashboardCopy = () => {
     } else {
       hideTableLoader(LOADER_ID);
     }
-  }, [eventsLoading, showTableLoader, hideTableLoader, LOADER_ID]);
+  }, [eventsLoading]);
 
   // Handler for capturing a card
   const handleCaptureCard = () => {
@@ -443,7 +443,7 @@ const DashboardCopy = () => {
       setDeleteLoading(false);
       setIsDeleteConfirmOpen(false);
     }
-  }, [rowSelection, filteredEvents, fetchEvents]);
+  }, [rowSelection, filteredEvents]);
 
   // Define columns for the table
   const columns = useMemo<ColumnDef<EventWithStats>[]>(
