@@ -252,35 +252,22 @@ const Dashboard = () => {
   } = useCardReviewModal(cards, reviewFieldOrder, fetchCards, dataFieldsMap);
   // Extract cardFields from school data
   const cardFields = useMemo(() => {
-    if (!school?.card_fields) {
-      console.log("No school.card_fields found");
-      return [];
-    }
-
-    console.log("Raw school.card_fields:", school.card_fields);
+    if (!school?.card_fields) return [];
 
     // Handle both array and object formats
     if (Array.isArray(school.card_fields)) {
-      console.log("School card_fields is array format:", school.card_fields);
       return school.card_fields;
     } else if (typeof school.card_fields === "object") {
       // Convert object format to array format
-      const converted = Object.entries(school.card_fields).map(
-        ([key, config]) => ({
-          key,
-          enabled:
-            (config as { enabled?: boolean; required?: boolean })?.enabled ||
-            false,
-          required:
-            (config as { enabled?: boolean; required?: boolean })?.required ||
-            false,
-        })
-      );
-      console.log(
-        "Converted school card_fields from object to array:",
-        converted
-      );
-      return converted;
+      return Object.entries(school.card_fields).map(([key, config]) => ({
+        key,
+        enabled:
+          (config as { enabled?: boolean; required?: boolean })?.enabled ||
+          false,
+        required:
+          (config as { enabled?: boolean; required?: boolean })?.required ||
+          false,
+      }));
     }
 
     return [];
@@ -1014,8 +1001,6 @@ const Dashboard = () => {
         );
         if (!response.ok) throw new Error("Failed to fetch school");
         const data = await response.json();
-        console.log("Fetched school data:", data);
-        console.log("School card_fields:", data.school?.card_fields);
         setSchool(data.school || null);
       } catch (error) {
         console.error("Error fetching school:", error);

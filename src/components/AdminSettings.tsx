@@ -132,7 +132,9 @@ interface SFTPConfig {
   upload_path: string;
 }
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 // Add canonical field definitions
 const CANONICAL_CARD_FIELDS = [

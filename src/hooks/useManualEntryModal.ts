@@ -14,8 +14,6 @@ export function useManualEntryModal(
   fetchCards: () => void,
   cardFields: CardField[] = []
 ) {
-  console.log("useManualEntryModal received cardFields:", cardFields);
-  console.log("useManualEntryModal cardFields length:", cardFields.length);
   const [isManualEntryModalOpen, setIsManualEntryModalOpen] = useState(false);
   const { profile } = useAuth();
 

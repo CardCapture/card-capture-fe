@@ -70,12 +70,8 @@ const ManualEntryModal: React.FC<ManualEntryModalProps> = ({
   onSubmit,
   cardFields = [],
 }) => {
-  console.log("ManualEntryModal received cardFields:", cardFields);
-  console.log("ManualEntryModal cardFields length:", cardFields.length);
-
   // Get enabled fields only
   const enabledFields = cardFields.filter((field) => field.enabled);
-  console.log("ManualEntryModal enabledFields:", enabledFields);
 
   // Helper to format field label
   const formatFieldLabel = (fieldKey: string): string => {

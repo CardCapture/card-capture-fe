@@ -14,6 +14,7 @@ import { LoaderProvider } from "./contexts/LoaderContext";
 import { muiTheme } from "./lib/muiTheme";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
+import SuperAdminRoute from "./components/SuperAdminRoute";
 import LandingLayout from "./components/LandingLayout";
 import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
@@ -31,6 +32,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import AcceptInvitePage from "./pages/AcceptInvitePage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
+import SuperAdminPage from "./pages/SuperAdminPage";
 
 // --- CSS Import ---
 import "./App.css";
@@ -61,6 +63,16 @@ function App() {
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/accept-invite" element={<AcceptInvitePage />} />
               </Route>
+
+              {/* SuperAdmin routes */}
+              <Route
+                element={
+                  <SuperAdminRoute>
+                    <SuperAdminPage />
+                  </SuperAdminRoute>
+                }
+                path="/superadmin"
+              />
 
               {/* Protected routes */}
               <Route element={<ProtectedRoute />}>
