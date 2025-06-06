@@ -1,6 +1,13 @@
 // src/components/DashboardCopy.tsx
 
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  memo,
+} from "react";
 import {
   ColumnDef,
   flexRender,
@@ -1098,4 +1105,4 @@ const DashboardCopy = () => {
   );
 };
 
-export default DashboardCopy;
+export default memo(DashboardCopy);

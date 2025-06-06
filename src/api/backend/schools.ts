@@ -9,7 +9,7 @@ export const backendSchoolsApi = {
    * Get school data by ID
    */
   async getSchool(schoolId: string): Promise<{ school: SchoolData }> {
-    const response = await fetch(`${API_BASE_URL}/schools/${schoolId}`);
+    const response = await authFetch(`${API_BASE_URL}/schools/${schoolId}`);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch school data (${response.status})`);
@@ -22,7 +22,7 @@ export const backendSchoolsApi = {
    * Get card fields configuration for a school
    */
   async getCardFields(schoolId: string): Promise<unknown> {
-    const response = await fetch(
+    const response = await authFetch(
       `${API_BASE_URL}/schools/${schoolId}/card-fields`
     );
 

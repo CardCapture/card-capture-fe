@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,7 @@ interface CreateEventModalProps {
   onEventCreated: () => void;
 }
 
-export const CreateEventModal: React.FC<CreateEventModalProps> = ({
+const CreateEventModal: React.FC<CreateEventModalProps> = ({
   isOpen,
   onClose,
   onEventCreated,
@@ -44,45 +44,63 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   // Use shared profile hook instead of duplicate fetching
   const { schoolId, loading: profileLoading } = useProfile();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!eventName || !eventDate) {
-      toast.warning(
-        "Please provide both an event name and date.",
-        "Missing Information"
-      );
-      return;
-    }
-    if (!schoolId) {
-      toast.error(
-        "Your user profile is missing a school ID. Please contact support.",
-        "Missing School ID"
-      );
-      return;
-    }
-    setIsCreating(true);
-    try {
-      await EventService.createEvent({
-        name: eventName,
-        date: eventDate,
-        school_id: schoolId,
-      });
+  // Memoize form handlers
+  const handleEventNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEventName(e.target.value);
+    },
+    []
+  );
 
-      toast.created("Event");
-      onEventCreated();
-      onClose();
-      setEventName("");
-      setEventDate("");
-    } catch (error) {
-      console.error("Error creating event:", error);
-      toast.error(
-        "Something went wrong while creating the event. Please try again.",
-        "Creation Failed"
-      );
-    } finally {
-      setIsCreating(false);
-    }
-  };
+  const handleEventDateChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEventDate(e.target.value);
+    },
+    []
+  );
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!eventName || !eventDate) {
+        toast.warning(
+          "Please provide both an event name and date.",
+          "Missing Information"
+        );
+        return;
+      }
+      if (!schoolId) {
+        toast.error(
+          "Your user profile is missing a school ID. Please contact support.",
+          "Missing School ID"
+        );
+        return;
+      }
+      setIsCreating(true);
+      try {
+        await EventService.createEvent({
+          name: eventName,
+          date: eventDate,
+          school_id: schoolId,
+        });
+
+        toast.created("Event");
+        onEventCreated();
+        onClose();
+        setEventName("");
+        setEventDate("");
+      } catch (error) {
+        console.error("Error creating event:", error);
+        toast.error(
+          "Something went wrong while creating the event. Please try again.",
+          "Creation Failed"
+        );
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    [eventName, eventDate, schoolId, onEventCreated, onClose]
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -98,7 +116,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 id="name"
                 placeholder="Enter event name"
                 value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
+                onChange={handleEventNameChange}
                 disabled={isCreating}
               />
             </div>
@@ -108,7 +126,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 id="date"
                 type="date"
                 value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
+                onChange={handleEventDateChange}
                 disabled={isCreating}
               />
             </div>
@@ -143,7 +161,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   );
 };
 
-export const ArchiveConfirmation: React.FC<{
+export default memo(CreateEventModal);
+export { CreateEventModal };
+
+const ArchiveConfirmation: React.FC<{
   rowSelection: Record<string, boolean>;
   handleArchiveSelected: () => void;
 }> = ({ rowSelection, handleArchiveSelected }) => {
@@ -171,3 +192,5 @@ export const ArchiveConfirmation: React.FC<{
     </AlertDialog>
   );
 };
+
+export { ArchiveConfirmation };
