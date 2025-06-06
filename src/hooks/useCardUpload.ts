@@ -1,5 +1,4 @@
 import { toast } from "@/lib/toast";
-import { CardService } from "@/services/CardService";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const useCardUpload = () => {
@@ -24,28 +23,21 @@ export const useCardUpload = () => {
 
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      let endpoint = "/upload";
-      if (
-        file.type === "application/pdf" ||
-        file.name.toLowerCase().endsWith(".pdf")
-      ) {
-        endpoint = "/upload";
+      const endpoint = "/upload";
+
+      const response = await fetch(`${apiBaseUrl}${endpoint}`, {
+        method: "POST",
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
       }
-      // Note: CardService.uploadCardManually doesn't handle file uploads yet
-      // For now, we'll need to create a more appropriate service method
-      // This is a TODO: Update CardService to handle file uploads properly
-      const cardData = {
-        event_id: eventId,
-        school_id: schoolId,
-        file_name: file.name,
-      };
 
-      await CardService.uploadCardManually(cardData);
-
-      const data = { success: true };
-
-      // We no longer show the toast here since it's shown by the callback
-
+      const data = await response.json();
       return data;
     } catch (error: unknown) {
       const errorMessage =
