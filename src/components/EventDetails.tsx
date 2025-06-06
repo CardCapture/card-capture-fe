@@ -887,16 +887,13 @@ const Dashboard = () => {
   useEffect(() => {
     async function fetchSettings() {
       if (!selectedEvent || !selectedEvent.school_id) return;
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) return;
       const { data, error } = await supabase
-        .from("settings")
-        .select("preferences")
-        .eq("user_id", user.id)
-        .eq("school_id", selectedEvent.school_id)
+        .from("schools")
+        .select("card_fields")
+        .eq("id", selectedEvent.school_id)
         .single();
-      if (!error && data?.preferences?.card_fields) {
-        setCardFieldPrefs(data.preferences.card_fields);
+      if (!error && data?.card_fields) {
+        setCardFieldPrefs(data.card_fields);
       } else {
         setCardFieldPrefs(null);
       }
