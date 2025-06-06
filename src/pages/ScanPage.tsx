@@ -247,7 +247,7 @@ const ScanPage: React.FC = () => {
               {events.length > 0 && (
                 <div className="border-t border-gray-200 my-1" />
               )}
-              {events.map(event => (
+              {events.filter(event => event.status !== "archived").map(event => (
                 <SelectItem key={event.id} value={event.id}>
                   {event.name}
                 </SelectItem>

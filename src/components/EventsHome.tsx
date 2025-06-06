@@ -207,6 +207,14 @@ const DashboardCopy = () => {
     [router, rowSelection]
   );
 
+  // Helper to get UTC date (year, month, day only)
+  function getUTCDateOnly(date) {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  }
+
+  const now = new Date();
+  const todayUTC = getUTCDateOnly(now);
+
   // Split and filter events based on tab selection
   const { upcomingEvents, completedEvents, archivedEvents, filteredEvents } =
     useMemo(() => {
@@ -217,9 +225,6 @@ const DashboardCopy = () => {
           archivedEvents: [],
           filteredEvents: [],
         };
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Set to start of today
 
       // Filter events based on search query and hideExported
       const filtered = events.filter((event) => {
@@ -245,27 +250,24 @@ const DashboardCopy = () => {
 
       // Split events into categories
       const upcoming = filtered
-        .filter(
-          (event) =>
-            new Date(event.date) >= today && event.status !== "archived"
-        )
-        .sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
+        .filter((event) => {
+          const eventDate = new Date(event.date);
+          const eventDateUTC = getUTCDateOnly(eventDate);
+          return eventDateUTC >= todayUTC && event.status !== "archived";
+        })
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       const completed = filtered
-        .filter(
-          (event) => new Date(event.date) < today && event.status !== "archived"
-        )
-        .sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
+        .filter((event) => {
+          const eventDate = new Date(event.date);
+          const eventDateUTC = getUTCDateOnly(eventDate);
+          return eventDateUTC < todayUTC && event.status !== "archived";
+        })
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       const archived = filtered
         .filter((event) => event.status === "archived")
-        .sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       // Return events based on selected tab
       return {
@@ -654,7 +656,7 @@ const DashboardCopy = () => {
                 onClick={handleArchiveSelected}
                 className="text-gray-700 hover:text-gray-900"
               >
-                <Archive className="mr-1 h-4 w-4" />
+                <Archive className="h-4 w-4" />
                 Archive Selected
               </Button>
             )}

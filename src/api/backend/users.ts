@@ -81,6 +81,7 @@ export const usersApi = {
       first_name: string;
       last_name: string;
       role: string[];
+      school_id: string;
     },
     token?: string
   ): Promise<void> {

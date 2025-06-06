@@ -35,7 +35,7 @@ export const backendEventsApi = {
     eventId: string,
     updates: { name?: string }
   ): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+    const response = await authFetch(`${API_BASE_URL}/events/${eventId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -53,7 +53,7 @@ export const backendEventsApi = {
    * Delete an event
    */
   async deleteEvent(eventId: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+    const response = await authFetch(`${API_BASE_URL}/events/${eventId}`, {
       method: "DELETE",
     });
 

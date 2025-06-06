@@ -111,6 +111,7 @@ export function InviteUserDialog({
           first_name: data.firstName,
           last_name: data.lastName,
           role: data.roles,
+          school_id: schoolId,
         },
         session?.access_token
       );

@@ -250,7 +250,7 @@ const ScanFab = ({
                 <SelectValue placeholder="Select an event" />
               </SelectTrigger>
               <SelectContent>
-                {events.map((event) => (
+                {events.filter(event => event.status !== "archived").map((event) => (
                   <SelectItem key={event.id} value={event.id}>
                     {event.name} ({new Date(event.date).toLocaleDateString()})
                   </SelectItem>
@@ -276,7 +276,7 @@ const ScanFab = ({
                 <SelectValue placeholder="Select an event" />
               </SelectTrigger>
               <SelectContent>
-                {events.map((event) => (
+                {events.filter(event => event.status !== "archived").map((event) => (
                   <SelectItem key={event.id} value={event.id}>
                     {event.name} ({new Date(event.date).toLocaleDateString()})
                   </SelectItem>
