@@ -422,7 +422,6 @@ const AdminSettings: React.FC = () => {
     }
 
     const formattedFields = cardFieldsArray.map((field) => {
-      console.log({ field });
       return {
         key: field.key,
         label: field.key

@@ -67,27 +67,76 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   majorsList,
   loadingMajors,
 }) => {
+  // Dynamically map fieldsToShow keys to actual formData keys
+  const getFormDataKey = (fieldKey: string): string => {
+    // First try exact match
+    if (fieldKey in formData || selectedCardForReview?.fields?.[fieldKey]) {
+      return fieldKey;
+    }
+
+    // Get available keys from both formData and card fields
+    const availableKeys = [
+      ...Object.keys(formData),
+      ...Object.keys(selectedCardForReview?.fields || {}),
+    ];
+    const uniqueKeys = [...new Set(availableKeys)];
+
+    // Try common semantic mappings
+    const semanticMappings: Record<string, string[]> = {
+      birthdate: ["date_of_birth", "birth_date", "dob"],
+      cell_phone: ["cell", "phone", "mobile", "cell_phone_number"],
+      city_state_zip: ["city", "state", "zip_code"], // composite field - will use first match
+      entry_year: ["entry_term", "entry_year"],
+    };
+
+    // Check semantic mappings
+    const possibleMappings = semanticMappings[fieldKey];
+    if (possibleMappings) {
+      for (const mapping of possibleMappings) {
+        if (uniqueKeys.includes(mapping)) {
+          return mapping;
+        }
+      }
+    }
+
+    // Try partial string matching (fuzzy matching)
+    const fuzzyMatch = uniqueKeys.find(
+      (key) =>
+        key.includes(fieldKey.toLowerCase()) ||
+        fieldKey.toLowerCase().includes(key) ||
+        key.replace(/_/g, "").toLowerCase() ===
+          fieldKey.replace(/_/g, "").toLowerCase()
+    );
+
+    if (fuzzyMatch) {
+      return fuzzyMatch;
+    }
+
+    // Return original if no mapping found
+    return fieldKey;
+  };
+
   return (
     <div className="bg-gray-50 rounded-lg p-3 sm:p-4 overflow-y-auto">
       <div className="space-y-3 sm:space-y-4">
         {selectedCardForReview ? (
           <>
             {fieldsToShow.map((fieldKey) => {
+              const actualFieldKey = getFormDataKey(fieldKey);
               const fieldData: FieldData | undefined =
-                selectedCardForReview.fields?.[fieldKey];
-              const label =
-                fieldData?.actual_field_name ||
-                FIELD_LABELS[fieldKey] ||
-                dataFieldsMap.get(fieldKey) ||
-                fieldKey.replace(/_/g, " ");
+                selectedCardForReview.fields?.[actualFieldKey];
+              const label = fieldKey
+                .split("_")
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ");
               const needsReview = !!fieldData?.requires_human_review;
               const isReviewed = !!fieldData?.reviewed;
               const reviewNotes = fieldData?.review_notes || undefined;
               const showIcon = needsReview;
               let formattedValue = fieldData?.value ?? "";
-              if (fieldKey === "cell")
+              if (actualFieldKey === "cell")
                 formattedValue = formatPhoneNumber(fieldData?.value ?? "");
-              if (fieldKey === "date_of_birth")
+              if (actualFieldKey === "date_of_birth")
                 formattedValue = formatBirthday(fieldData?.value ?? "");
               const tooltipContent =
                 typeof reviewNotes === "string" && reviewNotes.length > 0
@@ -121,12 +170,14 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                     {label}:
                   </Label>
                   <div className="sm:col-span-3 flex items-center gap-2">
-                    {fieldKey === "cell" ? (
+                    {actualFieldKey === "cell" ? (
                       <PhoneNumberInput
                         id={fieldKey}
                         name={fieldKey}
-                        value={formData[fieldKey] ?? ""}
-                        onChange={(value) => handleFormChange(fieldKey, value)}
+                        value={formData[actualFieldKey] ?? ""}
+                        onChange={(value) =>
+                          handleFormChange(actualFieldKey, value)
+                        }
                         className={`h-10 sm:h-8 text-sm flex-1 ${
                           isReviewed && selectedTab === "needs_human_review"
                             ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
@@ -140,9 +191,9 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                       majorsList.length > 0 ? (
                       <Combobox
                         options={majorsList}
-                        value={formData["mapped_major"] ?? ""}
+                        value={formData[actualFieldKey] ?? ""}
                         onChange={(value) =>
-                          handleFormChange("mapped_major", value)
+                          handleFormChange(actualFieldKey, value)
                         }
                         placeholder="Select Mapped Major"
                       />
@@ -150,9 +201,9 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                       <Input
                         id={fieldKey}
                         name={fieldKey}
-                        value={formData[fieldKey] ?? ""}
+                        value={formData[actualFieldKey] ?? ""}
                         onChange={(e) =>
-                          handleFormChange(fieldKey, e.target.value)
+                          handleFormChange(actualFieldKey, e.target.value)
                         }
                         className={`h-10 sm:h-8 text-sm flex-1 ${
                           isReviewed && selectedTab === "needs_human_review"
@@ -176,7 +227,9 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                                   ? "text-green-500"
                                   : "text-gray-400 hover:text-gray-600"
                               }`}
-                              onClick={(e) => handleFieldReview(fieldKey, e)}
+                              onClick={(e) =>
+                                handleFieldReview(actualFieldKey, e)
+                              }
                             >
                               <CheckCircle className="h-5 w-5" />
                             </Button>
