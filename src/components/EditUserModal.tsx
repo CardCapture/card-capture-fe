@@ -2,16 +2,35 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { DialogOverlay, DialogPortal } from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { authFetch } from "@/lib/authFetch";
+import { UserService } from "@/services/UserService";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from '@/lib/toast';
+import { toast } from "@/lib/toast";
 import { Trash2, X, Check, Crown, Camera, Eye } from "lucide-react";
 import {
   AlertDialog,
@@ -35,7 +54,9 @@ import {
 const editUserSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  roles: z.array(z.enum(["admin", "recruiter", "reviewer"])).min(1, "At least one role is required"),
+  roles: z
+    .array(z.enum(["admin", "recruiter", "reviewer"]))
+    .min(1, "At least one role is required"),
 });
 
 type EditUserFormValues = z.infer<typeof editUserSchema>;
@@ -45,7 +66,7 @@ interface UserToEdit {
   email: string;
   first_name: string;
   last_name: string;
-  role: ('admin' | 'recruiter' | 'reviewer')[];
+  role: ("admin" | "recruiter" | "reviewer")[];
 }
 
 interface EditUserModalProps {
@@ -56,27 +77,32 @@ interface EditUserModalProps {
 }
 
 const roleOptions = [
-  { 
-    value: "admin", 
-    label: "Admin", 
+  {
+    value: "admin",
+    label: "Admin",
     description: "Full system access",
-    icon: Crown
+    icon: Crown,
   },
-  { 
-    value: "recruiter", 
-    label: "Recruiter", 
+  {
+    value: "recruiter",
+    label: "Recruiter",
     description: "Scan & manage events",
-    icon: Camera
+    icon: Camera,
   },
-  { 
-    value: "reviewer", 
-    label: "Reviewer", 
+  {
+    value: "reviewer",
+    label: "Reviewer",
     description: "Review card data",
-    icon: Eye
+    icon: Eye,
   },
 ];
 
-export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserModalProps) {
+export function EditUserModal({
+  open,
+  onOpenChange,
+  user,
+  onSuccess,
+}: EditUserModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -107,27 +133,15 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
 
     setIsSubmitting(true);
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await authFetch(
-        `${apiBaseUrl}/users/${user.id}`,
+      await UserService.updateUser(
+        user.id,
         {
-          method: "PUT",
-          body: JSON.stringify({
-            first_name: data.firstName,
-            last_name: data.lastName,
-            role: data.roles, // Send as roles array
-          }),
-          headers: {
-            "Content-Type": "application/json",
-          },
+          first_name: data.firstName,
+          last_name: data.lastName,
+          role: data.roles.join(","), // Convert array to string as expected by backend
         },
         session?.access_token
       );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || "Failed to update user");
-      }
 
       toast.updated("User");
 
@@ -135,7 +149,12 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
       onSuccess?.();
     } catch (error) {
       console.error("Error updating user:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to update user. Please try again.", "Error");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update user. Please try again.",
+        "Error"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -146,22 +165,7 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
 
     setIsDeleting(true);
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await authFetch(
-        `${apiBaseUrl}/users/${user.id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-        session?.access_token
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || errorData?.message || "Failed to delete user");
-      }
+      await UserService.deleteUser(user.id, session?.access_token);
 
       toast.success("User deleted successfully");
 
@@ -170,7 +174,11 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
       onSuccess?.();
     } catch (error) {
       console.error("Error deleting user:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to delete user. Please try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete user. Please try again."
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -188,16 +196,19 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
               </DialogPrimitive.Title>
             </div>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => {
-                // Trim whitespace from all fields
-                const trimmedData = {
-                  ...data,
-                  firstName: data.firstName.trim(),
-                  lastName: data.lastName.trim(),
-                  roles: data.roles,
-                };
-                onSubmit(trimmedData);
-              })} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit((data) => {
+                  // Trim whitespace from all fields
+                  const trimmedData = {
+                    ...data,
+                    firstName: data.firstName.trim(),
+                    lastName: data.lastName.trim(),
+                    roles: data.roles,
+                  };
+                  onSubmit(trimmedData);
+                })}
+                className="space-y-6"
+              >
                 <FormField
                   control={form.control}
                   name="firstName"
@@ -241,27 +252,41 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
                       <FormLabel>Roles</FormLabel>
                       <div className="grid grid-cols-3 gap-3">
                         {roleOptions.map((role) => {
-                          const isSelected = field.value?.includes(role.value as any) || false;
+                          const roleValue = role.value as
+                            | "admin"
+                            | "recruiter"
+                            | "reviewer";
+                          const isSelected =
+                            field.value?.includes(roleValue) || false;
                           const IconComponent = role.icon;
                           return (
                             <div
                               key={role.value}
                               onClick={() => {
                                 const currentRoles = field.value || [];
-                                if (role.value === 'admin') {
-                                  if (currentRoles.includes('admin')) {
-                                    field.onChange(currentRoles.filter(r => r !== 'admin'));
+                                if (role.value === "admin") {
+                                  if (currentRoles.includes("admin")) {
+                                    field.onChange(
+                                      currentRoles.filter((r) => r !== "admin")
+                                    );
                                   } else {
-                                    field.onChange(['admin']);
+                                    field.onChange(["admin"]);
                                   }
                                 } else {
-                                  if (currentRoles.includes('admin')) {
-                                    field.onChange([role.value]);
+                                  if (currentRoles.includes("admin")) {
+                                    field.onChange([roleValue]);
                                   } else {
-                                    if (currentRoles.includes(role.value as any)) {
-                                      field.onChange(currentRoles.filter(r => r !== role.value));
+                                    if (currentRoles.includes(roleValue)) {
+                                      field.onChange(
+                                        currentRoles.filter(
+                                          (r) => r !== roleValue
+                                        )
+                                      );
                                     } else {
-                                      field.onChange([...currentRoles, role.value]);
+                                      field.onChange([
+                                        ...currentRoles,
+                                        roleValue,
+                                      ]);
                                     }
                                   }
                                 }
@@ -279,13 +304,21 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
                                 </div>
                               )}
                               <div className="flex flex-col items-center space-y-2">
-                                <IconComponent className={cn(
-                                  "h-5 w-5",
-                                  isSelected ? "text-blue-600" : "text-gray-500"
-                                )} />
+                                <IconComponent
+                                  className={cn(
+                                    "h-5 w-5",
+                                    isSelected
+                                      ? "text-blue-600"
+                                      : "text-gray-500"
+                                  )}
+                                />
                                 <div>
-                                  <div className="text-sm font-medium">{role.label}</div>
-                                  <div className="text-xs text-muted-foreground">{role.description}</div>
+                                  <div className="text-sm font-medium">
+                                    {role.label}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {role.description}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -322,8 +355,12 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
           <AlertDialogHeader>
             <AlertDialogTitle>Delete User</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{user?.first_name} {user?.last_name}</strong>? 
-              This action cannot be undone and will permanently remove their account and all associated data.
+              Are you sure you want to delete{" "}
+              <strong>
+                {user?.first_name} {user?.last_name}
+              </strong>
+              ? This action cannot be undone and will permanently remove their
+              account and all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -340,4 +377,4 @@ export function EditUserModal({ open, onOpenChange, user, onSuccess }: EditUserM
       </AlertDialog>
     </>
   );
-} 
+}

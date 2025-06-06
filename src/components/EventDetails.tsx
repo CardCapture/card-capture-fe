@@ -62,7 +62,8 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import type { Event } from "@/types/event";
 import { determineCardStatus } from "@/lib/cardUtils";
 import { useCardUpload } from "@/hooks/useCardUpload";
-import { supabase } from "@/lib/supabaseClient";
+import { EventService } from "@/services/EventService";
+import { SchoolService } from "@/services/SchoolService";
 import { getSignedImageUrl } from "@/lib/imageUtils";
 import ReviewImagePanel from "@/components/review/ReviewImagePanel";
 import ReviewForm from "@/components/review/ReviewForm";
@@ -83,6 +84,7 @@ import { useBulkActions } from "@/hooks/useBulkActions";
 import { toast } from "@/lib/toast"; // Updated import
 import CameraCapture from "@/components/card-scanner/CameraCapture";
 import { useLoader } from "@/contexts/LoaderContext";
+import { useSchool } from "@/hooks/useSchool";
 
 // === Component Definition ===
 const Dashboard = () => {
@@ -203,13 +205,9 @@ const Dashboard = () => {
     string,
     boolean
   > | null>(null);
-  const [school, setSchool] = useState<{
-    id?: string;
-    name?: string;
-    card_fields?:
-      | Record<string, { enabled: boolean; required: boolean }>
-      | Array<{ key: string; enabled: boolean; required: boolean }>;
-  } | null>(null);
+
+  // Use shared school hook
+  const { school } = useSchool(selectedEvent?.school_id);
 
   // --- Refs ---
   const imageUrlRef = useRef<string>("");
@@ -835,22 +833,10 @@ const Dashboard = () => {
     setEventNameLoading(true);
     setEventNameError(null);
     try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const response = await fetch(`${apiBaseUrl}/events/${selectedEvent.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ name: eventNameInput.trim() }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to update event name");
-      }
+      await EventService.updateEventName(
+        selectedEvent.id,
+        eventNameInput.trim()
+      );
       toast.updated("Event name");
       setIsEditingEventName(false);
       setSelectedEvent((ev) =>
@@ -887,14 +873,44 @@ const Dashboard = () => {
   useEffect(() => {
     async function fetchSettings() {
       if (!selectedEvent || !selectedEvent.school_id) return;
-      const { data, error } = await supabase
-        .from("schools")
-        .select("card_fields")
-        .eq("id", selectedEvent.school_id)
-        .single();
-      if (!error && data?.card_fields) {
-        setCardFieldPrefs(data.card_fields);
-      } else {
+      try {
+        const schoolData = await SchoolService.getSchoolData(
+          selectedEvent.school_id
+        );
+        if (schoolData?.card_fields) {
+          // Transform the card fields to the expected format
+          const transformedPrefs: Record<string, boolean> = {};
+
+          if (Array.isArray(schoolData.card_fields)) {
+            // Handle array format
+            schoolData.card_fields.forEach((field) => {
+              if (
+                typeof field === "object" &&
+                "key" in field &&
+                "enabled" in field
+              ) {
+                transformedPrefs[field.key] = field.enabled;
+              }
+            });
+          } else if (typeof schoolData.card_fields === "object") {
+            // Handle object format
+            Object.entries(schoolData.card_fields).forEach(([key, config]) => {
+              if (typeof config === "object" && config && "enabled" in config) {
+                transformedPrefs[key] = (
+                  config as { enabled: boolean }
+                ).enabled;
+              } else if (typeof config === "boolean") {
+                transformedPrefs[key] = config;
+              }
+            });
+          }
+
+          setCardFieldPrefs(transformedPrefs);
+        } else {
+          setCardFieldPrefs(null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch school settings:", error);
         setCardFieldPrefs(null);
       }
     }
@@ -962,12 +978,8 @@ const Dashboard = () => {
       if (!selectedEvent?.school_id) return;
       setLoadingMajors(true);
       try {
-        const { data: schoolData } = await supabase
-          .from("schools")
-          .select("majors")
-          .eq("id", selectedEvent.school_id)
-          .single();
-        setMajorsList(schoolData?.majors || []);
+        const majors = await SchoolService.getMajors(selectedEvent.school_id);
+        setMajorsList(majors || []);
       } catch (error) {
         setMajorsList([]);
         toast.error("Failed to load majors");
@@ -980,31 +992,6 @@ const Dashboard = () => {
       fetchMajors();
     }
   }, [isReviewModalOpen, selectedEvent?.school_id, cardFieldPrefs]);
-
-  // Fetch school data when event changes
-  useEffect(() => {
-    async function fetchSchool() {
-      if (!selectedEvent?.school_id) return;
-      try {
-        const apiBaseUrl =
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-        const response = await fetch(
-          `${apiBaseUrl}/schools/${selectedEvent.school_id}`,
-          {
-            headers: session?.access_token
-              ? { Authorization: `Bearer ${session.access_token}` }
-              : {},
-          }
-        );
-        if (!response.ok) throw new Error("Failed to fetch school");
-        const data = await response.json();
-        setSchool(data.school || null);
-      } catch (error) {
-        console.error("Error fetching school:", error);
-      }
-    }
-    fetchSchool();
-  }, [selectedEvent?.school_id, session?.access_token]);
 
   return (
     <ErrorBoundary>

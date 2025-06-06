@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ProspectCard, CardStatus } from "@/types/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -19,112 +19,31 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatDateOrTimeAgo } from "@/lib/utils";
-import { authFetch } from "@/lib/authFetch";
+import { useCards } from "@/hooks/useCards";
 
 // Extended ProspectCard type for this component
 interface ExtendedProspectCard extends ProspectCard {
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 
 const CardList = () => {
-  const [cards, setCards] = useState<ExtendedProspectCard[]>([]);
   const [selectedTab, setSelectedTab] = useState<string>("all");
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  useEffect(() => {
-    const fetchCards = async () => {
-      try {
-        const apiBaseUrl =
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-        const response = await authFetch(`${apiBaseUrl}/cards`);
-        const data = await response.json();
-
-        const formatted = data.map((item: any) => {
-          let parsedData = {};
-          try {
-            parsedData = JSON.parse(item.parsed_data || "{}");
-          } catch (e) {
-            console.error(
-              "Error parsing JSON for card",
-              item.document_id || item.id
-            );
-          }
-
-          return {
-            id:
-              item.document_id ||
-              item.id ||
-              `unknown-${Math.random().toString(36).substring(7)}`,
-            document_id:
-              item.document_id ||
-              item.id ||
-              `unknown-${Math.random().toString(36).substring(7)}`,
-            review_status: item.review_status || "needs_human_review",
-            missingFields: item.missing_fields || [],
-            imageName: item.image_name || "",
-            created_at:
-              item.created_at || item.uploaded_at || new Date().toISOString(),
-            updatedAt: item.updated_at || item.reviewed_at,
-            exported_at: item.exported_at || null,
-            fields: item.fields || {},
-            data: parsedData,
-          };
-        });
-
-        setCards(formatted);
-      } catch (error) {
-        console.error("Error fetching cards:", error);
-      }
-    };
-
-    fetchCards();
-  }, []);
+  // Use the shared cards hook instead of duplicating the API call
+  const { cards, getStatusCount, isLoading } = useCards();
 
   const filteredCards =
     selectedTab === "all"
       ? cards
       : cards.filter((card) => card.review_status === selectedTab);
 
-  const getStatusCount = (status: CardStatus | "all") => {
-    if (!Array.isArray(cards)) return 0;
-
-    const isArchived = (card: ProspectCard) =>
-      card.review_status === "archived";
-    const isExported = (card: ProspectCard) => !!card.exported_at;
-    const hasFieldsNeedingReview = (card: ProspectCard) => {
-      return Object.values(card.fields || {}).some(
-        (field) => field.requires_human_review && !field.reviewed
-      );
-    };
-
-    switch (status) {
-      case "all":
-        return cards.length;
-      case "reviewed":
-        return cards.filter(
-          (c) =>
-            c.review_status === "reviewed" && !isExported(c) && !isArchived(c)
-        ).length;
-      case "needs_human_review":
-        return cards.filter(
-          (c) =>
-            (c.review_status === "needs_human_review" ||
-              hasFieldsNeedingReview(c)) &&
-            !isExported(c) &&
-            !isArchived(c)
-        ).length;
-      case "exported":
-        return cards.filter((c) => isExported(c) && !isArchived(c)).length;
-      case "archived":
-        return cards.filter(isArchived).length;
-      case "processing":
-        return cards.filter(
-          (c) =>
-            c.review_status === "processing" && !isExported(c) && !isArchived(c)
-        ).length;
-      default:
-        return 0;
+  // Helper function for getting counts that includes "all"
+  const getStatusCountWithAll = (status: CardStatus | "all") => {
+    if (status === "all") {
+      return cards.length;
     }
+    return getStatusCount(status);
   };
 
   const dataFields = [
@@ -189,7 +108,7 @@ const CardList = () => {
         const fieldData = row.fields?.[key];
         return fieldData?.value || row.data?.[key] || "";
       },
-      cell: ({ getValue }) => {
+      cell: ({ getValue }: { getValue: () => unknown }) => {
         const value = getValue();
         return Array.isArray(value) ? value.join(", ") : value || "-";
       },
@@ -217,18 +136,20 @@ const CardList = () => {
         onValueChange={setSelectedTab}
       >
         <TabsList className="grid grid-cols-5 mb-6">
-          <TabsTrigger value="all">All ({getStatusCount("all")})</TabsTrigger>
+          <TabsTrigger value="all">
+            All ({getStatusCountWithAll("all")})
+          </TabsTrigger>
           <TabsTrigger value="reviewed">
-            Reviewed ({getStatusCount("reviewed")})
+            Reviewed ({getStatusCountWithAll("reviewed")})
           </TabsTrigger>
           <TabsTrigger value="needs_human_review">
-            Needs Review ({getStatusCount("needs_human_review")})
+            Needs Review ({getStatusCountWithAll("needs_human_review")})
           </TabsTrigger>
           <TabsTrigger value="exported">
-            Exported ({getStatusCount("exported")})
+            Exported ({getStatusCountWithAll("exported")})
           </TabsTrigger>
           <TabsTrigger value="archived">
-            Archived ({getStatusCount("archived")})
+            Archived ({getStatusCountWithAll("archived")})
           </TabsTrigger>
         </TabsList>
 

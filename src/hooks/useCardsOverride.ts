@@ -3,7 +3,7 @@ import { ProspectCard, CardStatus, FieldData } from "@/types/card";
 import { supabase } from "@/lib/supabaseClient";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { determineCardStatus } from "@/lib/cardUtils";
-import { authFetch } from "@/lib/authFetch";
+import { CardService } from "@/services/CardService";
 import { useLoader } from "@/contexts/LoaderContext";
 
 // Define proper interface for raw card data from API
@@ -69,18 +69,14 @@ export function useCardsOverride(eventId?: string) {
       url.searchParams.append("event_id", eventId);
       console.log("useCardsOverride: Fetching cards from", url.toString());
 
-      const response = await authFetch(url.toString());
-      console.log("useCardsOverride: Cards response", {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
+      // Use CardService instead of direct API call
+      const data: RawCardData[] = (await CardService.getCardsByEvent(
+        eventId
+      )) as RawCardData[];
+
+      console.log("useCardsOverride: Cards data received", {
+        count: data.length,
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch cards");
-      }
-
-      const data: RawCardData[] = await response.json();
       console.log("✅ [CARDS OVERRIDE] Cards data received", {
         count: data.length,
         firstCard: data.length > 0 ? data[0] : null,
