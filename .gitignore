@@ -63,3 +63,7 @@ build/
 .env*
 .vscode/
 .idea/
+
+
+*.sql
+*.md
