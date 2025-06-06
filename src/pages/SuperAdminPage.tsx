@@ -16,7 +16,6 @@ import { Building2, Plus, UserPlus, Settings } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { superAdminApi, type School } from "@/lib/superAdminApi";
 import { useAuth } from "@/contexts/AuthContext";
-import { authFetch } from "@/lib/authFetch";
 
 interface NewSchoolForm {
   name: string;

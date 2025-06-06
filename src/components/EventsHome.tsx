@@ -1,6 +1,13 @@
 // src/components/DashboardCopy.tsx
 
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  memo,
+} from "react";
 import {
   ColumnDef,
   flexRender,
@@ -67,9 +74,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/lib/supabaseClient";
+
 import { toast } from "@/lib/toast";
 import { useLoader, TableLoader } from "@/contexts/LoaderContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { EventService } from "@/services/EventService";
 
 // Tab type for event filtering
 type EventTab = "upcoming" | "completed" | "archived";
@@ -77,6 +86,7 @@ type EventTab = "upcoming" | "completed" | "archived";
 const DashboardCopy = () => {
   // External Hooks
   const router = useNavigate();
+  const { session } = useAuth();
   const {
     events,
     loading: eventsLoading,
@@ -417,17 +427,7 @@ const DashboardCopy = () => {
         (index) => filteredEvents[parseInt(index)].id
       );
       for (const eventId of selectedIds) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-        const response = await fetch(`${apiBaseUrl}/events/${eventId}`, {
-          method: "DELETE",
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        });
-        if (!response.ok && response.status !== 204) {
-          throw new Error("Failed to delete event");
-        }
+        await EventService.deleteEvent(eventId);
       }
       setRowSelection({});
       await fetchEvents();
@@ -1105,4 +1105,4 @@ const DashboardCopy = () => {
   );
 };
 
-export default DashboardCopy;
+export default memo(DashboardCopy);

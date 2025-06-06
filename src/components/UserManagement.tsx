@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { authFetch } from "@/lib/authFetch";
+import { UserService } from "@/services/UserService";
 import { useAuth } from "@/contexts/AuthContext";
 import { InviteUserDialog } from "./InviteUserDialog";
 import { EditUserModal } from "./EditUserModal";
@@ -47,15 +47,8 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     showTableLoader(LOADER_ID, "Loading users...");
     try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await authFetch(
-        `${apiBaseUrl}/users`,
-        {},
-        session?.access_token
-      );
-      const data = await response.json();
-      setUsers(data.users || []);
+      const users = await UserService.getAllUsers(session?.access_token);
+      setUsers(users || []);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {

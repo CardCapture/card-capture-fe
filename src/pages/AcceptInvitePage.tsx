@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
+import { SchoolService } from "@/services/SchoolService";
+import { ProfileService } from "@/services/ProfileService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,17 +139,8 @@ const AcceptInvitePage = () => {
     const fetchSchoolInfo = async () => {
       if (schoolId) {
         try {
-          const { data, error } = await supabase
-            .from("schools")
-            .select("name")
-            .eq("id", schoolId)
-            .single();
-
-          if (error) {
-            console.error("Error fetching school:", error);
-          } else {
-            setSchoolInfo(data);
-          }
+          const schoolData = await SchoolService.getSchoolData(schoolId);
+          setSchoolInfo({ name: schoolData.name });
         } catch (err) {
           console.error("Error fetching school:", err);
         }
@@ -233,15 +226,18 @@ const AcceptInvitePage = () => {
 
       // If we have a school_id, assign the user to the school and make them admin
       if (schoolId) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({
-            school_id: schoolId,
-            role: ["admin"],
-          })
-          .eq("email", email);
-
-        if (profileError) {
+        try {
+          // Get the current user ID from the session
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user?.id) {
+            await ProfileService.updateProfile(user.id, {
+              school_id: schoolId,
+              role: "admin",
+            });
+          }
+        } catch (profileError) {
           console.error("Error updating profile:", profileError);
           // Don't throw here - user is already signed up successfully
         }

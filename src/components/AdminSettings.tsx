@@ -34,7 +34,7 @@ import {
   X,
 } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
-import { supabase } from "@/lib/supabaseClient";
+import { SchoolService } from "@/services/SchoolService";
 import SettingsPreferences from "./SettingsPreferences";
 import { Link, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { authFetch } from "@/lib/authFetch";
+import { UserService } from "@/services/UserService";
+import { IntegrationsService } from "@/services/IntegrationsService";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useLoader,
@@ -58,6 +59,12 @@ import {
   InlineLoader,
   OverlayLoader,
 } from "@/contexts/LoaderContext";
+import { useProfile } from "@/hooks/useProfile";
+import { useSchool } from "@/hooks/useSchool";
+import { UserManagementSection } from "./AdminSettings/UserManagementSection";
+import { IntegrationsSection } from "./AdminSettings/IntegrationsSection";
+import { MajorsSection } from "./AdminSettings/MajorsSection";
+import { SubscriptionSection } from "./AdminSettings/SubscriptionSection";
 
 const NAV_ITEMS = [
   {
@@ -183,6 +190,15 @@ const AdminSettings: React.FC = () => {
   // Get the active tab from the URL
   const activeTab = location.pathname.split("/").pop() || "account-settings";
 
+  // Use shared hooks
+  const { profile, schoolId, loading: profileLoading } = useProfile();
+  const {
+    school,
+    loading: schoolLoading,
+    error: schoolError,
+    updateSchool,
+  } = useSchool(schoolId || undefined);
+
   // User management state
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -191,11 +207,9 @@ const AdminSettings: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserToEdit | null>(null);
 
   // School state for subscription tab
-  const [school, setSchool] = useState<SchoolRecord | null>(null);
-  const [schoolLoading, setSchoolLoading] = useState(false);
-  const [schoolError, setSchoolError] = useState<string | null>(null);
   const [isSchoolNameDirty, setIsSchoolNameDirty] = useState(false);
   const [initialSchoolName, setInitialSchoolName] = useState<string>("");
+  const [schoolNameInput, setSchoolNameInput] = useState<string>("");
 
   // SFTP state
   const [sftpConfig, setSftpConfig] = useState<SFTPConfig>({
@@ -234,32 +248,12 @@ const AdminSettings: React.FC = () => {
   // Fetch SFTP config
   useEffect(() => {
     const fetchSftpConfig = async () => {
-      if (!session?.user?.id) return;
+      if (!schoolId) return;
 
       try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("school_id")
-          .eq("id", session.user.id)
-          .single();
-
-        if (!profile?.school_id) {
-          throw new Error("No school ID found");
-        }
-
-        const { data: sftpData } = await supabase
-          .from("sftp_configs")
-          .select("*")
-          .eq("school_id", profile.school_id)
-          .single();
-
+        const sftpData = await IntegrationsService.getSftpConfig(schoolId);
         if (sftpData) {
-          setSftpConfig({
-            host: sftpData.host || "",
-            username: sftpData.username || "",
-            password: sftpData.password || "",
-            upload_path: sftpData.upload_path || "",
-          });
+          setSftpConfig(sftpData);
         }
       } catch (error) {
         console.error("Error fetching SFTP config:", error);
@@ -267,80 +261,15 @@ const AdminSettings: React.FC = () => {
     };
 
     fetchSftpConfig();
-  }, [session]);
+  }, [schoolId]);
 
-  // Fetch school record for subscription tab
+  // Set initial school name when school data is loaded
   useEffect(() => {
-    const fetchSchool = async () => {
-      if (
-        (activeTab !== "subscription" &&
-          activeTab !== "field-preferences" &&
-          activeTab !== "account-settings") ||
-        !session?.user?.id
-      ) {
-        console.log("Debug - Not fetching school:", {
-          activeTab,
-          userId: session?.user?.id,
-        });
-        return;
-      }
-
-      setSchoolLoading(true);
-      setSchoolError(null);
-      try {
-        // First fetch the school_id from profiles table
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("school_id")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          throw new Error("Failed to fetch profile");
-        }
-
-        if (!profile?.school_id) {
-          throw new Error("No school ID found in profile");
-        }
-
-        console.log("Debug - School ID from profile:", profile.school_id);
-
-        // Now fetch the school details
-        const apiBaseUrl =
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-        console.log(
-          "Debug - Fetching school from:",
-          `${apiBaseUrl}/schools/${profile.school_id}`
-        );
-        const res = await fetch(`${apiBaseUrl}/schools/${profile.school_id}`, {
-          headers: session?.access_token
-            ? { Authorization: `Bearer ${session.access_token}` }
-            : {},
-        });
-        console.log(
-          "Debug - School fetch response:",
-          res.status,
-          res.statusText
-        );
-        if (!res.ok) throw new Error("Failed to fetch school record");
-        const data = await res.json();
-        console.log("Debug - School data:", JSON.stringify(data, null, 2));
-        setSchool(data.school || null);
-        if (data.school?.name) {
-          setInitialSchoolName(data.school.name);
-        }
-      } catch (err: unknown) {
-        const errorMsg =
-          err instanceof Error ? err.message : "Error fetching school record";
-        console.error("Debug - School fetch error:", err);
-        setSchoolError(errorMsg);
-        setSchool(null);
-      } finally {
-        setSchoolLoading(false);
-      }
-    };
-    fetchSchool();
-  }, [activeTab, session]);
+    if (school?.name && !initialSchoolName) {
+      setInitialSchoolName(school.name);
+      setSchoolNameInput(school.name);
+    }
+  }, [school?.name, initialSchoolName]);
 
   useEffect(() => {
     if (activeTab === "user-management" && session?.access_token) {
@@ -371,14 +300,7 @@ const AdminSettings: React.FC = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await authFetch(
-        `${apiBaseUrl}/users`,
-        {},
-        session?.access_token
-      );
-      const data = await response.json();
+      const data = await UserService.getAllUsers(session?.access_token);
       setUsers(data || []);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -405,28 +327,10 @@ const AdminSettings: React.FC = () => {
   // Stripe Checkout handler
   const handleStripeCheckout = async () => {
     try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await authFetch(
-        `${apiBaseUrl}/stripe/create-portal-session`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
+      const portalUrl = await IntegrationsService.createStripePortalSession(
         session?.access_token
       );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.detail || "Failed to create Stripe portal session"
-        );
-      }
-
-      const data = await response.json();
-      window.open(data.url, "_blank");
+      window.open(portalUrl, "_blank");
     } catch (error) {
       console.error("Error creating Stripe portal session:", error);
       toast.error(
@@ -444,27 +348,10 @@ const AdminSettings: React.FC = () => {
   const saveSftpConfig = async () => {
     setSaving(true);
     try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await authFetch(
-        `${apiBaseUrl}/sftp/config`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(sftpConfig),
-        },
+      await IntegrationsService.saveSftpConfig(
+        sftpConfig,
         session?.access_token
       );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.detail || "Failed to save SFTP configuration"
-        );
-      }
-
       toast.saved();
     } catch (error) {
       console.error("Error saving SFTP configuration:", error);
@@ -481,25 +368,10 @@ const AdminSettings: React.FC = () => {
   const testSftpConnection = async () => {
     setSaving(true);
     try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await authFetch(
-        `${apiBaseUrl}/sftp/test`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(sftpConfig),
-        },
+      await IntegrationsService.testSftpConnection(
+        sftpConfig,
         session?.access_token
       );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || "Failed to test SFTP connection");
-      }
-
       toast.success("SFTP connection test successful!");
     } catch (error) {
       console.error("Error testing SFTP connection:", error);
@@ -581,12 +453,18 @@ const AdminSettings: React.FC = () => {
         required: field.required,
       }));
 
-      const { error } = await supabase
-        .from("schools")
-        .update({ card_fields: cardFields })
-        .eq("id", school.id);
-
-      if (error) throw error;
+      await SchoolService.updateCardFields(
+        school.id,
+        cardFields.map((field) => ({
+          key: field.key,
+          label: field.key
+            .split("_")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" "),
+          visible: field.enabled,
+          required: field.required,
+        }))
+      );
 
       setFields(updatedFields);
       setInitialFields(updatedFields);
@@ -599,20 +477,9 @@ const AdminSettings: React.FC = () => {
 
   // Add loadMajors function
   const loadMajors = async () => {
-    if (!session?.user?.id) return;
+    if (!schoolId) return;
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("school_id")
-        .eq("id", session.user.id)
-        .single();
-      if (!profile?.school_id) throw new Error("No school ID found");
-      const { data: schoolData } = await supabase
-        .from("schools")
-        .select("majors")
-        .eq("id", profile.school_id)
-        .single();
-      const majorsArr = schoolData?.majors || [];
+      const majorsArr = await SchoolService.getMajors(schoolId);
       setMajorsList(majorsArr);
       setEditedMajors(majorsArr);
       setMajors(majorsArr.join("\n"));
@@ -627,15 +494,8 @@ const AdminSettings: React.FC = () => {
 
   // Save majors (from editedMajors or textarea)
   const saveMajors = async (majorsOverride?: string[]) => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || !schoolId) return;
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("school_id")
-        .eq("id", session.user.id)
-        .single();
-      if (!profile?.school_id) throw new Error("No school ID found");
-
       // Helper function to clean majors array
       const cleanMajors = (majorsList: string[]): string[] =>
         majorsList.map((m) => m.trim()).filter((m) => m.length > 0);
@@ -655,11 +515,7 @@ const AdminSettings: React.FC = () => {
 
       const majorsToSave = cleanMajors(rawMajors);
 
-      const { error } = await supabase
-        .from("schools")
-        .update({ majors: majorsToSave })
-        .eq("id", profile.school_id);
-      if (error) throw error;
+      await SchoolService.updateMajors(schoolId, majorsToSave);
 
       // Update all related state
       setMajorsList(majorsToSave);
@@ -715,9 +571,9 @@ const AdminSettings: React.FC = () => {
               <Label htmlFor="school_name">School Name</Label>
               <Input
                 id="school_name"
-                value={school?.name || ""}
+                value={schoolNameInput}
                 onChange={(e) => {
-                  setSchool({ ...school, name: e.target.value });
+                  setSchoolNameInput(e.target.value);
                   setIsSchoolNameDirty(e.target.value !== initialSchoolName);
                 }}
                 placeholder="Enter your school name"
@@ -728,26 +584,17 @@ const AdminSettings: React.FC = () => {
             <Button
               onClick={async () => {
                 if (!school?.id) return;
-                const updatePayload = {
-                  name: school.name,
-                  email: school.email,
-                  card_fields: school.card_fields || {},
-                };
-                console.log(
-                  "[Account Settings Save] Updating school with payload:",
-                  updatePayload
-                );
-                const { error } = await supabase
-                  .from("schools")
-                  .update(updatePayload)
-                  .eq("id", school.id);
-                if (error) {
-                  toast.error("Failed to save account settings");
-                } else {
+                try {
+                  await updateSchool({ name: schoolNameInput });
+                  setInitialSchoolName(schoolNameInput);
+                  setIsSchoolNameDirty(false);
                   toast.saved();
+                } catch (error) {
+                  console.error("Error updating school:", error);
+                  toast.error("Failed to save account settings");
                 }
               }}
-              disabled={schoolLoading}
+              disabled={schoolLoading || !isSchoolNameDirty}
             >
               {schoolLoading ? "Saving..." : "Save Changes"}
             </Button>
@@ -796,481 +643,65 @@ const AdminSettings: React.FC = () => {
       break;
     case "majors":
       heading = "Majors";
-      if (loadingMajors) {
-        content = <div>Loading majors...</div>;
-        break;
-      }
-      // If there are no majors, just show the add majors box
-      if (majorsList.length === 0) {
-        content = (
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Available Majors</CardTitle>
-              <CardDescription>
-                Paste in a list of majors offered at your school. Gemini will
-                use this list to help match student responses.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Label htmlFor="majors" className="text-sm font-medium">
-                Majors (one per line)
-              </Label>
-              <Textarea
-                id="majors"
-                value={majors}
-                onChange={(e) => {
-                  setMajors(e.target.value);
-                  setIsDirty(e.target.value !== initialMajors);
-                }}
-                placeholder={`Biology\nComputer Science\nBusiness Administration\nMechanical Engineering`}
-                className="min-h-[200px]"
-              />
-              <p className="text-xs text-muted-foreground font-normal">
-                Paste or type one major per line. We'll automatically match
-                students' responses to the closest major from this list.
-              </p>
-              <div className="flex justify-start">
-                <Button
-                  onClick={() => saveMajors()}
-                  disabled={
-                    !majors.trim() || majors === initialMajors || !isDirty
-                  }
-                >
-                  Save Majors
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        );
-        break;
-      }
-      // If there are majors, show the add box above the table if showImport is true
       content = (
-        <div className="space-y-4">
-          {showImport && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Add Majors</CardTitle>
-                <CardDescription>
-                  Paste in one or more majors (one per line) to add to your
-                  list.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Label
-                  htmlFor="add-majors-input"
-                  className="text-sm font-medium"
-                >
-                  Majors (one per line)
-                </Label>
-                <Textarea
-                  id="add-majors-input"
-                  value={addMajorsInput}
-                  onChange={(e) => setAddMajorsInput(e.target.value)}
-                  placeholder={`Biology\nComputer Science\nBusiness Administration\nMechanical Engineering`}
-                  className="min-h-[200px]"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      // Parse and add new majors
-                      const newMajors = addMajorsInput
-                        .split("\n")
-                        .map((m) => m.trim())
-                        .filter(
-                          (m) => m.length > 0 && !editedMajors.includes(m)
-                        );
-                      if (newMajors.length > 0) {
-                        const updatedMajors = [...newMajors, ...editedMajors];
-                        setEditedMajors(updatedMajors);
-                        setMajorsList(updatedMajors);
-                        setIsDirty(true);
-                        toast.success(
-                          `${newMajors.length} major${
-                            newMajors.length > 1 ? "s" : ""
-                          } added`
-                        );
-                      }
-                      setShowImport(false);
-                      setAddMajorsInput("");
-                    }}
-                    disabled={!addMajorsInput.trim()}
-                  >
-                    Save Majors
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowImport(false);
-                      setAddMajorsInput("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          {/* Majors table always visible if there are majors */}
-          <Card className="shadow-sm rounded-xl">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Manage Majors</CardTitle>
-              <button
-                className="text-primary hover:bg-muted rounded-full p-1 transition"
-                onClick={() => {
-                  setShowImport(true);
-                  setAddMajorsInput("");
-                }}
-                aria-label="Add major"
-                type="button"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search majors..."
-                className="mb-2"
-              />
-              <div className="max-h-[500px] overflow-y-auto rounded-md border border-muted-foreground/10 bg-muted/50 divide-y divide-muted-foreground/10">
-                {editedMajors
-                  .filter((m) => m.toLowerCase().includes(search.toLowerCase()))
-                  .map((major, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-2 px-3 py-2 group hover:bg-muted/80 transition"
-                    >
-                      {editIndex === idx ? (
-                        <>
-                          <Input
-                            autoFocus
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleEditMajor(idx);
-                              if (e.key === "Escape") {
-                                setEditIndex(null);
-                                setEditValue("");
-                              }
-                            }}
-                            className="flex-1 border-none bg-transparent px-0 py-0 text-base font-normal focus:ring-0 focus-visible:ring-0 focus:outline-none shadow-none"
-                          />
-                          <button
-                            className="text-green-600 hover:bg-green-100 rounded-full p-1"
-                            onClick={() => handleEditMajor(idx)}
-                            type="button"
-                            aria-label="Save major"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button
-                            className="text-muted-foreground hover:bg-muted rounded-full p-1"
-                            onClick={() => {
-                              setEditIndex(null);
-                              setEditValue("");
-                            }}
-                            type="button"
-                            aria-label="Cancel edit major"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="flex-1 truncate text-base font-normal">
-                            {major}
-                          </span>
-                          <button
-                            className="text-primary hover:bg-muted rounded-full p-1"
-                            onClick={() => {
-                              setEditIndex(idx);
-                              setEditValue(major);
-                            }}
-                            type="button"
-                            aria-label="Edit major"
-                          >
-                            <PencilLine className="w-4 h-4" />
-                          </button>
-                          <button
-                            className="text-destructive hover:bg-destructive/10 rounded-full p-1"
-                            onClick={() => handleDeleteMajor(idx)}
-                            type="button"
-                            aria-label="Delete major"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                {editedMajors.filter((m) =>
-                  m.toLowerCase().includes(search.toLowerCase())
-                ).length === 0 && (
-                  <div className="text-xs text-muted-foreground px-3 py-4 text-center">
-                    No majors found.
-                  </div>
-                )}
-              </div>
-              {/* Sticky Save Button */}
-              {isDirty && (
-                <div className="sticky bottom-0 left-0 w-full flex justify-end pt-4 bg-gradient-to-t from-white via-white/80 to-transparent z-10">
-                  <Button
-                    onClick={() => saveMajors()}
-                    className="shadow-md"
-                    variant="default"
-                  >
-                    Save Changes
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <MajorsSection
+          majorsList={majorsList}
+          editedMajors={editedMajors}
+          setEditedMajors={setEditedMajors}
+          search={search}
+          setSearch={setSearch}
+          showImport={showImport}
+          setShowImport={setShowImport}
+          isDirty={isDirty}
+          setIsDirty={setIsDirty}
+          editIndex={editIndex}
+          setEditIndex={setEditIndex}
+          editValue={editValue}
+          setEditValue={setEditValue}
+          addMajorsInput={addMajorsInput}
+          setAddMajorsInput={setAddMajorsInput}
+          saveMajors={saveMajors}
+          loadingMajors={loadingMajors}
+        />
       );
       break;
     case "user-management":
       heading = "Manage Users";
       content = (
-        <Card className="bg-white shadow-sm rounded-xl p-0">
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
-              <div>
-                <div className="text-2xl font-semibold">Manage Users</div>
-                <div className="text-muted-foreground text-sm mb-4">
-                  User Management
-                </div>
-              </div>
-              <Button
-                onClick={() => setInviteDialogOpen(true)}
-                className="self-start sm:self-auto"
-              >
-                Invite User
-              </Button>
-            </div>
-            <div className="overflow-x-auto rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="px-5 py-4">Name</TableHead>
-                    <TableHead className="px-5 py-4">Email</TableHead>
-                    <TableHead className="px-5 py-4 text-center">
-                      Role
-                    </TableHead>
-                    <TableHead className="px-5 py-4 text-right">
-                      Last Login
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={4}
-                        className="text-center py-8 text-sm text-gray-500"
-                      >
-                        Loading users...
-                      </TableCell>
-                    </TableRow>
-                  ) : users.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={4}
-                        className="text-center py-8 text-sm text-gray-500"
-                      >
-                        No users found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    users.map((user, idx) => (
-                      <TableRow
-                        key={user.id}
-                        onClick={() => handleRowClick(user)}
-                        className={`cursor-pointer transition hover:bg-muted ${
-                          idx % 2 === 1 ? "bg-muted/50" : ""
-                        }`}
-                      >
-                        <TableCell className="px-5 py-4">
-                          {user.first_name} {user.last_name}
-                        </TableCell>
-                        <TableCell className="px-5 py-4">
-                          {user.email}
-                        </TableCell>
-                        <TableCell className="px-5 py-4 text-center">
-                          {Array.isArray(user.role)
-                            ? user.role.join(", ")
-                            : user.role}
-                        </TableCell>
-                        <TableCell className="px-5 py-4 text-right">
-                          {user.last_sign_in_at
-                            ? new Date(user.last_sign_in_at).toLocaleDateString(
-                                undefined,
-                                {
-                                  month: "short",
-                                  day: "2-digit",
-                                  year: "numeric",
-                                }
-                              )
-                            : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-            <InviteUserDialog
-              open={inviteDialogOpen}
-              onOpenChange={setInviteDialogOpen}
-              onSuccess={fetchUsers}
-            />
-            <EditUserModal
-              open={editModalOpen}
-              onOpenChange={setEditModalOpen}
-              user={selectedUser}
-              onSuccess={fetchUsers}
-            />
-          </CardContent>
-        </Card>
+        <UserManagementSection
+          users={users}
+          loading={loading}
+          inviteDialogOpen={inviteDialogOpen}
+          setInviteDialogOpen={setInviteDialogOpen}
+          editModalOpen={editModalOpen}
+          setEditModalOpen={setEditModalOpen}
+          selectedUser={selectedUser}
+          handleRowClick={handleRowClick}
+          fetchUsers={fetchUsers}
+        />
       );
       break;
     case "subscription":
       heading = "Subscription";
       content = (
-        <Card className="bg-white shadow-sm rounded-xl p-0">
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
-              <div>
-                <div className="text-2xl font-semibold">
-                  Subscription Details
-                </div>
-                <div className="text-muted-foreground text-sm mb-4">
-                  Manage your billing plan and payment details
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4">
-              {schoolLoading ? (
-                <div className="text-muted-foreground text-sm py-8">
-                  Loading plan details...
-                </div>
-              ) : schoolError ? (
-                <div className="text-red-500 text-sm py-8">{schoolError}</div>
-              ) : school ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium capitalize">
-                        {school.name} Plan
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {PRICING_DISPLAY[school.name] || "N/A"}
-                      </p>
-                    </div>
-                    <Button
-                      onClick={handleStripeCheckout}
-                      size="default"
-                      disabled={schoolLoading || !!schoolError || !school}
-                    >
-                      Manage Subscription
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    You're currently on the{" "}
-                    <strong className="capitalize">{school.name}</strong> plan,
-                    billed annually.
-                  </p>
-                </div>
-              ) : (
-                <div className="text-muted-foreground text-sm py-8">
-                  No school record found.
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <SubscriptionSection
+          school={school}
+          schoolLoading={schoolLoading}
+          schoolError={schoolError}
+          handleStripeCheckout={handleStripeCheckout}
+        />
       );
       break;
     case "integrations":
       heading = "Integrations";
       content = (
-        <Card>
-          <CardHeader>
-            <CardTitle>Slate Integration (SFTP)</CardTitle>
-            <CardDescription>
-              Enter your Slate SFTP credentials to enable export.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="host">Host</Label>
-              <Input
-                id="host"
-                value={sftpConfig.host}
-                onChange={(e) =>
-                  setSftpConfig((prev) => ({ ...prev, host: e.target.value }))
-                }
-                placeholder="ft.technolutions.net"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                value={sftpConfig.username}
-                onChange={(e) =>
-                  setSftpConfig((prev) => ({
-                    ...prev,
-                    username: e.target.value,
-                  }))
-                }
-                placeholder="your-username"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={sftpConfig.password}
-                onChange={(e) =>
-                  setSftpConfig((prev) => ({
-                    ...prev,
-                    password: e.target.value,
-                  }))
-                }
-                placeholder="••••••••"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="upload_path">Upload Path</Label>
-              <Input
-                id="upload_path"
-                value={sftpConfig.upload_path}
-                onChange={(e) =>
-                  setSftpConfig((prev) => ({
-                    ...prev,
-                    upload_path: e.target.value,
-                  }))
-                }
-                placeholder="/test/incoming/cardcapture"
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="justify-end space-x-2">
-            <Button
-              variant="outline"
-              onClick={testSftpConnection}
-              disabled={saving}
-            >
-              Test Connection
-            </Button>
-            <Button onClick={saveSftpConfig} disabled={saving}>
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
-          </CardFooter>
-        </Card>
+        <IntegrationsSection
+          sftpConfig={sftpConfig}
+          setSftpConfig={setSftpConfig}
+          saving={saving}
+          saveSftpConfig={saveSftpConfig}
+          testSftpConnection={testSftpConnection}
+        />
       );
       break;
     default:

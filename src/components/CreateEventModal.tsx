@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/lib/toast";
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,9 +21,9 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { authFetch } from "@/lib/authFetch";
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { EventService } from "@/services/EventService";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -31,91 +31,76 @@ interface CreateEventModalProps {
   onEventCreated: () => void;
 }
 
-export const CreateEventModal: React.FC<CreateEventModalProps> = ({
+const CreateEventModal: React.FC<CreateEventModalProps> = ({
   isOpen,
   onClose,
   onEventCreated,
 }) => {
-  const [eventName, setEventName] = useState('');
-  const [eventDate, setEventDate] = useState('');
+  const [eventName, setEventName] = useState("");
+  const [eventDate, setEventDate] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const { user } = useAuth();
-  const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
 
-  // Fetch school_id from profiles table when modal opens
-  React.useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) {
-        console.log('No user found in useAuth');
+  // Use shared profile hook instead of duplicate fetching
+  const { schoolId, loading: profileLoading } = useProfile();
+
+  // Memoize form handlers
+  const handleEventNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEventName(e.target.value);
+    },
+    []
+  );
+
+  const handleEventDateChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEventDate(e.target.value);
+    },
+    []
+  );
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!eventName || !eventDate) {
+        toast.warning(
+          "Please provide both an event name and date.",
+          "Missing Information"
+        );
         return;
       }
-      setProfileLoading(true);
-      console.log('Fetching profile for user id:', user.id);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (error) {
-        console.error('Error fetching profile:', error);
+      if (!schoolId) {
+        toast.error(
+          "Your user profile is missing a school ID. Please contact support.",
+          "Missing School ID"
+        );
+        return;
       }
-      if (!data) {
-        console.warn('No profile data returned for user:', user.id);
-      } else {
-        console.log('Profile data returned:', data);
-      }
-      if (error || !data?.school_id) {
-        setSchoolId(null);
-      } else {
-        setSchoolId(data.school_id);
-      }
-      setProfileLoading(false);
-    };
-    if (isOpen && user) {
-      fetchProfile();
-    }
-  }, [isOpen, user]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!eventName || !eventDate) {
-      toast.warning("Please provide both an event name and date.", "Missing Information");
-      return;
-    }
-    if (!schoolId) {
-      toast.error("Your user profile is missing a school ID. Please contact support.", "Missing School ID");
-      return;
-    }
-    setIsCreating(true);
-    try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await authFetch(`${apiBaseUrl}/events`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      setIsCreating(true);
+      try {
+        await EventService.createEvent({
           name: eventName,
           date: eventDate,
           school_id: schoolId,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create event');
+        });
+
+        toast.created("Event");
+        onEventCreated();
+        onClose();
+        setEventName("");
+        setEventDate("");
+      } catch (error) {
+        console.error("Error creating event:", error);
+        toast.error(
+          "Something went wrong while creating the event. Please try again.",
+          "Creation Failed"
+        );
+      } finally {
+        setIsCreating(false);
       }
-      toast.created("Event");
-      onEventCreated();
-      onClose();
-      setEventName('');
-      setEventDate('');
-    } catch (error) {
-      console.error('Error creating event:', error);
-      toast.error("Something went wrong while creating the event. Please try again.", "Creation Failed");
-    } finally {
-      setIsCreating(false);
-    }
-  };
+    },
+    [eventName, eventDate, schoolId, onEventCreated, onClose]
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -131,7 +116,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 id="name"
                 placeholder="Enter event name"
                 value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
+                onChange={handleEventNameChange}
                 disabled={isCreating}
               />
             </div>
@@ -141,7 +126,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 id="date"
                 type="date"
                 value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
+                onChange={handleEventDateChange}
                 disabled={isCreating}
               />
             </div>
@@ -166,7 +151,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   Creating...
                 </>
               ) : (
-                'Create Event'
+                "Create Event"
               )}
             </Button>
           </DialogFooter>
@@ -176,7 +161,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   );
 };
 
-export const ArchiveConfirmation: React.FC<{
+export default memo(CreateEventModal);
+export { CreateEventModal };
+
+const ArchiveConfirmation: React.FC<{
   rowSelection: Record<string, boolean>;
   handleArchiveSelected: () => void;
 }> = ({ rowSelection, handleArchiveSelected }) => {
@@ -186,17 +174,23 @@ export const ArchiveConfirmation: React.FC<{
         <AlertDialogHeader>
           <AlertDialogTitle>Archive Cards</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to archive {Object.keys(rowSelection).length} {Object.keys(rowSelection).length === 1 ? 'card' : 'cards'}? 
+            Are you sure you want to archive {Object.keys(rowSelection).length}{" "}
+            {Object.keys(rowSelection).length === 1 ? "card" : "cards"}?
             Archived cards will be moved to the Archived tab.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleArchiveSelected} className="bg-red-600 hover:bg-red-700 text-white">
+          <AlertDialogAction
+            onClick={handleArchiveSelected}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
             Archive
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
-}; 
+};
+
+export { ArchiveConfirmation };
