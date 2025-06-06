@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Building2, Plus, UserPlus, Settings } from "lucide-react";
+import { Building2, Plus, UserPlus, Settings, LogOut } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { superAdminApi, type School } from "@/lib/superAdminApi";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,7 +29,7 @@ interface InviteUserForm {
 }
 
 const SuperAdminPage: React.FC = () => {
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -141,6 +141,17 @@ const SuperAdminPage: React.FC = () => {
     setIsInviteUserModalOpen(true);
   };
 
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("Logged out successfully");
+    } catch (error) {
+      console.error("Error during logout:", error);
+      toast.error("Failed to logout. Please try again.");
+    }
+  };
+
   useEffect(() => {
     fetchSchools();
   }, []);
@@ -168,13 +179,23 @@ const SuperAdminPage: React.FC = () => {
                 Manage schools and administrators
               </p>
             </div>
-            <Button
-              onClick={() => setIsAddSchoolModalOpen(true)}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add School
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => setIsAddSchoolModalOpen(true)}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add School
+              </Button>
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                className="gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
 
