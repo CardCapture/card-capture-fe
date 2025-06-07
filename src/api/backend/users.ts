@@ -8,7 +8,7 @@ export interface UserProfile {
   email: string;
   first_name: string;
   last_name: string;
-  role: string;
+  role: string | string[];
   last_sign_in_at?: string | null;
   school_id?: string;
 }

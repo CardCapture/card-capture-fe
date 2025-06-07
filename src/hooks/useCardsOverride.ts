@@ -173,64 +173,94 @@ export function useCardsOverride(eventId?: string) {
     }
   }, [eventId]);
 
-  // Effect for periodic polling (fallback for realtime issues)
+  // Effect for Supabase real-time subscription
   useEffect(() => {
-    if (!eventId) {
+    if (!eventId || !supabase) {
+      console.warn(
+        "useCardsOverride: EventId or Supabase client not available, real-time updates disabled."
+      );
       return;
     }
 
-    // Disable realtime for now due to RLS policy conflicts causing TIMED_OUT errors
-    const REALTIME_ENABLED = false;
+    const channelName = `event_cards_changes_${eventId}`;
+    let channel: RealtimeChannel | null = null;
 
-    if (REALTIME_ENABLED) {
-      // Realtime subscription code would go here when RLS issues are resolved
-      console.log("Realtime subscription would be enabled here");
-      return;
-    }
+    const handleDbChange = (payload: {
+      eventType: string;
+      new?: Record<string, unknown>;
+      old?: Record<string, unknown>;
+    }) => {
+      console.log("useCardsOverride: Supabase change received:", payload);
 
-    // Fallback: Use polling for updates
-    const POLL_INTERVAL = 30000; // 30 seconds
-    let pollInterval: NodeJS.Timeout;
+      // Check if the change is relevant to our event
+      const newRecord = payload.new as { event_id?: string } | undefined;
+      const oldRecord = payload.old as { event_id?: string } | undefined;
 
-    const startPolling = () => {
-      pollInterval = setInterval(() => {
-        // Only poll if the tab is visible to avoid unnecessary requests
-        if (!document.hidden) {
-          console.log("useCardsOverride: Polling for updates...");
-          fetchCards();
-        }
-      }, POLL_INTERVAL);
-    };
+      const isRelevantChange =
+        newRecord?.event_id === eventId || oldRecord?.event_id === eventId;
 
-    // Start polling after a short delay to avoid immediate fetch conflicts
-    const startTimeout = setTimeout(startPolling, 5000);
-
-    // Handle visibility change to pause/resume polling
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        console.log("useCardsOverride: Tab hidden, pausing polling");
-        if (pollInterval) {
-          clearInterval(pollInterval);
-        }
+      if (isRelevantChange) {
+        console.log(
+          "useCardsOverride: Change is relevant to current event, refreshing cards"
+        );
+        fetchCards();
       } else {
-        console.log("useCardsOverride: Tab visible, resuming polling");
-        startPolling();
+        console.log(
+          "useCardsOverride: Change not relevant to current event, skipping refresh"
+        );
       }
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    const subscriptionOptions = {
+      event: "*" as const,
+      schema: "public",
+      table: "reviewed_data",
+    };
+
+    // Subscribe to realtime changes
+    channel = supabase
+      .channel(channelName)
+      .on("postgres_changes", subscriptionOptions, handleDbChange)
+      .subscribe((status, err) => {
+        if (status === "SUBSCRIBED") {
+          console.log(
+            `useCardsOverride: Supabase channel '${channelName}' subscribed successfully!`
+          );
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error(
+            `useCardsOverride: Supabase channel error: ${status}`,
+            err
+          );
+          // Attempt to reconnect after a delay
+          setTimeout(() => {
+            console.log("useCardsOverride: Attempting to reconnect...");
+            channel?.unsubscribe();
+            channel?.subscribe();
+          }, 5000);
+        }
+        console.log(`useCardsOverride: Supabase channel status: ${status}`);
+      });
 
     // Cleanup function
     return () => {
-      if (startTimeout) {
-        clearTimeout(startTimeout);
+      if (supabase && channel) {
+        console.log(
+          `useCardsOverride: Unsubscribing from Supabase channel '${channelName}'`
+        );
+        supabase
+          .removeChannel(channel)
+          .then((status) =>
+            console.log(`useCardsOverride: Unsubscribe status: ${status}`)
+          )
+          .catch((err) =>
+            console.error(
+              "useCardsOverride: Error unsubscribing from Supabase channel:",
+              err
+            )
+          );
       }
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [eventId]);
+  }, [eventId, fetchCards]);
 
   // Add getStatusCount function
   const getStatusCount = useCallback(

@@ -11,16 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { InviteUserDialog } from "../InviteUserDialog";
 import { EditUserModal } from "../EditUserModal";
-
-interface UserProfile {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-  last_sign_in_at?: string | null;
-  school_id?: string;
-}
+import { UserProfile } from "@/api/backend/users";
 
 interface UserToEdit {
   id: string;

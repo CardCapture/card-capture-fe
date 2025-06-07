@@ -138,7 +138,7 @@ export function EditUserModal({
         {
           first_name: data.firstName,
           last_name: data.lastName,
-          role: data.roles.join(","), // Convert array to string as expected by backend
+          role: data.roles, // Send as array as expected by backend
         },
         session?.access_token
       );

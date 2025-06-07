@@ -65,6 +65,7 @@ import { UserManagementSection } from "./AdminSettings/UserManagementSection";
 import { IntegrationsSection } from "./AdminSettings/IntegrationsSection";
 import { MajorsSection } from "./AdminSettings/MajorsSection";
 import { SubscriptionSection } from "./AdminSettings/SubscriptionSection";
+import { UserProfile } from "@/api/backend/users";
 
 const NAV_ITEMS = [
   {
@@ -111,16 +112,6 @@ interface UserToEdit {
   first_name: string;
   last_name: string;
   role: ("admin" | "recruiter" | "reviewer")[];
-}
-
-interface UserProfile {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-  last_sign_in_at?: string | null;
-  school_id?: string;
 }
 
 interface SchoolRecord {
@@ -319,8 +310,12 @@ const AdminSettings: React.FC = () => {
       first_name: user.first_name,
       last_name: user.last_name,
       role: Array.isArray(user.role)
-        ? user.role
-        : ([user.role] as ("admin" | "recruiter" | "reviewer")[]),
+        ? user.role.filter((r): r is "admin" | "recruiter" | "reviewer" =>
+            ["admin", "recruiter", "reviewer"].includes(r)
+          )
+        : [user.role].filter((r): r is "admin" | "recruiter" | "reviewer" =>
+            ["admin", "recruiter", "reviewer"].includes(r)
+          ),
     };
     setSelectedUser(userToEdit);
     setEditModalOpen(true);
