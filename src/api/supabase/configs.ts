@@ -1,10 +1,11 @@
 import { supabase } from "@/lib/supabaseClient";
 
 export interface SFTPConfig {
+  school_id: string;
   host: string;
   username: string;
   password: string;
-  upload_path: string;
+  remote_path: string;
 }
 
 export const configsApi = {
@@ -34,7 +35,8 @@ export const configsApi = {
       host: data.host || "",
       username: data.username || "",
       password: data.password || "",
-      upload_path: data.upload_path || "",
+      remote_path: data.remote_path || "",
+      school_id: data.school_id || "",
     };
   },
 };

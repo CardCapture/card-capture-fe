@@ -133,10 +133,11 @@ interface SchoolRecord {
 }
 
 interface SFTPConfig {
+  school_id: string;
   host: string;
   username: string;
   password: string;
-  upload_path: string;
+  remote_path: string;
 }
 
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
@@ -216,7 +217,8 @@ const AdminSettings: React.FC = () => {
     host: "",
     username: "",
     password: "",
-    upload_path: "",
+    remote_path: "",
+    school_id: schoolId || "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -349,7 +351,7 @@ const AdminSettings: React.FC = () => {
     setSaving(true);
     try {
       await IntegrationsService.saveSftpConfig(
-        sftpConfig,
+        { ...sftpConfig, school_id: schoolId },
         session?.access_token
       );
       toast.saved();

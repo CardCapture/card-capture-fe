@@ -113,9 +113,9 @@ export class IntegrationsService {
       errors.push("Password is required");
     }
 
-    if (!config.upload_path || config.upload_path.trim().length === 0) {
+    if (!config.remote_path || config.remote_path.trim().length === 0) {
       errors.push("Upload path is required");
-    } else if (!config.upload_path.startsWith("/")) {
+    } else if (!config.remote_path.startsWith("/")) {
       errors.push("Upload path must start with /");
     }
 
@@ -138,7 +138,8 @@ export class IntegrationsService {
       host: "",
       username: "",
       password: "",
-      upload_path: "/",
+      remote_path: "/",
+      school_id: "",
     };
   }
 
@@ -150,7 +151,7 @@ export class IntegrationsService {
       host: config.host,
       username: config.username,
       password: "***MASKED***",
-      upload_path: config.upload_path,
+      remote_path: config.remote_path,
     };
   }
 }

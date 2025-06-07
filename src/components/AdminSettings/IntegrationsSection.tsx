@@ -15,7 +15,7 @@ interface SFTPConfig {
   host: string;
   username: string;
   password: string;
-  upload_path: string;
+  remote_path: string;
 }
 
 interface IntegrationsSectionProps {
@@ -83,14 +83,14 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="upload_path">Upload Path</Label>
+          <Label htmlFor="remote_path">Upload Path</Label>
           <Input
-            id="upload_path"
-            value={sftpConfig.upload_path}
+            id="remote_path"
+            value={sftpConfig.remote_path}
             onChange={(e) =>
               setSftpConfig((prev) => ({
                 ...prev,
-                upload_path: e.target.value,
+                remote_path: e.target.value,
               }))
             }
             placeholder="/test/incoming/cardcapture"
