@@ -80,6 +80,7 @@ import { useLoader, TableLoader } from "@/contexts/LoaderContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { EventService } from "@/services/EventService";
 
+
 // Tab type for event filtering
 type EventTab = "upcoming" | "completed" | "archived";
 
@@ -851,6 +852,8 @@ const DashboardCopy = () => {
               accept=".pdf,image/*"
               className="hidden"
             />
+
+
 
             {/* Selection Action Bar */}
             {Object.keys(rowSelection).length > 0 && <SelectionActionBar />}

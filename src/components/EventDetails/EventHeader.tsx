@@ -13,6 +13,7 @@ import {
   X,
   Loader2,
 } from "lucide-react";
+import { CompactProcessingStatus } from "@/components/CompactProcessingStatus";
 
 interface EventHeaderProps {
   selectedEvent: { id: string; name: string; school_id?: string } | null;
@@ -90,10 +91,11 @@ const EventHeader: React.FC<EventHeaderProps> = ({
       {/* Header Section - Mobile Responsive */}
       <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
         <Card className="mb-4 sm:mb-6">
-          <CardContent className="flex flex-col gap-4 p-4 sm:p-6">
+          <CardContent className="relative flex flex-col gap-4 p-4 sm:p-6">
             {/* Event Name Section */}
             <div className="flex flex-col text-left w-full">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2 flex-wrap">
+              <div className="flex flex-col text-left min-w-0 flex-1">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2 flex-wrap">
                 {isEditingEventName ? (
                   <>
                     <input
@@ -145,12 +147,23 @@ const EventHeader: React.FC<EventHeaderProps> = ({
                   </>
                 )}
               </h1>
-              {eventNameError && (
-                <div className="text-sm text-red-600 mt-1">
-                  {eventNameError}
-                </div>
-              )}
+                {eventNameError && (
+                  <div className="text-sm text-red-600 mt-1">
+                    {eventNameError}
+                  </div>
+                )}
+              </div>
             </div>
+            
+            {/* Processing Status - Absolutely positioned to not affect header height */}
+            {selectedEvent && (
+              <div className="absolute top-4 right-4 sm:top-6 sm:right-6 hidden sm:block">
+                <CompactProcessingStatus 
+                  eventId={selectedEvent.id}
+                  className="min-w-[240px]"
+                />
+              </div>
+            )}
 
             {/* Status Badges - Mobile Responsive Grid */}
             <div className="flex flex-wrap items-center gap-2">

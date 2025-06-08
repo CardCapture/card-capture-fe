@@ -1,4 +1,6 @@
 import { Switch } from './ui/switch';
+import { Button } from './ui/button';
+import { Trash2 } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -54,6 +56,10 @@ export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPrefer
     }));
   };
 
+  const deleteField = (key: string) => {
+    onFieldsChange(fields.filter(field => field.key !== key));
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -88,7 +94,7 @@ export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPrefer
               </thead>
               <tbody>
                 {fields.map((field) => (
-                  <SortableRow key={field.key} id={field.key} field={field} updateVisible={updateVisible} updateRequired={updateRequired} />
+                  <SortableRow key={field.key} id={field.key} field={field} updateVisible={updateVisible} updateRequired={updateRequired} deleteField={deleteField} />
                 ))}
               </tbody>
             </table>
@@ -99,8 +105,18 @@ export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPrefer
       {/* Mobile layout */}
       <div className="block sm:hidden space-y-4">
         {fields.map((field) => (
-          <div key={field.key} className="rounded-md border p-4 space-y-2">
-            <div className="font-medium">{field.label}</div>
+          <div key={field.key} className="rounded-md border p-4 space-y-2 group">
+            <div className="flex items-center justify-between">
+              <div className="font-medium">{field.label}</div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteField(field.key)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50 p-1 h-auto ml-1"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-sm">Visible</span>
               <Switch
@@ -123,7 +139,7 @@ export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPrefer
   );
 }
 
-function SortableRow({ id, field, updateVisible, updateRequired }: any) {
+function SortableRow({ id, field, updateVisible, updateRequired, deleteField }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -139,7 +155,7 @@ function SortableRow({ id, field, updateVisible, updateRequired }: any) {
       setNodeRef={setNodeRef}
       style={style}
     >
-      <td className="py-2 flex items-center gap-2">
+      <td className="py-2 flex items-center gap-2 group">
         <span className="cursor-grab text-gray-400" aria-label="Drag handle">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="7" cy="6" r="1.5" fill="currentColor"/>
@@ -150,7 +166,15 @@ function SortableRow({ id, field, updateVisible, updateRequired }: any) {
             <circle cx="13" cy="14" r="1.5" fill="currentColor"/>
           </svg>
         </span>
-        {field.label}
+        <span>{field.label}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => deleteField(field.key)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50 p-1 h-auto ml-1"
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
       </td>
       <td className="py-2 text-center">
         <Switch

@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useCallback } from "react";
+import React, { memo, useMemo, useCallback, useState } from "react";
 import {
   Card,
   CardContent,
@@ -6,11 +6,19 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, PencilLine, Trash2, Check, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { toast } from "@/lib/toast";
 
 interface MajorsSectionProps {
@@ -52,6 +60,9 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
   saveMajors,
   loadingMajors,
 }) => {
+  // Bulk selection state
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+
   // Memoize filtered majors for performance
   const filteredMajors = useMemo(() => {
     return editedMajors.filter((m) =>
@@ -59,7 +70,52 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
     );
   }, [editedMajors, search]);
 
-  // Memoize callbacks to prevent unnecessary re-renders
+  // Bulk selection functions
+  const isSelected = (index: number) => selectedIndices.has(index);
+  const isAllSelected = filteredMajors.length > 0 && filteredMajors.every((_, idx) => selectedIndices.has(idx));
+  const isSomeSelected = selectedIndices.size > 0 && selectedIndices.size < filteredMajors.length;
+
+  const toggleSelection = useCallback((index: number) => {
+    setSelectedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    if (isAllSelected) {
+      setSelectedIndices(new Set()); // Clear all
+    } else {
+      setSelectedIndices(new Set(filteredMajors.map((_, idx) => idx))); // Select all
+    }
+  }, [filteredMajors, isAllSelected]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIndices(new Set());
+  }, []);
+
+  // Bulk actions
+  const handleBulkDelete = useCallback(() => {
+    const selectedMajorsSet = new Set();
+    selectedIndices.forEach(idx => {
+      if (idx < filteredMajors.length) {
+        selectedMajorsSet.add(filteredMajors[idx]);
+      }
+    });
+    
+    const newMajors = editedMajors.filter(major => !selectedMajorsSet.has(major));
+    setEditedMajors(newMajors);
+    setIsDirty(true);
+    clearSelection();
+    toast.success(`${selectedIndices.size} major${selectedIndices.size > 1 ? "s" : ""} deleted`);
+  }, [selectedIndices, filteredMajors, editedMajors, setEditedMajors, setIsDirty, clearSelection]);
+
+  // Individual row callbacks
   const handleEditMajor = useCallback(
     (idx: number) => {
       if (editValue.trim() && editValue !== editedMajors[idx]) {
@@ -125,6 +181,54 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
     setShowImport(false);
     setAddMajorsInput("");
   }, [setShowImport, setAddMajorsInput]);
+
+  // Selection action bar component
+  const SelectionActionBar = () => {
+    const selectedCount = selectedIndices.size;
+    if (selectedCount === 0) return null;
+    
+    return (
+      <div className="bg-blue-50 border border-blue-200 rounded-lg shadow-sm sticky top-0 z-10 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-top-2 mb-4">
+        <div className="px-4 py-3 flex justify-between items-center gap-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={isAllSelected}
+              ref={(input) => {
+                if (input) {
+                  input.indeterminate = isSomeSelected;
+                }
+              }}
+              onChange={toggleAll}
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+            />
+            <span className="text-sm font-medium text-foreground">
+              {selectedCount} {selectedCount === 1 ? "Major" : "Majors"} Selected
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBulkDelete}
+              className="text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              Delete Selected
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSelection}
+              className="text-gray-500 hover:text-gray-700 px-2"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   if (loadingMajors) {
     return (
@@ -195,81 +299,104 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
             placeholder="Search majors..."
             className="mb-2"
           />
-          <div className="max-h-[500px] overflow-y-auto rounded-md border border-muted-foreground/10 bg-muted/50 divide-y divide-muted-foreground/10">
-            {filteredMajors.map((major, idx) => (
-              <div
-                key={idx}
-                className="flex items-center gap-2 px-3 py-2 group hover:bg-muted/80 transition"
-              >
-                {editIndex === idx ? (
-                  <>
-                    <Input
-                      autoFocus
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleEditMajor(idx);
-                        if (e.key === "Escape") {
-                          setEditIndex(null);
-                          setEditValue("");
-                        }
-                      }}
-                      className="flex-1 border-none bg-transparent px-0 py-0 text-base font-normal focus:ring-0 focus-visible:ring-0 focus:outline-none shadow-none"
-                    />
-                    <button
-                      className="text-green-600 hover:bg-green-100 rounded-full p-1"
-                      onClick={() => handleEditMajor(idx)}
-                      type="button"
-                      aria-label="Save major"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      className="text-muted-foreground hover:bg-muted rounded-full p-1"
-                      onClick={() => {
-                        setEditIndex(null);
-                        setEditValue("");
-                      }}
-                      type="button"
-                      aria-label="Cancel edit major"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 truncate text-base font-normal">
-                      {major}
-                    </span>
-                    <button
-                      className="text-primary hover:bg-muted rounded-full p-1"
-                      onClick={() => {
-                        setEditIndex(idx);
-                        setEditValue(major);
-                      }}
-                      type="button"
-                      aria-label="Edit major"
-                    >
-                      <PencilLine className="w-4 h-4" />
-                    </button>
-                    <button
-                      className="text-destructive hover:bg-destructive/10 rounded-full p-1"
-                      onClick={() => handleDeleteMajor(idx)}
-                      type="button"
-                      aria-label="Delete major"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
-            {filteredMajors.length === 0 && (
-              <div className="text-xs text-muted-foreground px-3 py-4 text-center">
-                No majors found.
-              </div>
-            )}
+          
+          {/* Selection Action Bar */}
+          <SelectionActionBar />
+
+          {/* Table */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        ref={(input) => {
+                          if (input) {
+                            input.indeterminate = isSomeSelected;
+                          }
+                        }}
+                        onChange={toggleAll}
+                        className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead>Major</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMajors.map((major, idx) => (
+                  <TableRow
+                    key={idx}
+                    className={`hover:bg-gray-50 ${
+                      isSelected(idx) ? "bg-blue-50" : ""
+                    }`}
+                  >
+                    <TableCell>
+                      <div className="flex justify-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected(idx)}
+                          onChange={() => toggleSelection(idx)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {editIndex === idx ? (
+                        <Input
+                          autoFocus
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleEditMajor(idx);
+                            }
+                            if (e.key === "Escape") {
+                              setEditIndex(null);
+                              setEditValue("");
+                            }
+                          }}
+                          onBlur={() => {
+                            if (editValue.trim() && editValue !== major) {
+                              handleEditMajor(idx);
+                            } else {
+                              setEditIndex(null);
+                              setEditValue("");
+                            }
+                          }}
+                          className="border border-blue-200 bg-blue-50 px-2 py-1 text-base font-normal focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                        />
+                      ) : (
+                        <span 
+                          className="text-base font-normal cursor-pointer hover:bg-gray-50 px-2 py-1 rounded-md block transition-colors"
+                          onDoubleClick={() => {
+                            setEditIndex(idx);
+                            setEditValue(major);
+                          }}
+                          title="Double-click to edit"
+                        >
+                          {major}
+                        </span>
+                      )}
+                    </TableCell>
+
+                  </TableRow>
+                ))}
+                                 {filteredMajors.length === 0 && (
+                   <TableRow>
+                     <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
+                       No majors found.
+                     </TableCell>
+                   </TableRow>
+                 )}
+              </TableBody>
+            </Table>
           </div>
+          
           {/* Sticky Save Button */}
           {isDirty && (
             <div className="sticky bottom-0 left-0 w-full flex justify-end pt-4 bg-gradient-to-t from-white via-white/80 to-transparent z-10">

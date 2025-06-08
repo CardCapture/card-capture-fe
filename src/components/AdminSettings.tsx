@@ -154,7 +154,8 @@ const CANONICAL_CARD_FIELDS = [
   "student_type",
   "entry_term",
   "major",
-  "city_state",
+  // Note: city_state and other combined fields are now filtered out during processing
+  // and should not be included in new school configurations
 ];
 
 interface CardField {
@@ -280,10 +281,10 @@ const AdminSettings: React.FC = () => {
 
   // Add useEffect for loading majors
   useEffect(() => {
-    if (session?.user?.id && activeTab === "majors") {
+    if (schoolId && activeTab === "majors") {
       loadMajors();
     }
-  }, [session, activeTab]);
+  }, [schoolId, activeTab, profileLoading]);
 
   // If we're at /settings, redirect to /settings/account-settings
   if (location.pathname === "/settings") {
@@ -473,7 +474,10 @@ const AdminSettings: React.FC = () => {
 
   // Add loadMajors function
   const loadMajors = async () => {
-    if (!schoolId) return;
+    if (!schoolId) {
+      setLoadingMajors(false);
+      return;
+    }
     try {
       const majorsArr = await SchoolService.getMajors(schoolId);
       setMajorsList(majorsArr);
@@ -607,18 +611,16 @@ const AdminSettings: React.FC = () => {
         schoolId: school?.id,
       });
       content = (
-        <div className="flex flex-col min-h-[80vh]">
-          <div className="flex-1 space-y-6">
-            {loadingFields ? (
-              <div>Loading field preferences...</div>
-            ) : (
-              <CardFieldPreferences
-                fields={fields}
-                onFieldsChange={setFields}
-              />
-            )}
-          </div>
-          <div className="bg-white border-t z-50 px-4 py-3 flex justify-end shadow-md">
+        <div className="space-y-6">
+          {loadingFields ? (
+            <div>Loading field preferences...</div>
+          ) : (
+            <CardFieldPreferences
+              fields={fields}
+              onFieldsChange={setFields}
+            />
+          )}
+          <div className="flex justify-end pt-4">
             <Button
               onClick={() => handleSave(fields)}
               disabled={
