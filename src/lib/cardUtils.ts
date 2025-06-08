@@ -19,6 +19,13 @@ export function hasFieldsNeedingReview(fields: Record<string, FieldData>): boole
 }
 
 /**
+ * Determines if a card has AI processing failure
+ */
+export function isAIFailed(card: ProspectCard): boolean {
+  return card.review_status === 'ai_failed';
+}
+
+/**
  * Determines the current status of a card based on its fields and metadata
  */
 export function determineCardStatus(card: ProspectCard): CardStatus | null {

@@ -26,6 +26,8 @@ interface RawCardData {
   school_id?: string;
   user_id?: string;
   trimmed_image_path?: string;
+  ai_error_message?: string;
+  review_data?: any;
   [key: string]: unknown; // More specific than any
 }
 
@@ -146,6 +148,8 @@ export function useCardsOverride(eventId?: string) {
           school_id: card.school_id || "",
           user_id: card.user_id,
           trimmed_image_path: card.trimmed_image_path,
+          ai_error_message: card.ai_error_message,
+          review_data: card.review_data,
         };
 
         // Debug log the mapped card
@@ -280,6 +284,10 @@ export function useCardsOverride(eventId?: string) {
         // For archived status, check the raw review_status directly
         if (status === "archived") {
           return card.review_status === "archived";
+        }
+        // For ai_failed status, check the raw review_status directly
+        if (status === "ai_failed") {
+          return card.review_status === "ai_failed";
         }
         const cardStatus = determineCardStatus(card);
         return cardStatus === status;

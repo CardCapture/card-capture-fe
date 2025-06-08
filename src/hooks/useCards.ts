@@ -15,6 +15,7 @@ interface UseCardsReturn {
   getStatusCount: (tabValue: CardStatus) => number;
   isLoading: boolean; // Add a loading state
   setReviewModalState: (isOpen: boolean) => void;
+  retryAIProcessing: (documentId: string) => Promise<void>; // Add retry functionality
 }
 
 const MAX_RETRIES = 3;
@@ -140,11 +141,28 @@ export function useCards(): UseCardsReturn {
     [cards]
   );
 
+  const retryAIProcessing = useCallback(async (documentId: string) => {
+    try {
+      await CardService.retryAIProcessing(documentId);
+      toast.success('AI processing retry initiated successfully', 'Retry Started');
+      // Refresh cards after retry
+      await fetchCards();
+    } catch (error) {
+      console.error('Error retrying AI processing:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to retry AI processing',
+        'Retry Failed'
+      );
+      throw error; // Re-throw for component-level error handling
+    }
+  }, [fetchCards]);
+
   return {
     cards,
     fetchCards,
     getStatusCount,
     isLoading,
     setReviewModalState,
+    retryAIProcessing,
   };
 }

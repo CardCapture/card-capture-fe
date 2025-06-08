@@ -20,6 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
+import { AIFailureBanner } from "@/components/cards/AIFailureBanner";
+import { CardService } from "@/services/CardService";
+import { useAIRetry } from "@/hooks/useAIRetry";
 
 const FIELD_LABELS: Record<string, string> = {
   name: "Name",
@@ -54,6 +57,7 @@ interface ReviewFormProps {
   dataFieldsMap: Map<string, string>;
   majorsList?: string[];
   loadingMajors?: boolean;
+  onCardUpdated?: () => void;
 }
 
 const ReviewForm: React.FC<ReviewFormProps> = ({
@@ -66,7 +70,21 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   dataFieldsMap,
   majorsList,
   loadingMajors,
+  onCardUpdated,
 }) => {
+  // AI retry functionality
+  const { retryCard, isRetrying } = useAIRetry(onCardUpdated);
+
+  // Check if the card has AI processing failure
+  const hasAIFailure = selectedCardForReview ? CardService.isAIFailed(selectedCardForReview) : false;
+
+  // Handle AI retry
+  const handleAIRetry = async () => {
+    if (selectedCardForReview?.document_id) {
+      await retryCard(selectedCardForReview.document_id);
+    }
+  };
+
   // Dynamically map fieldsToShow keys to actual formData keys
   const getFormDataKey = (fieldKey: string): string => {
     // First try exact match
@@ -118,6 +136,17 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
 
   return (
     <div className="bg-gray-50 rounded-lg p-3 sm:p-4 overflow-y-auto">
+      {/* AI Failure Banner */}
+      {hasAIFailure && (
+        <div className="mb-4">
+          <AIFailureBanner
+            onRetry={handleAIRetry}
+            isRetrying={isRetrying}
+            errorMessage={selectedCardForReview?.ai_error_message}
+          />
+        </div>
+      )}
+      
       <div className="space-y-3 sm:space-y-4">
         {selectedCardForReview ? (
           <>

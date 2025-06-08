@@ -176,4 +176,21 @@ export const cardsApi = {
       throw new Error(`Failed to perform bulk ${action} (${response.status})`);
     }
   },
+
+  /**
+   * Retry AI processing for a failed card
+   */
+  async retryAIProcessing(documentId: string): Promise<void> {
+    const response = await authFetch(`${API_BASE_URL}/retry-ai-processing/${documentId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.error || `Failed to retry AI processing (${response.status})`
+      );
+    }
+  },
 };

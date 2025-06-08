@@ -1,5 +1,5 @@
 import { cardsApi } from "@/api/backend/cards";
-import { determineCardStatus } from "@/lib/cardUtils";
+import { determineCardStatus, isAIFailed } from "@/lib/cardUtils";
 import type { ProspectCard, CardStatus, FieldData } from "@/types/card";
 
 export interface RawCardData {
@@ -160,6 +160,28 @@ export class CardService {
   }
 
   /**
+   * Retry AI processing for a failed card
+   */
+  static async retryAIProcessing(documentId: string): Promise<void> {
+    try {
+      if (!documentId || typeof documentId !== "string") {
+        throw new Error("Valid document ID is required for AI retry");
+      }
+      await cardsApi.retryAIProcessing(documentId);
+    } catch (error) {
+      console.error("CardService: Failed to retry AI processing", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a card has AI processing failure
+   */
+  static isAIFailed(card: ProspectCard): boolean {
+    return isAIFailed(card);
+  }
+
+  /**
    * Get status count for cards
    */
   static getStatusCount(cards: ProspectCard[], status: CardStatus): number {
@@ -169,6 +191,10 @@ export class CardService {
       // For archived status, check the raw review_status directly
       if (status === "archived") {
         return card.review_status === "archived";
+      }
+      // For ai_failed status, check the raw review_status directly
+      if (status === "ai_failed") {
+        return card.review_status === "ai_failed";
       }
       const cardStatus = determineCardStatus(card);
       return cardStatus === status;

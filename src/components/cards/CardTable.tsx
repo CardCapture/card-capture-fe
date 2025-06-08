@@ -23,6 +23,7 @@ import {
   Upload,
   UserPlus,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -43,6 +44,8 @@ import { useBulkActions } from "@/hooks/useBulkActions";
 import { downloadCSV } from "@/utils/csvExport";
 import { useCardTableActions } from "@/hooks/useCardTableActions";
 import { useLoader, TableLoader } from "@/contexts/LoaderContext";
+import { CardService } from "@/services/CardService";
+import { useState } from "react";
 
 // Add any additional imports as needed
 
@@ -94,6 +97,66 @@ const CardTable = ({
     selectedEvent,
     dataFieldsMap
   );
+
+  // Add retry functionality for AI failed cards
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  // Handle bulk AI retry
+  const handleBulkRetryAI = async () => {
+    if (bulkSelection.selectedCount === 0) {
+      toast({
+        title: "No Cards Selected",
+        description: "Please select at least one card to retry AI processing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsRetrying(true);
+    try {
+      // Retry AI processing for each selected card
+      const retryPromises = bulkSelection.selectedIds.map(async (documentId) => {
+        try {
+          await CardService.retryAIProcessing(documentId);
+          return { success: true, documentId };
+        } catch (error) {
+          return { success: false, documentId, error };
+        }
+      });
+
+      const results = await Promise.all(retryPromises);
+      const successCount = results.filter(r => r.success).length;
+      const failureCount = results.length - successCount;
+
+      if (successCount > 0) {
+        toast({
+          title: "AI Retry Started",
+          description: `${successCount} card(s) queued for AI processing retry.`,
+          variant: "default",
+        });
+        // Refresh the cards list
+        fetchCards();
+        // Clear selection
+        bulkSelection.clearSelection();
+      }
+
+      if (failureCount > 0) {
+        toast({
+          title: "Some Retries Failed",
+          description: `${failureCount} card(s) could not be retried. Please try again.`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Retry Failed",
+        description: "Failed to retry AI processing. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   // Handle CSV export
   const handleExportClick = () => {
@@ -265,6 +328,39 @@ const CardTable = ({
                       Delete
                     </Button>
                   </>
+                ) : selectedTab === "ai_failed" ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleBulkRetryAI}
+                      disabled={isRetrying || bulkActions.isLoading}
+                      className="text-amber-600 hover:text-amber-700 gap-1.5 flex-1 sm:flex-none min-h-[40px]"
+                    >
+                      {isRetrying ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4" />
+                      )}
+                      Retry AI
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        bulkActions.archiveCards(bulkSelection.selectedIds)
+                      }
+                      disabled={bulkActions.isLoading}
+                      className="text-gray-700 hover:text-gray-900 gap-1.5 flex-1 sm:flex-none min-h-[40px]"
+                    >
+                      {bulkActions.isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Archive className="h-4 w-4" />
+                      )}
+                      Archive
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <DropdownMenu>
@@ -411,6 +507,15 @@ const CardTable = ({
                                 </div>
                                 <div className="text-xs sm:text-sm text-gray-500 text-center">
                                   Archived cards will appear here.
+                                </div>
+                              </>
+                            ) : selectedTab === "ai_failed" ? (
+                              <>
+                                <div className="text-sm font-medium text-gray-900 text-center">
+                                  No AI processing failures
+                                </div>
+                                <div className="text-xs sm:text-sm text-gray-500 text-center">
+                                  Cards with AI processing failures will appear here.
                                 </div>
                               </>
                             ) : null}

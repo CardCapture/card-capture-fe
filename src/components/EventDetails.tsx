@@ -363,6 +363,8 @@ const Dashboard = () => {
           return currentStatus === "exported";
         case "archived":
           return card.review_status === "archived";
+        case "ai_failed":
+          return card.review_status === "ai_failed";
         default:
           return true;
       }
@@ -627,6 +629,8 @@ const Dashboard = () => {
             displayText = "Exported";
           } else if (currentStatus === "archived") {
             displayText = "Archived";
+          } else if (currentStatus === "ai_failed") {
+            displayText = "Needs Retry";
           } else {
             displayText = currentStatus
               ? currentStatus.charAt(0).toUpperCase() +
@@ -642,6 +646,8 @@ const Dashboard = () => {
               return "border-blue-500 text-blue-700 bg-blue-50 font-semibold text-xs px-3 py-1 rounded-full";
             } else if (currentStatus === "archived") {
               return "border-gray-500 text-gray-700 bg-gray-50 font-semibold text-xs px-3 py-1 rounded-full";
+            } else if (currentStatus === "ai_failed") {
+              return "border-amber-500 text-amber-700 bg-amber-50 font-semibold text-xs px-3 py-1 rounded-full";
             }
             return "border-slate-200 text-slate-600 bg-white font-semibold text-xs px-3 py-1 rounded-full";
           };
@@ -1013,6 +1019,22 @@ const Dashboard = () => {
                       {getStatusCount("reviewed")}
                     </Badge>
                   </button>
+                  <button
+                    onClick={() => setSelectedTab("ai_failed")}
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
+                      selectedTab === "ai_failed"
+                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    <span>Needs Retry</span>
+                    <Badge
+                      variant="outline"
+                      className="ml-2 text-amber-700 border-amber-200 bg-white text-xs"
+                    >
+                      {getStatusCount("ai_failed")}
+                    </Badge>
+                  </button>
                 </div>
 
                 {/* Archived Tab - Right side */}
@@ -1137,6 +1159,7 @@ const Dashboard = () => {
                   dataFieldsMap={dataFieldsMap}
                   majorsList={majorsList}
                   loadingMajors={loadingMajors}
+                  onCardUpdated={fetchCards}
                 />
               </div>
             </div>
