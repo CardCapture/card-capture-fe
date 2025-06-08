@@ -134,6 +134,14 @@ const AcceptInvitePage = () => {
     handleHashRedirect();
   }, [location, searchParams]);
 
+  // Fallback to use invited email from query params if no email was set from auth flow
+  useEffect(() => {
+    if (!email && invitedEmail) {
+      console.log("🔄 Using email from query params as fallback:", invitedEmail);
+      setEmail(invitedEmail);
+    }
+  }, [email, invitedEmail]);
+
   // Fetch school information if school_id is provided
   useEffect(() => {
     const fetchSchoolInfo = async () => {
