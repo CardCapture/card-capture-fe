@@ -182,6 +182,19 @@ const ManualEntryModal: React.FC<ManualEntryModalProps> = ({
                         <SelectItem value="no">No</SelectItem>
                       </SelectContent>
                     </Select>
+                  ) : field.key === "gender" ? (
+                    <Select
+                      value={form[field.key] || ""}
+                      onValueChange={(val) => onChange(field.key, val)}
+                    >
+                      <SelectTrigger id={field.key}>
+                        {form[field.key] || "Select gender..."}
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
                   ) : (
                     <Input
                       id={field.key}

@@ -41,15 +41,41 @@ const GetStartedPage = () => {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Get API base URL from environment
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      
+      // Send demo request to backend
+      const response = await fetch(`${API_BASE_URL}/demo/send-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          university: formData.university,
+          enrollment: formData.enrollment,
+          message: formData.message
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || `Request failed with status ${response.status}`);
+      }
       
       toast.success("We've received your information and will be in touch soon.");
       
       // Redirect to thank you page
       navigate('/thank-you');
     } catch (error) {
-      toast.error("Something went wrong. Please try again.", "Error");
+      console.error("Error submitting demo request:", error);
+      toast.error(
+        error instanceof Error 
+          ? error.message 
+          : "Something went wrong. Please try again.", 
+        "Error"
+      );
     } finally {
       setIsLoading(false);
     }
