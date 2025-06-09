@@ -208,42 +208,27 @@ export class CardService {
     return rawCards.map((item: unknown) => {
       const card = item as RawCardData;
 
-      // Ensure all expected fields are present
+      // Use the fields as they exist in the card data without adding artificial fields
       const fields = card.fields || {};
-      const expectedFields = [
-        "name",
-        "preferred_first_name",
-        "date_of_birth",
-        "email",
-        "cell",
-        "permission_to_text",
-        "address",
-        "city",
-        "state",
-        "zip_code",
-        "high_school",
-        "class_rank",
-        "students_in_class",
-        "gpa",
-        "student_type",
-        "entry_term",
-        "major",
-      ];
-
-      // Add missing fields with default values
-      expectedFields.forEach((field) => {
-        if (!fields[field]) {
-          fields[field] = {
-            value: "",
-            required: false,
-            enabled: true,
-            review_confidence: 0.0,
-            requires_human_review: false,
-            review_notes: "",
-            confidence: 0.0,
-            bounding_box: [],
-          };
-        }
+      
+      // Only ensure the field data structure is consistent for existing fields
+      const processedFields: Record<string, FieldData> = {};
+      
+      Object.entries(fields).forEach(([fieldKey, fieldData]) => {
+        // Ensure each field has the required structure
+        const processedField = fieldData as FieldData;
+        processedFields[fieldKey] = {
+          value: processedField.value || "",
+          required: processedField.required || false,
+          enabled: processedField.enabled !== undefined ? processedField.enabled : true,
+          review_confidence: processedField.review_confidence || 0.0,
+          requires_human_review: processedField.requires_human_review || false,
+          review_notes: processedField.review_notes || "",
+          confidence: processedField.confidence || 0.0,
+          bounding_box: processedField.bounding_box || [],
+          // Preserve other properties that might exist
+          ...processedField
+        };
       });
 
       const transformedCard: ProspectCard = {
@@ -261,7 +246,7 @@ export class CardService {
         updated_at:
           card.updated_at || card.reviewed_at || new Date().toISOString(),
         exported_at: card.exported_at || undefined,
-        fields: fields as Record<string, FieldData>,
+        fields: processedFields,
         image_path: card.image_path,
         event_id: card.event_id,
         school_id: card.school_id || "",
