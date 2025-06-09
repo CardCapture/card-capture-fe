@@ -760,18 +760,11 @@ const Dashboard = () => {
   const fieldsToShow = useMemo(() => {
     if (!selectedCardForReview) return [];
     
-    // Get fields from school configuration that are enabled
-    const configuredFields = cardFields.filter((f) => f.enabled).map((f) => f.key);
-    
-    // Get fields that exist in the card data with enabled: true
-    const cardDataFields = Object.entries(selectedCardForReview.fields || {})
-      .filter(([_, field]) => field.enabled === true)
-      .map(([key, _]) => key);
-    
-    // Combine and deduplicate
-    const allFields = [...new Set([...configuredFields, ...cardDataFields])];
-    
-    return allFields;
+    // Only show fields that are explicitly enabled in the school's configuration
+    // This prevents fields from one tenant's cards from appearing in another tenant's review modal
+    return cardFields
+      .filter((f) => f.enabled)
+      .map((f) => f.key);
   }, [selectedCardForReview, cardFields]);
 
   // --- Row Selection and Card Actions ---
