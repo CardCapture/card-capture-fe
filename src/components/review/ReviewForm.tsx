@@ -215,7 +215,53 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                             : ""
                         }`}
                       />
-                    ) : fieldKey === "mapped_major" &&
+                    ) : actualFieldKey === "gender" ? (
+                      <Select
+                        value={formData[actualFieldKey] ?? ""}
+                        onValueChange={(value) =>
+                          handleFormChange(actualFieldKey, value)
+                        }
+                      >
+                        <SelectTrigger
+                          className={`h-10 sm:h-8 text-sm flex-1 ${
+                            isReviewed && selectedTab === "needs_human_review"
+                              ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
+                              : showIcon
+                              ? "border-red-300 focus-visible:ring-red-400"
+                              : ""
+                          }`}
+                        >
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : actualFieldKey === "permission_to_text" ? (
+                      <Select
+                        value={formData[actualFieldKey] ?? ""}
+                        onValueChange={(value) =>
+                          handleFormChange(actualFieldKey, value)
+                        }
+                      >
+                        <SelectTrigger
+                          className={`h-10 sm:h-8 text-sm flex-1 ${
+                            isReviewed && selectedTab === "needs_human_review"
+                              ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
+                              : showIcon
+                              ? "border-red-300 focus-visible:ring-red-400"
+                              : ""
+                          }`}
+                        >
+                          <SelectValue placeholder="Select permission" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Yes">Yes</SelectItem>
+                          <SelectItem value="No">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : actualFieldKey === "mapped_major" &&
                       Array.isArray(majorsList) &&
                       majorsList.length > 0 ? (
                       <Combobox

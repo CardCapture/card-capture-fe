@@ -154,6 +154,7 @@ const CANONICAL_CARD_FIELDS = [
   "student_type",
   "entry_term",
   "major",
+  "gender",
   // Note: city_state and other combined fields are now filtered out during processing
   // and should not be included in new school configurations
 ];

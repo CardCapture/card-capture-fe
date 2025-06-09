@@ -120,57 +120,6 @@ const Dashboard = () => {
   // Event Name
   const eventName = useEventName(selectedEvent, fetchEvents);
 
-  // Review Field Order (don't modify this)
-  const reviewFieldOrder: string[] = useMemo(
-    () => [
-      "name",
-      "preferred_first_name",
-      "date_of_birth",
-      "email",
-      "cell",
-      "permission_to_text",
-      "address",
-      "city",
-      "state",
-      "zip_code",
-      "high_school",
-      "class_rank",
-      "students_in_class",
-      "gpa",
-      "student_type",
-      "entry_term",
-      "major",
-      "mapped_major",
-    ],
-    []
-  );
-
-  // Field mapping (don't modify this)
-  const dataFieldsMap = useMemo(() => {
-    const map = new Map<string, string>();
-    [
-      { key: "name", label: "Name" },
-      { key: "preferred_first_name", label: "Preferred Name" },
-      { key: "email", label: "Email" },
-      { key: "cell", label: "Phone Number" },
-      { key: "date_of_birth", label: "Birthday" },
-      { key: "address", label: "Address" },
-      { key: "city", label: "City" },
-      { key: "state", label: "State" },
-      { key: "zip_code", label: "Zip Code" },
-      { key: "high_school", label: "High School/College" },
-      { key: "student_type", label: "Student Type" },
-      { key: "entry_term", label: "Entry Term" },
-      { key: "gpa", label: "GPA" },
-      { key: "class_rank", label: "Class Rank" },
-      { key: "students_in_class", label: "Students in Class" },
-      { key: "major", label: "Major" },
-      { key: "permission_to_text", label: "Permission to Text" },
-      { key: "mapped_major", label: "Mapped Major" },
-    ].forEach((field) => map.set(field.key, field.label));
-    return map;
-  }, []);
-
   // --- State Declarations (consolidated here) ---
   // Table state
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -209,6 +158,48 @@ const Dashboard = () => {
 
   // Use shared school hook
   const { school } = useSchool(selectedEvent?.school_id);
+
+  // Extract cardFields from school data first (moved up for dependency)
+  const cardFields = useMemo(() => {
+    if (!school?.card_fields) return [];
+
+    // Handle both array and object formats
+    if (Array.isArray(school.card_fields)) {
+      return school.card_fields;
+    } else if (typeof school.card_fields === "object") {
+      // Convert object format to array format
+      return Object.entries(school.card_fields).map(([key, config]) => ({
+        key,
+        label: undefined, // Will be handled by fallback logic
+        enabled:
+          (config as { enabled?: boolean; required?: boolean })?.enabled ||
+          false,
+        required:
+          (config as { enabled?: boolean; required?: boolean })?.required ||
+          false,
+      }));
+    }
+
+    return [];
+  }, [school?.card_fields]);
+
+  // Dynamic field order based on school configuration (same logic as review modal)
+  const reviewFieldOrder: string[] = useMemo(() => {
+    return cardFields
+      .filter((field) => field.enabled)
+      .map((field) => field.key);
+  }, [cardFields]);
+
+  // Dynamic field mapping using labels from school configuration
+  const dataFieldsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    cardFields.forEach((field) => {
+      // Use label from school config, fallback to generated label if not present
+      const label = (field as any).label || field.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      map.set(field.key, label);
+    });
+    return map;
+  }, [cardFields]);
 
   // --- Refs ---
   const imageUrlRef = useRef<string>("");
@@ -249,28 +240,6 @@ const Dashboard = () => {
     isSaving,
     setIsSaving,
   } = useCardReviewModal(cards, reviewFieldOrder, fetchCards, dataFieldsMap);
-  // Extract cardFields from school data
-  const cardFields = useMemo(() => {
-    if (!school?.card_fields) return [];
-
-    // Handle both array and object formats
-    if (Array.isArray(school.card_fields)) {
-      return school.card_fields;
-    } else if (typeof school.card_fields === "object") {
-      // Convert object format to array format
-      return Object.entries(school.card_fields).map(([key, config]) => ({
-        key,
-        enabled:
-          (config as { enabled?: boolean; required?: boolean })?.enabled ||
-          false,
-        required:
-          (config as { enabled?: boolean; required?: boolean })?.required ||
-          false,
-      }));
-    }
-
-    return [];
-  }, [school?.card_fields]);
 
   const {
     isManualEntryModalOpen,
