@@ -757,9 +757,22 @@ const Dashboard = () => {
   });
 
   // Fields to show in the review panel
-  const fieldsToShow = selectedCardForReview
-    ? cardFields.filter((f) => f.enabled).map((f) => f.key)
-    : [];
+  const fieldsToShow = useMemo(() => {
+    if (!selectedCardForReview) return [];
+    
+    // Get fields from school configuration that are enabled
+    const configuredFields = cardFields.filter((f) => f.enabled).map((f) => f.key);
+    
+    // Get fields that exist in the card data with enabled: true
+    const cardDataFields = Object.entries(selectedCardForReview.fields || {})
+      .filter(([_, field]) => field.enabled === true)
+      .map(([key, _]) => key);
+    
+    // Combine and deduplicate
+    const allFields = [...new Set([...configuredFields, ...cardDataFields])];
+    
+    return allFields;
+  }, [selectedCardForReview, cardFields]);
 
   // --- Row Selection and Card Actions ---
   const handleArchiveCard = () => {
@@ -882,8 +895,24 @@ const Dashboard = () => {
     if (selectedCardForReview && reviewFieldOrder) {
       const initialFormData: Record<string, string> = {};
       reviewFieldOrder.forEach((fieldKey) => {
-        initialFormData[fieldKey] =
-          selectedCardForReview.fields?.[fieldKey]?.value ?? "";
+        let fieldValue = selectedCardForReview.fields?.[fieldKey]?.value ?? "";
+        
+        // Fallback: if city or state fields are empty but city_state exists, parse it
+        if ((fieldKey === "city" || fieldKey === "state") && !fieldValue) {
+          const cityStateValue = selectedCardForReview.fields?.city_state?.value;
+          if (cityStateValue && typeof cityStateValue === "string") {
+            const match = cityStateValue.match(/^([^,]+),\s*([A-Z]{2})$/);
+            if (match) {
+              if (fieldKey === "city") {
+                fieldValue = match[1].trim();
+              } else if (fieldKey === "state") {
+                fieldValue = match[2].trim();
+              }
+            }
+          }
+        }
+        
+        initialFormData[fieldKey] = fieldValue;
       });
       setFormData(initialFormData);
     } else {
