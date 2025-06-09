@@ -35,6 +35,7 @@ export function useProcessingStatus(eventId?: string) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchTimeRef = useRef<number>(0);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate time remaining based on queued + processing cards
   const calculateTimeRemaining = useCallback((queued: number, processing: number): string => {
@@ -79,33 +80,68 @@ export function useProcessingStatus(eventId?: string) {
       const failed = processedJobs.filter(job => job.status === 'failed').length;
       const completed = processedJobs.filter(job => job.status === 'complete').length;
       
-      // For display: total = queued + processing (not including failed or completed)
-      // Progress = processing cards out of (queued + processing)
+      // For display logic:
+      // - total = queued + processing (active cards)
+      // - isProcessing = true if there are any active cards OR recently failed cards
+      // - Show processing indicator if there are cards actively being worked on
       const activeCards = queued + processing;
-      const isProcessing = activeCards > 0 || failed > 0;
+      const hasActiveCards = activeCards > 0;
+      const hasFailedCards = failed > 0;
+      
+      // Show processing if there are active cards OR if there are failed cards that need attention
+      // Hide immediately when all cards are complete (no active, no failed)
+      const isProcessing = hasActiveCards || hasFailedCards;
 
       const timeRemaining = calculateTimeRemaining(queued, processing);
 
-              console.log('useProcessingStatus: Status updated', {
-          eventId,
-          queued,
-          processing,
-          failed,
-          completed,
-          activeCards,
-          timeRemaining,
-          isProcessing,
-        });
+      console.log('useProcessingStatus: Status updated', {
+        eventId,
+        queued,
+        processing,
+        failed,
+        completed,
+        activeCards,
+        hasActiveCards,
+        hasFailedCards,
+        timeRemaining,
+        isProcessing,
+      });
 
-        setStatus({
-          queued,
-          processing,
-          failed,
-          completed,
-          total: activeCards, // Only show active cards (queued + processing)
-          timeRemaining,
-          isProcessing,
-        });
+      setStatus({
+        queued,
+        processing,
+        failed,
+        completed,
+        total: activeCards, // Only show active cards (queued + processing)
+        timeRemaining,
+        isProcessing,
+      });
+
+      // Clear any existing hide timeout
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+
+      // If no active cards and no failed cards, set a brief timeout to hide
+      // This gives the UI a moment to update before hiding completely
+      if (!hasActiveCards && !hasFailedCards && completed > 0) {
+        console.log('useProcessingStatus: All processing complete, hiding in 2 seconds');
+        hideTimeoutRef.current = setTimeout(() => {
+          setStatus(prev => ({ ...prev, isProcessing: false }));
+          hideTimeoutRef.current = null;
+        }, 2000); // Hide after 2 seconds
+      }
+
+      // Set up aggressive polling if we have active processing
+      if (hasActiveCards && !pollingIntervalRef.current) {
+        console.log('useProcessingStatus: Starting aggressive polling for active processing');
+        pollingIntervalRef.current = setInterval(fetchProcessingStatus, 2000); // Poll every 2 seconds
+      } else if (!hasActiveCards && pollingIntervalRef.current) {
+        console.log('useProcessingStatus: Stopping aggressive polling');
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
     } catch (error) {
       console.error('useProcessingStatus: Fetch error:', error);
     } finally {
@@ -134,18 +170,21 @@ export function useProcessingStatus(eventId?: string) {
 
       if (isRelevant) {
         console.log('useProcessingStatus: Relevant change detected, refreshing status');
-        fetchProcessingStatus();
+        // Add a small delay to ensure database consistency
+        setTimeout(() => {
+          fetchProcessingStatus();
+        }, 100);
       }
     };
 
-    // Create real-time subscription
+    // Create real-time subscription - listen to all events on processing_jobs
+    // We'll filter by event_id in the handler to ensure we catch everything
     const channel = supabase
       .channel(channelName)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'processing_jobs',
-        filter: `event_id=eq.${eventId}`
+        table: 'processing_jobs'
       }, handleRealtimeChange)
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
@@ -177,6 +216,11 @@ export function useProcessingStatus(eventId?: string) {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
+      }
+
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
       }
     };
   }, [eventId, fetchProcessingStatus]);
