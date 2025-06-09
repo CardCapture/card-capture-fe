@@ -17,6 +17,7 @@ import { useCardUpload } from '@/hooks/useCardUpload';
 import { Event } from '@/types/event';
 import { CreateEventModal } from '@/components/CreateEventModal';
 import CameraCapture from '@/components/card-scanner/CameraCapture';
+import imageCompression from 'browser-image-compression';
 
 const ScanPage: React.FC = () => {
   const { events, fetchEvents } = useEvents();
@@ -51,14 +52,54 @@ const ScanPage: React.FC = () => {
     }
   }, [isCameraOpen, events]);
 
+  // Utility to resize an image file or dataUrl to max 2048px and JPEG quality 0.85
+  async function resizeImage(fileOrDataUrl: File | string): Promise<File> {
+    let file: File;
+    let originalSize = 0;
+    let originalWidth = 0;
+    let originalHeight = 0;
+    if (typeof fileOrDataUrl === 'string') {
+      // Convert dataUrl to File
+      const res = await fetch(fileOrDataUrl);
+      const blob = await res.blob();
+      file = new File([blob], `capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      originalSize = blob.size;
+      // Get dimensions
+      const img = new window.Image();
+      img.src = fileOrDataUrl;
+      await new Promise((resolve) => { img.onload = resolve; });
+      originalWidth = img.width;
+      originalHeight = img.height;
+    } else {
+      file = fileOrDataUrl;
+      originalSize = file.size;
+      // Get dimensions
+      const img = new window.Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise((resolve) => { img.onload = resolve; });
+      originalWidth = img.width;
+      originalHeight = img.height;
+    }
+    console.log('Original file size (MB):', (originalSize / 1024 / 1024).toFixed(2));
+    console.log('Original image dimensions:', originalWidth + 'x' + originalHeight);
+    const options = {
+      maxWidthOrHeight: 2048,
+      initialQuality: 0.85,
+      useWebWorker: true,
+    };
+    const resizedFile = await imageCompression(file, options);
+    // Get resized dimensions
+    const resizedImg = new window.Image();
+    resizedImg.src = URL.createObjectURL(resizedFile);
+    await new Promise((resolve) => { resizedImg.onload = resolve; });
+    console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
+    console.log('Resized image dimensions:', resizedImg.width + 'x' + resizedImg.height);
+    return resizedFile;
+  }
+
   // Process the captured image
   const processImage = async (file: File) => {
-    console.log('processImage called with file:', {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      lastModified: file.lastModified
-    });
+    console.log('Uploading file:', file.name, 'size (MB):', (file.size / 1024 / 1024).toFixed(2));
 
     if (!selectedEventId) {
       console.error('No event selected');
@@ -73,70 +114,42 @@ const ScanPage: React.FC = () => {
     }
 
     setIsProcessing(true);
-    setProcessingProgress(0);
 
     try {
-      // Start progress animation
-      const progressInterval = setInterval(() => {
-        setProcessingProgress(prev => {
-          if (prev < 90) {
-            return prev + Math.random() * 10;
-          }
-          return prev;
-        });
-      }, 500);
-
       // Use the uploadCard hook
       const data = await uploadCard(file, selectedEventId, selectedEvent.school_id);
-
-      clearInterval(progressInterval);
-
       setDocumentId(data.document_id);
-      setProcessingProgress(100);
-
-      // Reset the camera state and prepare for next photo
-      setTimeout(() => {
-        setCapturedImage(null);
-        setIsProcessing(false);
-        setProcessingProgress(0);
-      }, 1500);
-
+      toast.success("Card captured successfully. Processing in background...");
     } catch (error: any) {
       console.error("Upload error details:", {
         error,
         message: error.message,
         stack: error.stack
       });
+      toast.error("Failed to process card. Please try again.");
+    } finally {
       setIsProcessing(false);
-      setProcessingProgress(0);
     }
   };
 
   // Handle image captured from CameraCapture component
-  const handleImageCaptured = (imageDataUrl: string) => {
-    // Convert base64 to File object
-    const byteString = atob(imageDataUrl.split(',')[1]);
-    const mimeString = imageDataUrl.split(',')[0].split(':')[1].split(';')[0];
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    
-    for (let i = 0; i < byteString.length; i++) {
-      ia[i] = byteString.charCodeAt(i);
-    }
-    
-    const blob = new Blob([ab], { type: mimeString });
-    const file = new File([blob], `capture-${Date.now()}.jpg`, { type: mimeString });
-    
-    setCapturedImage(imageDataUrl);
-    processImage(file);
+  const handleImageCaptured = async (imageDataUrl: string) => {
+    // Resize the image before upload
+    const resizedFile = await resizeImage(imageDataUrl);
+    console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
+    setIsCameraOpen(false); // Close camera after capture
+    processImage(resizedFile);
   };
 
   // Handle file selection
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setCapturedImage(URL.createObjectURL(file));
-      processImage(file);
+      // Resize the image before upload
+      const resizedFile = await resizeImage(file);
+      console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
+      setCapturedImage(URL.createObjectURL(resizedFile));
+      processImage(resizedFile);
     }
     if (event.target) event.target.value = '';
   };
@@ -169,19 +182,6 @@ const ScanPage: React.FC = () => {
   if (isCameraOpen) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col z-50">
-        {/* Back button in top-left corner */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="absolute top-4 left-4 z-10 bg-black/70 backdrop-blur-sm rounded-full text-white hover:bg-black/80"
-          onClick={() => {
-            setIsCameraOpen(false);
-            navigate('/scan');
-          }}
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        
         {/* Event selector in top-right corner - responsive */}
         <div className="absolute top-4 right-4 z-10">
           <Select value={selectedEventId} onValueChange={handleEventChange}>
@@ -203,7 +203,6 @@ const ScanPage: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
-        
         {/* Camera Capture Component */}
         <div className="flex-1 flex items-center justify-center p-4">
           <CameraCapture
@@ -248,7 +247,7 @@ const ScanPage: React.FC = () => {
               {events.length > 0 && (
                 <div className="border-t border-gray-200 my-1" />
               )}
-              {events.map(event => (
+              {events.filter(event => event.status !== "archived").map(event => (
                 <SelectItem key={event.id} value={event.id}>
                   {event.name}
                 </SelectItem>

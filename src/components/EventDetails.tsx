@@ -49,6 +49,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useCardsOverride } from "@/hooks/useCardsOverride";
 import { useEvents } from "@/hooks/useEvents";
+import { useAuth } from "@/contexts/AuthContext";
 // Utilities and Types
 import {
   formatPhoneNumber,
@@ -61,7 +62,8 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import type { Event } from "@/types/event";
 import { determineCardStatus } from "@/lib/cardUtils";
 import { useCardUpload } from "@/hooks/useCardUpload";
-import { supabase } from "@/lib/supabaseClient";
+import { EventService } from "@/services/EventService";
+import { SchoolService } from "@/services/SchoolService";
 import { getSignedImageUrl } from "@/lib/imageUtils";
 import ReviewImagePanel from "@/components/review/ReviewImagePanel";
 import ReviewForm from "@/components/review/ReviewForm";
@@ -81,6 +83,9 @@ import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import { toast } from "@/lib/toast"; // Updated import
 import CameraCapture from "@/components/card-scanner/CameraCapture";
+import { useLoader } from "@/contexts/LoaderContext";
+import { useSchool } from "@/hooks/useSchool";
+import { EventHeader } from "./EventDetails/EventHeader";
 
 // === Component Definition ===
 const Dashboard = () => {
@@ -88,12 +93,23 @@ const Dashboard = () => {
   const { toast: oldToast } = useToast(); // Keep for hooks compatibility
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId?: string }>();
-  const { events, loading: eventsLoading, fetchEvents } = useEvents();
+  const { profile, session } = useAuth();
+  const {
+    events,
+    loading: eventsLoading,
+    fetchEvents,
+  } = useEvents(profile?.school_id);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const { cards, fetchCards, setReviewModalState } = useCardsOverride(
-    selectedEvent?.id
-  );
+  const {
+    cards,
+    fetchCards,
+    setReviewModalState,
+    isLoading: cardsLoading,
+  } = useCardsOverride(selectedEvent?.id);
   const { uploadCard } = useCardUpload();
+
+  // Global loader for full page when events are loading
+  const { showFullPageLoader, hideFullPageLoader } = useLoader();
 
   // Status Tabs
   const { selectedTab, setSelectedTab, getStatusCount } = useStatusTabs(
@@ -124,6 +140,7 @@ const Dashboard = () => {
       "student_type",
       "entry_term",
       "major",
+      "mapped_major",
     ],
     []
   );
@@ -149,6 +166,7 @@ const Dashboard = () => {
       { key: "students_in_class", label: "Students in Class" },
       { key: "major", label: "Major" },
       { key: "permission_to_text", label: "Permission to Text" },
+      { key: "mapped_major", label: "Mapped Major" },
     ].forEach((field) => map.set(field.key, field.label));
     return map;
   }, []);
@@ -189,6 +207,9 @@ const Dashboard = () => {
     boolean
   > | null>(null);
 
+  // Use shared school hook
+  const { school } = useSchool(selectedEvent?.school_id);
+
   // --- Refs ---
   const imageUrlRef = useRef<string>("");
   const debounceTimerRef = useRef<NodeJS.Timeout>();
@@ -210,12 +231,7 @@ const Dashboard = () => {
     startUploadProcess,
     isCameraModalOpen,
     setIsCameraModalOpen,
-  } = useCardUploadActions(
-    selectedEvent,
-    uploadCard,
-    fetchCards,
-    fileInputRef
-  );
+  } = useCardUploadActions(selectedEvent, uploadCard, fetchCards, fileInputRef);
   const {
     isReviewModalOpen,
     setIsReviewModalOpen,
@@ -232,12 +248,30 @@ const Dashboard = () => {
     fieldsWithToastRef,
     isSaving,
     setIsSaving,
-  } = useCardReviewModal(
-    cards,
-    reviewFieldOrder,
-    fetchCards,
-    dataFieldsMap
-  );
+  } = useCardReviewModal(cards, reviewFieldOrder, fetchCards, dataFieldsMap);
+  // Extract cardFields from school data
+  const cardFields = useMemo(() => {
+    if (!school?.card_fields) return [];
+
+    // Handle both array and object formats
+    if (Array.isArray(school.card_fields)) {
+      return school.card_fields;
+    } else if (typeof school.card_fields === "object") {
+      // Convert object format to array format
+      return Object.entries(school.card_fields).map(([key, config]) => ({
+        key,
+        enabled:
+          (config as { enabled?: boolean; required?: boolean })?.enabled ||
+          false,
+        required:
+          (config as { enabled?: boolean; required?: boolean })?.required ||
+          false,
+      }));
+    }
+
+    return [];
+  }, [school?.card_fields]);
+
   const {
     isManualEntryModalOpen,
     setIsManualEntryModalOpen,
@@ -246,10 +280,7 @@ const Dashboard = () => {
     handleManualEntry,
     handleManualEntrySubmit,
     handleManualEntryChange,
-  } = useManualEntryModal(
-    selectedEvent,
-    fetchCards
-  );
+  } = useManualEntryModal(selectedEvent, fetchCards, cardFields);
 
   // --- Callbacks ---
   const debouncedSearch = useCallback((query: string) => {
@@ -265,20 +296,12 @@ const Dashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25); // Default page size
 
-  // --- Filtered Cards ---
-  useEffect(() => {
-    if (cards) {
-      console.log('All cards review_status:', cards.map(card => ({id: card.id, review_status: card.review_status})));
-      console.log(
-        'Archived cards event_id:',
-        cards.filter(card => card.review_status === 'archived').map(card => ({
-          id: card.id,
-          event_id: card.event_id
-        })),
-        'Selected event id:', selectedEvent?.id
-      );
-    }
-  }, [cards, selectedEvent]);
+  // ✅ REMOVED: Heavy debug logging causing unnecessary re-renders
+  // useEffect(() => {
+  //   if (cards) {
+  //     console.log("Cards loaded:", cards.length);
+  //   }
+  // }, [cards]);
 
   const filteredCards = useMemo(() => {
     if (!cards) return [];
@@ -297,7 +320,11 @@ const Dashboard = () => {
       const currentStatus = determineCardStatus(card);
 
       // Only apply hideExported in the ready_to_export tab
-      if (selectedTab === "ready_to_export" && hideExported && currentStatus === "exported") {
+      if (
+        selectedTab === "ready_to_export" &&
+        hideExported &&
+        currentStatus === "exported"
+      ) {
         return false;
       }
 
@@ -336,6 +363,8 @@ const Dashboard = () => {
           return currentStatus === "exported";
         case "archived":
           return card.review_status === "archived";
+        case "ai_failed":
+          return card.review_status === "ai_failed";
         default:
           return true;
       }
@@ -347,7 +376,12 @@ const Dashboard = () => {
   const bulkActions = useBulkActions(fetchCards, bulkSelection.clearSelection);
 
   // Now that filteredCards is defined, we can use it in useCardTableActions
-  const { handleExportSelected, handleMoveSelected, handleArchiveSelected, handleDeleteSelected } = useCardTableActions(
+  const {
+    handleExportSelected,
+    handleMoveSelected,
+    handleArchiveSelected,
+    handleDeleteSelected,
+  } = useCardTableActions(
     filteredCards,
     fetchCards,
     oldToast,
@@ -406,6 +440,15 @@ const Dashboard = () => {
     fetchEvents();
   }, [fetchEvents]);
 
+  // Effect to control full page loader for events loading
+  useEffect(() => {
+    if (eventsLoading) {
+      showFullPageLoader("Loading events...");
+    } else {
+      hideFullPageLoader();
+    }
+  }, [eventsLoading, showFullPageLoader, hideFullPageLoader]);
+
   // Effect to handle event selection based on URL params
   useEffect(() => {
     if (events.length > 0) {
@@ -418,7 +461,10 @@ const Dashboard = () => {
           // If event not found, redirect to first event
           const firstEvent = events[0];
           navigate(`/events/${firstEvent.id}`);
-          toast.error("The requested event could not be found. Redirected to the first available event.", "Event Not Found");
+          toast.error(
+            "The requested event could not be found. Redirected to the first available event.",
+            "Event Not Found"
+          );
         }
       } else {
         // No eventId in URL, redirect to first event
@@ -428,10 +474,10 @@ const Dashboard = () => {
     }
   }, [eventId, events, navigate]);
 
-  // Effect to refetch cards when selected event changes
-  useEffect(() => {
-    fetchCards();
-  }, [selectedEvent, fetchCards]);
+  // ✅ REMOVED: useCardsOverride already handles event changes
+  // useEffect(() => {
+  //   fetchCards();
+  // }, [selectedEvent]);
 
   // Add this after filteredCards is defined and before JSX return
   useEffect(() => {
@@ -447,17 +493,13 @@ const Dashboard = () => {
     });
   }, [paginatedCards]);
 
-  // Add effect to update selected card IDs when row selection changes
-  useEffect(() => {
-    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-    console.log('=== Row Selection Debug ===');
-    console.log('rowSelection state:', rowSelection);
-    console.log('Selected card IDs:', selectedIds);
-    console.log('paginatedCards length:', paginatedCards.length);
-    console.log('paginatedCards IDs:', paginatedCards.map(card => card.id));
-    console.log('filteredCards length:', filteredCards.length);
-    console.log('Current page:', currentPage, 'Page size:', pageSize);
-  }, [rowSelection, paginatedCards, filteredCards, currentPage, pageSize]);
+  // ✅ REMOVED: Heavy debug logging causing performance issues
+  // useEffect(() => {
+  //   // Debug row selection changes
+  //   if (process.env.NODE_ENV === 'development') {
+  //     console.log("Row selection changed:", Object.keys(rowSelection).length);
+  //   }
+  // }, [rowSelection]);
 
   // --- Callbacks & Effects ---
   const handleRowClick = useCallback(
@@ -470,13 +512,21 @@ const Dashboard = () => {
       // Initialize formData with the card's field values
       const initialFormData: Record<string, string> = {};
       Object.entries(card.fields).forEach(([fieldKey, fieldData]) => {
-        initialFormData[fieldKey] = fieldData.value || '';
+        initialFormData[fieldKey] = fieldData.value || "";
       });
       setFormData(initialFormData);
       setIsReviewModalOpen(true);
       setReviewModalState(true);
     },
-    [setReviewModalState, localCardRef, setSelectedCardForReview, selectedCardIdRef, imageKeyRef, setFormData, setIsReviewModalOpen]
+    [
+      setReviewModalState,
+      localCardRef,
+      setSelectedCardForReview,
+      selectedCardIdRef,
+      imageKeyRef,
+      setFormData,
+      setIsReviewModalOpen,
+    ]
   );
 
   // Reset the fields with toast when the modal is closed
@@ -508,17 +558,12 @@ const Dashboard = () => {
     }
   }, [cards, isReviewModalOpen, selectedCardIdRef, setSelectedCardForReview]);
 
-  // Add more detailed logging when modal opens
-  useEffect(() => {
-    if (selectedCardForReview) {
-      console.log("Modal opened with card state:", {
-        id: selectedCardForReview.id,
-        status: determineCardStatus(selectedCardForReview),
-        fields: selectedCardForReview.fields,
-        fieldKeys: Object.keys(selectedCardForReview.fields),
-      });
-    }
-  }, [selectedCardForReview]);
+  // ✅ REMOVED: Debug logging causing re-renders
+  // useEffect(() => {
+  //   if (process.env.NODE_ENV === 'development' && selectedCardForReview) {
+  //     console.log("Card selected for review:", selectedCardForReview.id);
+  //   }
+  // }, [selectedCardForReview]);
 
   // Add an effect to update the image key when the selected card changes
   useEffect(() => {
@@ -553,7 +598,9 @@ const Dashboard = () => {
             <input
               type="checkbox"
               checked={bulkSelection.isSelected(row.original.document_id)}
-              onChange={() => bulkSelection.toggleSelection(row.original.document_id)}
+              onChange={() =>
+                bulkSelection.toggleSelection(row.original.document_id)
+              }
               onClick={(e) => e.stopPropagation()}
               className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
             />
@@ -582,6 +629,8 @@ const Dashboard = () => {
             displayText = "Exported";
           } else if (currentStatus === "archived") {
             displayText = "Archived";
+          } else if (currentStatus === "ai_failed") {
+            displayText = "Needs Retry";
           } else {
             displayText = currentStatus
               ? currentStatus.charAt(0).toUpperCase() +
@@ -597,6 +646,8 @@ const Dashboard = () => {
               return "border-blue-500 text-blue-700 bg-blue-50 font-semibold text-xs px-3 py-1 rounded-full";
             } else if (currentStatus === "archived") {
               return "border-gray-500 text-gray-700 bg-gray-50 font-semibold text-xs px-3 py-1 rounded-full";
+            } else if (currentStatus === "ai_failed") {
+              return "border-amber-500 text-amber-700 bg-amber-50 font-semibold text-xs px-3 py-1 rounded-full";
             }
             return "border-slate-200 text-slate-600 bg-white font-semibold text-xs px-3 py-1 rounded-full";
           };
@@ -618,7 +669,9 @@ const Dashboard = () => {
           }
           return (
             <div className="flex flex-col gap-1">
-              <Badge variant="outline" className={getBadgeClasses()}>{displayText}</Badge>
+              <Badge variant="outline" className={getBadgeClasses()}>
+                {displayText}
+              </Badge>
             </div>
           );
         },
@@ -704,9 +757,15 @@ const Dashboard = () => {
   });
 
   // Fields to show in the review panel
-  const fieldsToShow = selectedCardForReview
-    ? reviewFieldOrder.filter((fieldKey) => cardFieldPrefs?.[fieldKey] !== false)
-    : [];
+  const fieldsToShow = useMemo(() => {
+    if (!selectedCardForReview) return [];
+    
+    // Only show fields that are explicitly enabled in the school's configuration
+    // This prevents fields from one tenant's cards from appearing in another tenant's review modal
+    return cardFields
+      .filter((f) => f.enabled)
+      .map((f) => f.key);
+  }, [selectedCardForReview, cardFields]);
 
   // --- Row Selection and Card Actions ---
   const handleArchiveCard = () => {
@@ -722,7 +781,9 @@ const Dashboard = () => {
       setIsReviewModalOpen(false);
     } else {
       // Archive multiple selected cards from the table
-      const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+      const selectedIds = Object.keys(rowSelection).filter(
+        (id) => rowSelection[id]
+      );
       if (selectedIds.length > 0) {
         handleArchiveSelected(selectedIds);
       } else {
@@ -754,22 +815,10 @@ const Dashboard = () => {
     setEventNameLoading(true);
     setEventNameError(null);
     try {
-      const apiBaseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const response = await fetch(`${apiBaseUrl}/events/${selectedEvent.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ name: eventNameInput.trim() }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to update event name");
-      }
+      await EventService.updateEventName(
+        selectedEvent.id,
+        eventNameInput.trim()
+      );
       toast.updated("Event name");
       setIsEditingEventName(false);
       setSelectedEvent((ev) =>
@@ -780,9 +829,10 @@ const Dashboard = () => {
       setEventNameError(
         error instanceof Error ? error.message : "Failed to update event name"
       );
-      toast.error(error instanceof Error
-          ? error.message
-          : "Failed to update event name", "Error");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update event name",
+        "Error"
+      );
     } finally {
       setEventNameLoading(false);
     }
@@ -802,33 +852,60 @@ const Dashboard = () => {
   }, [selectedEvent]);
 
   // --- useEffect for card field preferences ---
+  // ✅ OPTIMIZED: Use existing school data instead of duplicate API call
   useEffect(() => {
-    async function fetchSettings() {
-      if (!selectedEvent || !selectedEvent.school_id) return;
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) return;
-      const { data, error } = await supabase
-        .from("settings")
-        .select("preferences")
-        .eq("user_id", user.id)
-        .eq("school_id", selectedEvent.school_id)
-        .single();
-      if (!error && data?.preferences?.card_fields) {
-        setCardFieldPrefs(data.preferences.card_fields);
-      } else {
-        setCardFieldPrefs(null);
-      }
+    if (!school?.card_fields) {
+      setCardFieldPrefs(null);
+      return;
     }
-    fetchSettings();
-  }, [selectedEvent]);
+
+    // Transform the card fields to the expected format
+    const transformedPrefs: Record<string, boolean> = {};
+
+    if (Array.isArray(school.card_fields)) {
+      // Handle array format
+      school.card_fields.forEach((field) => {
+        if (typeof field === "object" && "key" in field && "enabled" in field) {
+          transformedPrefs[field.key] = field.enabled;
+        }
+      });
+    } else if (typeof school.card_fields === "object") {
+      // Handle object format
+      Object.entries(school.card_fields).forEach(([key, config]) => {
+        if (typeof config === "object" && config && "enabled" in config) {
+          transformedPrefs[key] = (config as { enabled: boolean }).enabled;
+        } else if (typeof config === "boolean") {
+          transformedPrefs[key] = config;
+        }
+      });
+    }
+
+    setCardFieldPrefs(transformedPrefs);
+  }, [school?.card_fields]); // ✅ Depend only on school data, not selectedEvent
 
   // --- useEffect for initializing form data ---
   useEffect(() => {
     if (selectedCardForReview && reviewFieldOrder) {
       const initialFormData: Record<string, string> = {};
       reviewFieldOrder.forEach((fieldKey) => {
-        initialFormData[fieldKey] =
-          selectedCardForReview.fields?.[fieldKey]?.value ?? "";
+        let fieldValue = selectedCardForReview.fields?.[fieldKey]?.value ?? "";
+        
+        // Fallback: if city or state fields are empty but city_state exists, parse it
+        if ((fieldKey === "city" || fieldKey === "state") && !fieldValue) {
+          const cityStateValue = selectedCardForReview.fields?.city_state?.value;
+          if (cityStateValue && typeof cityStateValue === "string") {
+            const match = cityStateValue.match(/^([^,]+),\s*([A-Z]{2})$/);
+            if (match) {
+              if (fieldKey === "city") {
+                fieldValue = match[1].trim();
+              } else if (fieldKey === "state") {
+                fieldValue = match[2].trim();
+              }
+            }
+          }
+        }
+        
+        initialFormData[fieldKey] = fieldValue;
       });
       setFormData(initialFormData);
     } else {
@@ -868,153 +945,72 @@ const Dashboard = () => {
     setIsArchiveConfirmOpen(true);
   }, []);
 
-  // --- JSX ---
+  // Check if there are any cards that need retry
+  const needsRetryCount = getStatusCount("ai_failed");
+  const showNeedsRetryTab = needsRetryCount > 0;
+
+  // Auto-switch away from ai_failed tab if no cards need retry
   useEffect(() => {
-    console.log("Cards after fetch:", cards);
-  }, [cards]);
+    if (selectedTab === "ai_failed" && needsRetryCount === 0) {
+      setSelectedTab("needs_human_review");
+    }
+  }, [selectedTab, needsRetryCount, setSelectedTab]);
+
+  // ✅ REMOVED: Debug logging
+  // useEffect(() => {
+  //   console.log("Cards after fetch:", cards);
+  // }, [cards]);
+
+  // --- State Declarations (consolidated here) ---
+  const [majorsList, setMajorsList] = useState<string[]>([]);
+  const [loadingMajors, setLoadingMajors] = useState(false);
+
+  // --- Fetch majors for mapped_major dropdown ---
+  // ✅ OPTIMIZED: Memoize school_id and fetch only when needed
+  const schoolIdForMajors = selectedEvent?.school_id;
+  useEffect(() => {
+    async function fetchMajors() {
+      if (!schoolIdForMajors) return;
+      setLoadingMajors(true);
+      try {
+        const majors = await SchoolService.getMajors(schoolIdForMajors);
+        setMajorsList(majors || []);
+      } catch (error) {
+        setMajorsList([]);
+        toast.error("Failed to load majors");
+      } finally {
+        setLoadingMajors(false);
+      }
+    }
+    // Only fetch if review modal is open and majors are enabled
+    if (
+      isReviewModalOpen &&
+      cardFieldPrefs?.major !== false &&
+      schoolIdForMajors
+    ) {
+      fetchMajors();
+    }
+  }, [isReviewModalOpen, schoolIdForMajors, cardFieldPrefs?.major]); // ✅ More specific dependencies
 
   return (
     <ErrorBoundary>
       <div className="w-full p-2 sm:p-4 md:p-8 relative pb-20">
-        <div className="space-y-4">
-          <nav aria-label="Breadcrumb" className="mb-2 text-xs sm:text-sm text-gray-500">
-            <ol className="flex items-center space-x-1">
-              <li className="flex items-center">
-                <a href="/events" className="text-blue-600 hover:underline">
-                  Events
-                </a>
-                <ChevronRight className="mx-1 w-3 h-3 text-gray-400" />
-              </li>
-              <li className="font-medium text-gray-900 truncate">
-                {selectedEvent?.name}
-              </li>
-            </ol>
-          </nav>
-        </div>
-
-        {/* Header Section - Mobile Responsive */}
-        <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
-          <Card className="mb-4 sm:mb-6">
-            <CardContent className="flex flex-col gap-4 p-4 sm:p-6">
-              {/* Event Name Section */}
-              <div className="flex flex-col text-left w-full">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2 flex-wrap">
-                {isEditingEventName ? (
-                  <>
-                    <input
-                        className="border rounded px-2 py-1 text-base sm:text-lg font-semibold w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={eventNameInput}
-                      onChange={(e) => setEventNameInput(e.target.value)}
-                      disabled={eventNameLoading}
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSaveEventName();
-                        if (e.key === "Escape") handleCancelEditEventName();
-                      }}
-                    />
-                      <div className="flex items-center gap-1">
-                    <button
-                          className="text-green-600 hover:text-green-800 disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      onClick={handleSaveEventName}
-                      disabled={eventNameLoading || !eventNameInput.trim()}
-                      aria-label="Save event name"
-                    >
-                      {eventNameLoading ? (
-                        <Loader2 className="animate-spin w-5 h-5" />
-                      ) : (
-                        <Check className="w-5 h-5" />
-                      )}
-                    </button>
-                    <button
-                          className="text-gray-500 hover:text-red-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      onClick={handleCancelEditEventName}
-                      disabled={eventNameLoading}
-                      aria-label="Cancel edit"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                      </div>
-                  </>
-                ) : (
-                  <>
-                      <span className="break-words">
-                      {selectedEvent ? selectedEvent.name : "All Events"}
-                    </span>
-                    <button
-                        className="text-gray-400 hover:text-blue-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      onClick={handleEditEventName}
-                      aria-label="Edit event name"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                  </>
-                )}
-              </h1>
-              {eventNameError && (
-                <div className="text-sm text-red-600 mt-1">
-                  {eventNameError}
-                </div>
-              )}
-            </div>
-              
-              {/* Status Badges - Mobile Responsive Grid */}
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTab('needs_human_review')}
-                  className="focus:outline-none rounded cursor-pointer"
-                  style={{ touchAction: 'manipulation' }}
-                  aria-label="Show Needs Review"
-                >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'needs_human_review' ? 'border-2 border-indigo-500 text-indigo-700 bg-indigo-50' : ''}`}> 
-                    <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
-                    <span className="hidden sm:inline">Needs Review:</span>
-                    <span>{getStatusCount('needs_human_review')}</span>
-                  </Badge>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setSelectedTab('ready_to_export'); setHideExported(true); }}
-                  className="focus:outline-none rounded cursor-pointer"
-                  style={{ touchAction: 'manipulation' }}
-                  aria-label="Show Ready to Export"
-                >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'ready_to_export' && hideExported ? 'border-2 border-green-500 text-green-700 bg-green-50' : ''}`}> 
-                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
-                    <span className="hidden sm:inline">Ready:</span>
-                    <span>{getStatusCount('reviewed')}</span>
-                  </Badge>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setSelectedTab('ready_to_export'); setHideExported(false); }}
-                  className="focus:outline-none rounded cursor-pointer"
-                  style={{ touchAction: 'manipulation' }}
-                  aria-label="Show Exported"
-                >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'ready_to_export' && !hideExported ? 'border-2 border-blue-500 text-blue-700 bg-blue-50' : ''}`}> 
-                    <Download className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
-                    <span className="hidden sm:inline">Exported:</span>
-                    <span>{getStatusCount('exported')}</span>
-                  </Badge>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTab('archived')}
-                  className="focus:outline-none rounded cursor-pointer"
-                  style={{ touchAction: 'manipulation' }}
-                  aria-label="Show Archived"
-                >
-                  <Badge variant="outline" className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${selectedTab === 'archived' ? 'border-2 border-gray-500 text-gray-700 bg-gray-50' : ''}`}> 
-                    <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
-                    <span className="hidden sm:inline">Archived:</span>
-                    <span>{getStatusCount('archived')}</span>
-                  </Badge>
-                </button>
-              </div>
-          </CardContent>
-        </Card>
-        </div>
+        <EventHeader
+          selectedEvent={selectedEvent}
+          getStatusCount={getStatusCount}
+          selectedTab={selectedTab}
+          setSelectedTab={setSelectedTab}
+          setHideExported={setHideExported}
+          hideExported={hideExported}
+          isEditingEventName={isEditingEventName}
+          eventNameInput={eventNameInput}
+          setEventNameInput={setEventNameInput}
+          eventNameLoading={eventNameLoading}
+          eventNameError={eventNameError || ""}
+          handleEditEventName={handleEditEventName}
+          handleSaveEventName={handleSaveEventName}
+          handleCancelEditEventName={handleCancelEditEventName}
+        />
 
         {/* Main Content - Mobile Responsive */}
         <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
@@ -1024,60 +1020,78 @@ const Dashboard = () => {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b">
                 {/* Main Tabs - Left side */}
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 w-full sm:w-auto">
-                <button
-                  onClick={() => setSelectedTab("needs_human_review")}
+                  <button
+                    onClick={() => setSelectedTab("needs_human_review")}
                     className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                    selectedTab === "needs_human_review"
-                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
+                      selectedTab === "needs_human_review"
+                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
                     <span>Needs Review</span>
-                  <Badge
-                    variant="outline"
+                    <Badge
+                      variant="outline"
                       className="ml-2 text-indigo-700 border-indigo-200 bg-white text-xs"
-                  >
-                    {getStatusCount("needs_human_review")}
-                  </Badge>
-                </button>
-                <button
-                  onClick={() => setSelectedTab("ready_to_export")}
+                    >
+                      {getStatusCount("needs_human_review")}
+                    </Badge>
+                  </button>
+                  <button
+                    onClick={() => setSelectedTab("ready_to_export")}
                     className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                    selectedTab === "ready_to_export"
-                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                    <span>Ready to Export</span>
-                  <Badge
-                    variant="outline"
-                      className="ml-2 text-blue-700 border-blue-200 bg-white text-xs"
+                      selectedTab === "ready_to_export"
+                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
                   >
-                    {getStatusCount("reviewed")}
-                  </Badge>
-                </button>
-              </div>
-                
+                    <span>Ready to Export</span>
+                    <Badge
+                      variant="outline"
+                      className="ml-2 text-blue-700 border-blue-200 bg-white text-xs"
+                    >
+                      {getStatusCount("reviewed")}
+                    </Badge>
+                  </button>
+                  {showNeedsRetryTab && (
+                    <button
+                      onClick={() => setSelectedTab("ai_failed")}
+                      className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
+                        selectedTab === "ai_failed"
+                          ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      <span>Needs Retry</span>
+                      <Badge
+                        variant="outline"
+                        className="ml-2 text-amber-700 border-amber-200 bg-white text-xs"
+                      >
+                        {needsRetryCount}
+                      </Badge>
+                    </button>
+                  )}
+                </div>
+
                 {/* Archived Tab - Right side */}
                 <div className="w-full sm:w-auto mt-2 sm:mt-0">
-                <button
-                  onClick={() => setSelectedTab("archived")}
+                  <button
+                    onClick={() => setSelectedTab("archived")}
                     className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                    selectedTab === "archived"
-                      ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                    <span>Archived</span>
-                  <Badge
-                    variant="outline"
-                      className="ml-2 text-gray-600 border-gray-200 bg-white text-xs"
+                      selectedTab === "archived"
+                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
                   >
-                    {getStatusCount("archived")}
-                  </Badge>
-                </button>
+                    <span>Archived</span>
+                    <Badge
+                      variant="outline"
+                      className="ml-2 text-gray-600 border-gray-200 bg-white text-xs"
+                    >
+                      {getStatusCount("archived")}
+                    </Badge>
+                  </button>
+                </div>
               </div>
-            </div>
               <CardTable
                 table={table}
                 handleRowClick={handleRowClick}
@@ -1106,6 +1120,7 @@ const Dashboard = () => {
                 handleManualEntry={handleManualEntry}
                 fetchCards={fetchCards}
                 bulkSelection={bulkSelection}
+                isLoading={cardsLoading}
               />
             </CardContent>
           </Card>
@@ -1121,7 +1136,8 @@ const Dashboard = () => {
                     Review Card Data
                   </DialogTitle>
                   <DialogDescription className="text-xs sm:text-sm text-gray-500">
-                    Review and edit the extracted information from the card image.
+                    Review and edit the extracted information from the card
+                    image.
                   </DialogDescription>
                 </div>
                 <div className="flex flex-col items-start sm:items-end space-y-1 w-full sm:w-auto">
@@ -1157,7 +1173,11 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 h-full">
                 {/* Image Panel - Mobile: Full width, Desktop: Half width */}
                 <ReviewImagePanel
-                  imagePath={selectedCardForReview?.image_path || ""}
+                  imagePath={
+                    selectedCardForReview?.trimmed_image_path ||
+                    selectedCardForReview?.image_path ||
+                    ""
+                  }
                   zoom={zoom}
                   zoomIn={zoomIn}
                   zoomOut={zoomOut}
@@ -1172,6 +1192,9 @@ const Dashboard = () => {
                   handleFieldReview={handleFieldReview}
                   selectedTab={selectedTab}
                   dataFieldsMap={dataFieldsMap}
+                  majorsList={majorsList}
+                  loadingMajors={loadingMajors}
+                  onCardUpdated={fetchCards}
                 />
               </div>
             </div>
@@ -1228,7 +1251,9 @@ const Dashboard = () => {
           open={isMoveConfirmOpen}
           onOpenChange={setIsMoveConfirmOpen}
           onConfirm={() => {
-            const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+            const selectedIds = Object.keys(rowSelection).filter(
+              (id) => rowSelection[id]
+            );
             handleMoveSelected(selectedIds);
           }}
           count={Object.keys(rowSelection).length}
@@ -1239,7 +1264,9 @@ const Dashboard = () => {
           open={isDeleteConfirmOpen}
           onOpenChange={setIsDeleteConfirmOpen}
           onConfirm={() => {
-            const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+            const selectedIds = Object.keys(rowSelection).filter(
+              (id) => rowSelection[id]
+            );
             handleDeleteSelected(selectedIds);
           }}
           count={Object.keys(rowSelection).length}
@@ -1252,6 +1279,7 @@ const Dashboard = () => {
           form={manualEntryForm}
           onChange={handleManualEntryChange}
           onSubmit={handleManualEntrySubmit}
+          cardFields={cardFields}
         />
       </div>
     </ErrorBoundary>

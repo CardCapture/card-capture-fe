@@ -19,15 +19,13 @@ const ReviewImagePanel = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-  const [internalZoom, setInternalZoom] = useState(1.875);
+  const [internalZoom, setInternalZoom] = useState(1.3);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(true);
-  const pollingIntervalRef = useRef<NodeJS.Timeout>();
 
   // Pan and interaction state
-  const [pan, setPan] = useState({ x: 150, y: 150 });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const draggingRef = useRef(false);
   const startRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   
@@ -36,73 +34,6 @@ const ReviewImagePanel = ({
   const lastDistanceRef = useRef<number | null>(null);
   const accumulatedMovementRef = useRef(0);
   const isPinchingRef = useRef(false);
-
-  // Check job status
-  const checkJobStatus = useCallback(async () => {
-    if (!selectedCardId) return;
-    
-    try {
-      const response = await fetch(`/api/uploads/upload-status/${selectedCardId}`);
-      const data = await response.json();
-      
-      if (data.status === "complete") {
-        setIsProcessing(false);
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-        }
-      } else if (data.status === "error") {
-        setIsProcessing(false);
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-        }
-        toast.error("Failed to process image", "Processing Error");
-      }
-    } catch (error) {
-      console.error("Error checking job status:", error);
-    }
-  }, [selectedCardId]);
-
-  // Start polling for job status
-  useEffect(() => {
-    if (selectedCardId) {
-      setIsProcessing(true);
-      // Check immediately
-      checkJobStatus();
-      // Then poll every 2 seconds
-      pollingIntervalRef.current = setInterval(checkJobStatus, 2000);
-    }
-    
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
-  }, [selectedCardId, checkJobStatus]);
-
-  // Load image
-  useEffect(() => {
-    if (imagePath && !isProcessing) {
-      setLoading(true);
-      setImgError(false);
-      fetch(`/api/uploads/images/${selectedCardId}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.url) {
-            setSignedUrl(data.url);
-          } else {
-            setImgError(true);
-            toast.loadFailed("image");
-          }
-        })
-        .catch(() => {
-          setImgError(true);
-          toast.loadFailed("image");
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setSignedUrl(null);
-    }
-  }, [imagePath, selectedCardId, isProcessing]);
 
   // Mouse pan handlers
   const onMouseDown = useCallback(
@@ -279,7 +210,7 @@ const ReviewImagePanel = ({
 
   // Reset pan when image changes
   useEffect(() => {
-    setPan({ x: 150, y: 150 });
+    setPan({ x: 0, y: 0 });
   }, [selectedCardId]);
 
   // Add event listeners
@@ -303,36 +234,75 @@ const ReviewImagePanel = ({
     };
   }, [handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
+  // Load image
+  useEffect(() => {
+    if (imagePath) {
+      setLoading(true);
+      setImgError(false);
+      getSignedImageUrl(imagePath)
+        .then((url) => {
+          if (!url) {
+            setImgError(true);
+            toast.error("Failed to load image", "Image Error");
+          } else {
+            setSignedUrl(url);
+          }
+        })
+        .catch((error) => {
+          console.error("[ReviewImagePanel] Error loading image:", error);
+          setImgError(true);
+          toast.error("Failed to load image", "Image Error");
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setSignedUrl(null);
+    }
+  }, [imagePath]);
+
   return (
-    <div className="relative w-full h-full">
-      <div className="absolute top-2 right-2 z-10 flex gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={zoomIn}
-          className="bg-white/80 hover:bg-white"
-        >
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={zoomOut}
-          className="bg-white/80 hover:bg-white"
+    <div className="relative flex-1 flex flex-col overflow-hidden bg-white rounded-lg h-full">
+      {/* Zoom controls - Touch-friendly sizing */}
+      <div className="absolute top-4 right-4 flex gap-2 z-10">
+        <Button 
+          size="icon" 
+          variant="outline" 
+          onClick={zoomOut} 
+          className="h-10 w-10 sm:h-8 sm:w-8 touch-manipulation"
         >
           <ZoomOut className="h-4 w-4" />
         </Button>
+        <Button 
+          size="icon" 
+          variant="outline" 
+          onClick={zoomIn} 
+          className="h-10 w-10 sm:h-8 sm:w-8 touch-manipulation"
+        >
+          <ZoomIn className="h-4 w-4" />
+        </Button>
       </div>
+
+      {/* Image container with pan and zoom - Enhanced touch support */}
       <div
         ref={containerRef}
-        className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing"
+        className={`flex-1 overflow-hidden select-none flex items-center justify-center ${
+          draggingRef.current || touchStartRef.current ? "cursor-grabbing" : "cursor-grab"
+        }`}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{
+          touchAction: "none", // Prevent default touch actions
+          minHeight: "300px",
+          userSelect: "none", // Prevent text selection
+          WebkitUserSelect: "none", // Safari
+        }}
       >
         <div
-          className="w-full h-full flex items-center justify-center p-2 sm:p-4"
+          className="flex items-center justify-center w-full h-full p-2 sm:p-4"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px)`,
             transition: (draggingRef.current || touchStartRef.current)
@@ -341,8 +311,7 @@ const ReviewImagePanel = ({
           }}
         >
           {loading && <div className="text-sm text-gray-500">Loading image...</div>}
-          {isProcessing && <div className="text-sm text-gray-500">Processing image...</div>}
-          {!loading && !isProcessing && signedUrl && !imgError && (
+          {!loading && signedUrl && !imgError && (
             <img
               ref={imgRef}
               src={signedUrl}
@@ -367,10 +336,10 @@ const ReviewImagePanel = ({
               }}
             />
           )}
-          {!loading && !isProcessing && imgError && (
+          {!loading && imgError && (
             <div className="text-red-500 text-sm text-center p-4">Failed to load image.</div>
           )}
-          {!loading && !isProcessing && !signedUrl && !imgError && (
+          {!loading && !signedUrl && !imgError && (
             <div className="text-gray-500 text-sm text-center p-4">No image available.</div>
           )}
         </div>

@@ -1,89 +1,188 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { supabase } from "@/lib/supabaseClient";
+import { SchoolService } from "@/services/SchoolService";
+import { ProfileService } from "@/services/ProfileService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from '@/lib/toast';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { toast } from "@/lib/toast";
 
 const AcceptInvitePage = () => {
   const [searchParams] = useSearchParams();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [schoolInfo, setSchoolInfo] = useState<{ name: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Extract school_id from URL parameters
+  const schoolId = searchParams.get("school_id");
+  const invitedEmail = searchParams.get("email");
 
   // Handle hash fragment redirect from Supabase
   useEffect(() => {
     const handleHashRedirect = async () => {
+      console.log("🔍 Current URL:", window.location.href);
+      console.log("🔍 Hash:", location.hash);
+
       // If we have a hash in the URL, we were redirected from Supabase auth
       if (location.hash) {
         try {
-          // Parse the hash fragment to get the access token
+          // Parse the hash fragment to get the tokens
           const hashParams = new URLSearchParams(location.hash.substring(1));
-          const accessToken = hashParams.get('access_token');
-          const type = hashParams.get('type');
-          
-          if (accessToken && type === 'invite') {
-            // Set the session manually
-            const { data, error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: hashParams.get('refresh_token') || ''
-            });
-            
+          console.log("🔍 Hash params:", Object.fromEntries(hashParams));
+
+          const accessToken = hashParams.get("access_token");
+          const refreshToken = hashParams.get("refresh_token");
+          const type = hashParams.get("type");
+
+          if (accessToken && (type === "invite" || type === "recovery")) {
+            console.log("✅ Found tokens, type:", type);
+
+            // First, clear any existing session to avoid conflicts
+            await supabase.auth.signOut();
+
+            // Set the session with both tokens
+            const { data, error: sessionError } =
+              await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken || "",
+              });
+
             if (sessionError) {
-              console.error('Error setting session:', sessionError);
-              setError('Error processing invite link');
+              console.error("❌ Error setting session:", sessionError);
+              setError(
+                "Error processing invite link. Please try again or contact support."
+              );
               return;
             }
-            
-            // Extract email from the JWT token
-            if (data.session?.user?.email) {
-              setEmail(data.session.user.email);
+
+            console.log("✅ Session set successfully:", data);
+
+            // Get the user details
+            const { data: userData, error: userError } =
+              await supabase.auth.getUser();
+
+            if (userError) {
+              console.error("❌ Error getting user:", userError);
+              setError(
+                "Could not verify your identity. Please try again or contact support."
+              );
+              return;
             }
-            
-            // Clear the hash without triggering a reload
-            window.history.replaceState(null, '', location.pathname + location.search);
+
+            // Extract email from the user data
+            if (userData?.user?.email) {
+              console.log("✅ User email:", userData.user.email);
+              setEmail(userData.user.email);
+              // Clear the hash without triggering a reload
+              window.history.replaceState(
+                null,
+                "",
+                location.pathname + location.search
+              );
+            } else {
+              setError(
+                "Could not verify your email. Please try again or contact support."
+              );
+            }
+          } else {
+            console.error("❌ Missing tokens or wrong type. Type:", type);
+            setError(
+              "Invalid invite link. Please check the link and try again."
+            );
           }
         } catch (err) {
-          console.error('Error handling hash redirect:', err);
-          setError('Error processing invite link');
+          console.error("❌ Error handling hash redirect:", err);
+          setError(
+            "Error processing invite link. Please try again or contact support."
+          );
+        }
+      } else {
+        // Check if we have query parameters instead (some email clients might convert hash to query)
+        const queryToken = searchParams.get("access_token");
+        const queryType = searchParams.get("type");
+
+        if (
+          queryToken &&
+          (queryType === "invite" || queryType === "recovery")
+        ) {
+          console.log(
+            "🔍 Found tokens in query params, redirecting to hash format"
+          );
+          // Redirect to hash format
+          window.location.hash = `#${searchParams.toString()}`;
+        } else {
+          console.error("❌ No hash fragment or query params found");
+          setError("Invalid invite link. Please check the link and try again.");
         }
       }
     };
 
     handleHashRedirect();
-  }, [location]);
+  }, [location, searchParams]);
+
+  // Fallback to use invited email from query params if no email was set from auth flow
+  useEffect(() => {
+    if (!email && invitedEmail) {
+      console.log("🔄 Using email from query params as fallback:", invitedEmail);
+      setEmail(invitedEmail);
+    }
+  }, [email, invitedEmail]);
+
+  // Fetch school information if school_id is provided
+  useEffect(() => {
+    const fetchSchoolInfo = async () => {
+      if (schoolId) {
+        try {
+          const schoolData = await SchoolService.getSchoolData(schoolId);
+          setSchoolInfo({ name: schoolData.name });
+        } catch (err) {
+          console.error("Error fetching school:", err);
+        }
+      }
+    };
+
+    fetchSchoolInfo();
+  }, [schoolId]);
 
   const passwordRequirements = [
     {
-      label: 'At least 8 characters long',
+      label: "At least 8 characters long",
       test: (pw: string) => pw.length >= 8,
     },
     {
-      label: 'One uppercase letter (A-Z)',
+      label: "One uppercase letter (A-Z)",
       test: (pw: string) => /[A-Z]/.test(pw),
     },
     {
-      label: 'One lowercase letter (a-z)',
+      label: "One lowercase letter (a-z)",
       test: (pw: string) => /[a-z]/.test(pw),
     },
     {
-      label: 'One number (0-9)',
+      label: "One number (0-9)",
       test: (pw: string) => /[0-9]/.test(pw),
     },
     {
-      label: 'One special character (!@#$%^&*()_+-=[]{}|;:,.<>?)',
-      test: (pw: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(pw),
+      label: "One special character (!@#$%^&*()_+-=[]{}|;:,.<>?)",
+      test: (pw: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(pw),
     },
   ];
 
   const getPasswordValidationState = (pw: string) => {
-    return passwordRequirements.map(req => req.test(pw));
+    return passwordRequirements.map((req) => req.test(pw));
   };
 
   const passwordValidationState = getPasswordValidationState(password);
@@ -95,13 +194,13 @@ const AcceptInvitePage = () => {
 
     // Validate passwords match
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
     // Validate password strength
     if (!allRequirementsMet) {
-      setError('Password does not meet all requirements');
+      setError("Password does not meet all requirements");
       return;
     }
 
@@ -110,7 +209,7 @@ const AcceptInvitePage = () => {
     try {
       // Update user with new password
       const { error: updateError } = await supabase.auth.updateUser({
-        password: password
+        password: password,
       });
 
       if (updateError) {
@@ -118,23 +217,49 @@ const AcceptInvitePage = () => {
       }
 
       // Show success message
-      toast.success("Your account has been activated successfully.", "Success!");
+      toast.success(
+        "Your account has been activated successfully.",
+        "Success!"
+      );
 
       // Sign in the user with their new credentials
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
 
       if (signInError) {
         throw signInError;
       }
 
+      // If we have a school_id, assign the user to the school and make them admin
+      if (schoolId) {
+        try {
+          // Get the current user ID from the session
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user?.id) {
+            await ProfileService.updateProfile(user.id, {
+              school_id: schoolId,
+              role: "admin",
+            });
+          }
+        } catch (profileError) {
+          console.error("Error updating profile:", profileError);
+          // Don't throw here - user is already signed up successfully
+        }
+      }
+
       // Redirect to events page
-      navigate('/events', { replace: true });
+      navigate("/events", { replace: true });
     } catch (err) {
-      console.error('Error setting password:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred while setting your password');
+      console.error("Error setting password:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while setting your password"
+      );
     } finally {
       setLoading(false);
     }
@@ -146,7 +271,15 @@ const AcceptInvitePage = () => {
         <CardHeader>
           <CardTitle>Set Your Password</CardTitle>
           <CardDescription>
-            Please set a password for your account to complete the registration process.
+            {schoolInfo ? (
+              <>
+                You've been invited to join <strong>{schoolInfo.name}</strong>{" "}
+                as an administrator. Please set a password for your account to
+                complete the registration process.
+              </>
+            ) : (
+              "Please set a password for your account to complete the registration process."
+            )}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -200,11 +333,7 @@ const AcceptInvitePage = () => {
                 required
               />
             </div>
-            {error && (
-              <div className="text-sm text-red-500">
-                {error}
-              </div>
-            )}
+            {error && <div className="text-sm text-red-500">{error}</div>}
           </CardContent>
           <CardFooter>
             <Button
@@ -212,7 +341,7 @@ const AcceptInvitePage = () => {
               className="w-full"
               disabled={loading || !allRequirementsMet}
             >
-              {loading ? 'Setting Password...' : 'Set Password'}
+              {loading ? "Setting Password..." : "Set Password"}
             </Button>
           </CardFooter>
         </form>
@@ -221,4 +350,4 @@ const AcceptInvitePage = () => {
   );
 };
 
-export default AcceptInvitePage; 
+export default AcceptInvitePage;

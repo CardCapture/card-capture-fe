@@ -4,7 +4,8 @@ export type CardStatus =
   | "needs_human_review"
   | "exported"
   | "archived"
-  | "processing";
+  | "processing"
+  | "ai_failed";
 
 // Interface for the nested detail object for each field
 export interface FieldDetail {
@@ -30,6 +31,9 @@ export interface ProspectCard {
   school_id: string;
   user_id?: string;
   image_path?: string;
+  trimmed_image_path?: string;
+  ai_error_message?: string;
+  review_data?: any;
 }
 
 // ScannerResult remains the same

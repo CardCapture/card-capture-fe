@@ -120,7 +120,19 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
               >
                 Request Demo
               </Link>
-              {!user && (
+              {user ? (
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    handleDashboardClick();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Go to Dashboard
+                </Button>
+              ) : (
                 <NavLink to="/login">Login</NavLink>
               )}
             </nav>

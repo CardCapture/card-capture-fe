@@ -2,15 +2,34 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { authFetch } from "@/lib/authFetch";
+import { UserService } from "@/services/UserService";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabaseClient";
+import { useProfile } from "@/hooks/useProfile";
 import { toast } from "@/lib/toast";
 import { Check, Crown, Camera, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,7 +38,9 @@ const inviteUserSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  roles: z.array(z.enum(["admin", "recruiter", "reviewer"])).min(1, "At least one role is required"),
+  roles: z
+    .array(z.enum(["admin", "recruiter", "reviewer"]))
+    .min(1, "At least one role is required"),
 });
 
 type InviteUserFormValues = z.infer<typeof inviteUserSchema>;
@@ -31,71 +52,40 @@ interface InviteUserDialogProps {
 }
 
 const roleOptions = [
-  { 
-    value: "admin", 
-    label: "Admin", 
+  {
+    value: "admin",
+    label: "Admin",
     description: "Full system access",
-    icon: Crown
+    icon: Crown,
   },
-  { 
-    value: "recruiter", 
-    label: "Recruiter", 
+  {
+    value: "recruiter",
+    label: "Recruiter",
     description: "Scan & manage events",
-    icon: Camera
+    icon: Camera,
   },
-  { 
-    value: "reviewer", 
-    label: "Reviewer", 
+  {
+    value: "reviewer",
+    label: "Reviewer",
     description: "Review card data",
-    icon: Eye
+    icon: Eye,
   },
 ];
 
-export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDialogProps) {
+export function InviteUserDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+}: InviteUserDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [schoolId, setSchoolId] = useState<string | null>(null);
   const { session } = useAuth();
 
-  useEffect(() => {
-    const fetchSchoolId = async () => {
-      if (!session?.user?.id) {
-        console.log('No session or user ID available');
-        return;
-      }
-      
-      console.log('Attempting to fetch profile for user:', session.user.id);
-      
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('school_id')
-          .eq('id', session.user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching school_id:', error);
-          toast.loadFailed("school information");
-          return;
-        }
-
-        if (!data) {
-          console.warn('No profile found for user:', session.user.id);
-          toast.error("Could not find your profile information. Please contact support.", "Profile Not Found");
-          return;
-        }
-
-        console.log('Successfully found profile with school_id:', data.school_id);
-        setSchoolId(data.school_id);
-      } catch (e) {
-        console.error('Unexpected error in fetchSchoolId:', e);
-        toast.error("An unexpected error occurred. Please try again.");
-      }
-    };
-
-    if (open) {
-      fetchSchoolId();
-    }
-  }, [session?.user?.id, open]);
+  // Use shared profile hook instead of duplicate fetching
+  const {
+    schoolId,
+    loading: profileLoading,
+    error: profileError,
+  } = useProfile();
 
   const form = useForm<InviteUserFormValues>({
     resolver: zodResolver(inviteUserSchema),
@@ -115,29 +105,16 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
 
     setIsSubmitting(true);
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const response = await authFetch(
-        `${apiBaseUrl}/invite-user`,
+      await UserService.inviteUser(
         {
-          method: "POST",
-          body: JSON.stringify({
-            email: data.email,
-            first_name: data.firstName,
-            last_name: data.lastName,
-            role: data.roles, // Send as roles array
-            school_id: schoolId,
-          }),
-          headers: {
-            "Content-Type": "application/json",
-          },
+          email: data.email,
+          first_name: data.firstName,
+          last_name: data.lastName,
+          role: data.roles,
+          school_id: schoolId,
         },
         session?.access_token
       );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || errorData?.message || "Failed to invite user");
-      }
 
       toast.success("User invited successfully");
 
@@ -146,7 +123,11 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       onSuccess?.();
     } catch (error) {
       console.error("Error inviting user:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to invite user. Please try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to invite user. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -163,20 +144,20 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
             </DialogPrimitive.Title>
           </div>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="john@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <form
+              onSubmit={form.handleSubmit((data) => {
+                // Trim whitespace from all fields
+                const trimmedData = {
+                  ...data,
+                  email: data.email.trim(),
+                  firstName: data.firstName.trim(),
+                  lastName: data.lastName.trim(),
+                  roles: data.roles,
+                };
+                onSubmit(trimmedData);
+              })}
+              className="space-y-6"
+            >
               <FormField
                 control={form.control}
                 name="firstName"
@@ -205,41 +186,60 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
               />
               <FormField
                 control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="john@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="roles"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Roles</FormLabel>
                     <div className="grid grid-cols-3 gap-3">
                       {roleOptions.map((role) => {
-                        const isSelected = field.value?.includes(role.value as any) || false;
+                        const roleValue = role.value as
+                          | "admin"
+                          | "recruiter"
+                          | "reviewer";
+                        const isSelected =
+                          field.value?.includes(roleValue) || false;
                         const IconComponent = role.icon;
-                        
                         return (
                           <div
                             key={role.value}
                             onClick={() => {
                               const currentRoles = field.value || [];
-                              
-                              if (role.value === 'admin') {
-                                // If clicking admin, either select only admin or deselect admin
-                                if (currentRoles.includes('admin')) {
-                                  // Deselect admin, keep others if any
-                                  field.onChange(currentRoles.filter(r => r !== 'admin'));
+                              if (role.value === "admin") {
+                                if (currentRoles.includes("admin")) {
+                                  field.onChange(
+                                    currentRoles.filter((r) => r !== "admin")
+                                  );
                                 } else {
-                                  // Select only admin, deselect recruiter/reviewer
-                                  field.onChange(['admin']);
+                                  field.onChange(["admin"]);
                                 }
                               } else {
-                                // If clicking recruiter or reviewer
-                                if (currentRoles.includes('admin')) {
-                                  // If admin is selected, replace with the clicked role
-                                  field.onChange([role.value]);
+                                if (currentRoles.includes("admin")) {
+                                  field.onChange([roleValue]);
                                 } else {
-                                  // Normal toggle behavior for recruiter/reviewer
-                                  if (currentRoles.includes(role.value as any)) {
-                                    field.onChange(currentRoles.filter(r => r !== role.value));
+                                  if (currentRoles.includes(roleValue)) {
+                                    field.onChange(
+                                      currentRoles.filter(
+                                        (r) => r !== roleValue
+                                      )
+                                    );
                                   } else {
-                                    field.onChange([...currentRoles, role.value]);
+                                    field.onChange([
+                                      ...currentRoles,
+                                      roleValue,
+                                    ]);
                                   }
                                 }
                               }
@@ -257,13 +257,19 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
                               </div>
                             )}
                             <div className="flex flex-col items-center space-y-2">
-                              <IconComponent className={cn(
-                                "h-5 w-5",
-                                isSelected ? "text-blue-600" : "text-gray-500"
-                              )} />
+                              <IconComponent
+                                className={cn(
+                                  "h-5 w-5",
+                                  isSelected ? "text-blue-600" : "text-gray-500"
+                                )}
+                              />
                               <div>
-                                <div className="text-sm font-medium">{role.label}</div>
-                                <div className="text-xs text-muted-foreground">{role.description}</div>
+                                <div className="text-sm font-medium">
+                                  {role.label}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {role.description}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -293,4 +299,4 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
   );
-} 
+}
