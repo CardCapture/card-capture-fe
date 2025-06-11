@@ -96,9 +96,20 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   };
 
   // Render field input based on field type
-  const renderFieldInput = (fieldKey: string, actualFieldKey: string) => {
+  const renderFieldInput = (fieldKey: string, actualFieldKey: string, isReviewed: boolean, needsReview: boolean) => {
     const fieldConfig = getFieldConfig(actualFieldKey);
     const fieldValue = formData[actualFieldKey] || "";
+
+    // Build conditional styling for reviewed/needs review states
+    const getInputClassName = (baseClasses: string = "") => {
+      return `${baseClasses} ${
+        isReviewed && selectedTab === "needs_human_review"
+          ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
+          : needsReview
+          ? "border-red-300 focus-visible:ring-red-400"
+          : ""
+      }`;
+    };
 
     // Handle select fields (dropdowns) with options
     if (fieldConfig?.field_type === 'select' && fieldConfig.options && fieldConfig.options.length > 0) {
@@ -107,7 +118,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           value={fieldValue}
           onValueChange={(value) => handleFormChange(actualFieldKey, value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}>
             <SelectValue placeholder={`Select ${getFieldLabel(fieldKey)}`} />
           </SelectTrigger>
           <SelectContent>
@@ -129,7 +140,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           value={fieldValue}
           onValueChange={(value) => handleFormChange(actualFieldKey, value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}>
             <SelectValue placeholder="Select..." />
           </SelectTrigger>
           <SelectContent>
@@ -150,7 +161,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           value={fieldValue}
           onValueChange={(value) => handleFormChange(actualFieldKey, value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}>
             <SelectValue placeholder="Select a major..." />
           </SelectTrigger>
           <SelectContent>
@@ -172,6 +183,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           value={fieldValue}
           onChange={(e) => handleFormChange(actualFieldKey, e.target.value)}
           placeholder="Major from card"
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
         />
       );
     }
@@ -187,6 +199,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           value={formattedValue}
           onChange={(value) => handleFormChange(actualFieldKey, value)}
           placeholder="(123) 456-7890"
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
         />
       );
     }
@@ -199,6 +212,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           value={fieldValue}
           onChange={(e) => handleFormChange(actualFieldKey, e.target.value)}
           placeholder="Email address"
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
         />
       );
     }
@@ -215,6 +229,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           value={formattedValue}
           onChange={(e) => handleFormChange(actualFieldKey, e.target.value)}
           placeholder="MM/DD/YYYY"
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
         />
       );
     }
@@ -226,6 +241,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         value={fieldValue}
         onChange={(e) => handleFormChange(actualFieldKey, e.target.value)}
         placeholder={fieldConfig?.placeholder || getFieldLabel(fieldKey)}
+        className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
       />
     );
   };
@@ -346,7 +362,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                     {label}:
                   </Label>
                   <div className="sm:col-span-3 flex items-center gap-2">
-                    {renderFieldInput(fieldKey, actualFieldKey)}
+                    {renderFieldInput(fieldKey, actualFieldKey, isReviewed, needsReview)}
                     {showIcon && (
                       <TooltipProvider delayDuration={100}>
                         <Tooltip>

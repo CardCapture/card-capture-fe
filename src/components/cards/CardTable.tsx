@@ -174,7 +174,9 @@ const CardTable = ({
     downloadCSV(
       bulkSelection.selectedCards,
       `cards-export-${new Date().toISOString().split("T")[0]}.csv`,
-      eventName
+      eventName,
+      reviewFieldOrder, // Pass the dynamic field order
+      dataFieldsMap // Pass the field labels mapping
     );
 
     // Mark as exported via API
