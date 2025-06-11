@@ -2,12 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { toast } from "@/lib/toast";
 import type { Event } from "@/types/event";
 import { useAuth } from "@/contexts/AuthContext";
-
-interface CardField {
-  key: string;
-  enabled: boolean;
-  required: boolean;
-}
+import { type CardField } from "@/services/SchoolService";
 
 export function useManualEntryModal(
   selectedEvent: Event | null,
@@ -19,7 +14,7 @@ export function useManualEntryModal(
 
   // Create initial form state based on enabled card fields
   const initialFormState = useMemo(() => {
-    const enabledFields = cardFields.filter((field) => field.enabled);
+    const enabledFields = cardFields.filter((field) => field.visible);
     return enabledFields.reduce((acc, field) => {
       acc[field.key] = "";
       return acc;
@@ -48,7 +43,7 @@ export function useManualEntryModal(
   const handleManualEntrySubmit = async () => {
     // Check if required fields are filled
     const requiredFields = cardFields.filter(
-      (field) => field.enabled && field.required
+      (field) => field.visible && field.required
     );
     const missingRequiredFields = requiredFields.filter(
       (field) => !manualEntryForm[field.key]?.trim()
@@ -56,8 +51,7 @@ export function useManualEntryModal(
 
     if (missingRequiredFields.length > 0) {
       const fieldNames = missingRequiredFields
-        .map((field) =>
-          field.key
+        .map((field) => field.label || field.key
             .split("_")
             .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
             .join(" ")
