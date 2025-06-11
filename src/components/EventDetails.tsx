@@ -667,10 +667,28 @@ const Dashboard = () => {
           const isReviewed = fieldData?.reviewed === true;
           const reviewNotes = fieldData?.review_notes;
           const showIcon = needsReview;
-          let formattedValue = value ?? "";
-          if (fieldKey === "cell") formattedValue = formatPhoneNumber(value);
+          
+          // Ensure value is always a string - handle objects gracefully
+          let stringValue = "";
+          if (typeof value === "string") {
+            stringValue = value;
+          } else if (typeof value === "object" && value !== null) {
+            // If it's an object, try to extract a meaningful string
+            if (value.formatted_address) {
+              stringValue = value.formatted_address;
+            } else if (value.city && value.state) {
+              stringValue = `${value.city}, ${value.state}`;
+            } else {
+              stringValue = JSON.stringify(value);
+            }
+          } else {
+            stringValue = String(value ?? "");
+          }
+          
+          let formattedValue = stringValue;
+          if (fieldKey === "cell") formattedValue = formatPhoneNumber(stringValue);
           if (fieldKey === "date_of_birth")
-            formattedValue = formatBirthday(value);
+            formattedValue = formatBirthday(stringValue);
           const tooltipContent =
             reviewNotes || (needsReview ? "Needs human review" : null);
           return (
