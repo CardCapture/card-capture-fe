@@ -11,8 +11,19 @@ export interface SchoolData {
         key: string;
         enabled: boolean;
         required: boolean;
+        field_type?: 'text' | 'select' | 'checkbox' | 'email' | 'phone' | 'date';
+        label?: string;
+        options?: string[];
+        placeholder?: string;
       }>
-    | Record<string, { enabled: boolean; required: boolean }>;
+    | Record<string, { 
+        enabled: boolean; 
+        required: boolean;
+        field_type?: 'text' | 'select' | 'checkbox' | 'email' | 'phone' | 'date';
+        label?: string;
+        options?: string[];
+        placeholder?: string;
+      }>;
   majors?: string[];
 }
 

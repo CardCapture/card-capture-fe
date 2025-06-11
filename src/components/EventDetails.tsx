@@ -251,25 +251,7 @@ const Dashboard = () => {
   } = useCardReviewModal(cards, reviewFieldOrder, fetchCards, dataFieldsMap);
   // Extract cardFields from school data
   const cardFields = useMemo(() => {
-    if (!school?.card_fields) return [];
-
-    // Handle both array and object formats
-    if (Array.isArray(school.card_fields)) {
-      return school.card_fields;
-    } else if (typeof school.card_fields === "object") {
-      // Convert object format to array format
-      return Object.entries(school.card_fields).map(([key, config]) => ({
-        key,
-        enabled:
-          (config as { enabled?: boolean; required?: boolean })?.enabled ||
-          false,
-        required:
-          (config as { enabled?: boolean; required?: boolean })?.required ||
-          false,
-      }));
-    }
-
-    return [];
+    return SchoolService.transformCardFieldsForUI(school?.card_fields);
   }, [school?.card_fields]);
 
   const {
@@ -1202,6 +1184,7 @@ const Dashboard = () => {
                   majorsList={majorsList}
                   loadingMajors={loadingMajors}
                   onCardUpdated={fetchCards}
+                  cardFields={cardFields}
                 />
               </div>
             </div>
