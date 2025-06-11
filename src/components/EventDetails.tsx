@@ -240,11 +240,6 @@ const Dashboard = () => {
     isSaving,
     setIsSaving,
   } = useCardReviewModal(cards, reviewFieldOrder, fetchCards, dataFieldsMap);
-  
-  // Extract cardFields from school data
-  const cardFields = useMemo(() => {
-    return SchoolService.transformCardFieldsForUI(school?.card_fields);
-  }, [school?.card_fields]);
 
   const {
     isManualEntryModalOpen,
