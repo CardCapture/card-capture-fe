@@ -17,7 +17,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { formatPhoneNumber, formatBirthday } from "@/lib/utils";
+import { formatPhoneNumber } from "@/lib/utils";
 import {
   Tooltip,
   TooltipProvider,
@@ -25,6 +25,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { PhoneNumberInput } from "@/components/ui/phone-number-input";
+import { DateInput } from "@/components/ui/date-input";
 import { CheckCircle } from "lucide-react";
 import { Combobox } from "@/components/ui/combobox";
 import { AIFailureBanner } from "@/components/cards/AIFailureBanner";
@@ -51,8 +52,7 @@ const FIELD_LABELS: Record<string, string> = {
   entry_term: "Entry Term",
   major: "Major",
   city_state: "City, State",
-  gender: "Gender",
-  // Add more as needed
+  // Add more as needed - only for fields commonly detected by DocAI
 };
 
 interface ManualEntryModalProps {
@@ -64,18 +64,7 @@ interface ManualEntryModalProps {
   cardFields?: CardField[];
 }
 
-// Helper to format MMDDYYYY as MM/DD/YYYY as user types
-function formatBirthdayInput(value: string): string {
-  const cleaned = value.replace(/\D/g, "");
-  if (cleaned.length <= 2) return cleaned;
-  if (cleaned.length <= 4) return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-  if (cleaned.length <= 8)
-    return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(
-      4,
-      8
-    )}`;
-  return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
-}
+
 
 // Helper to format 10-digit phone as 512-694-6172 as user types
 function formatPhoneInput(value: string): string {
@@ -109,11 +98,11 @@ const ManualEntryModal: React.FC<ManualEntryModalProps> = ({
     return field.label || SchoolService.generateDefaultLabel(field.key);
   };
 
-  // Helper to get field input value with formatting
+  // Helper to get field input value with formatting (for display only)
   const getFieldValue = (field: CardField): string => {
     const value = form[field.key] || "";
     if (field.field_type === 'phone' || field.key === "cell") return formatPhoneInput(value);
-    if (field.field_type === 'date' || field.key === "date_of_birth") return formatBirthdayInput(value);
+    // Date fields will be handled by DateInput component - no formatting needed here
     return value;
   };
 
@@ -121,9 +110,8 @@ const ManualEntryModal: React.FC<ManualEntryModalProps> = ({
   const handleFieldChange = (field: CardField, value: string) => {
     if (field.field_type === 'phone' || field.key === "cell") {
       onChange(field.key, formatPhoneInput(value));
-    } else if (field.field_type === 'date' || field.key === "date_of_birth") {
-      onChange(field.key, formatBirthdayInput(value));
     } else {
+      // Date fields and others - pass value directly (DateInput handles its own formatting)
       onChange(field.key, value);
     }
   };
@@ -225,11 +213,9 @@ const ManualEntryModal: React.FC<ManualEntryModalProps> = ({
     // Handle date fields
     if (field.field_type === 'date' || field.key === "date_of_birth") {
       return (
-        <Input
-          id={fieldId}
-          type="text"
-          value={fieldValue}
-          onChange={(e) => handleFieldChange(field, e.target.value)}
+        <DateInput
+          value={form[field.key] || ""}
+          onChange={(value) => onChange(field.key, value)}
           placeholder={placeholder}
         />
       );

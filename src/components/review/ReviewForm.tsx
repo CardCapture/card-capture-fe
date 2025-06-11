@@ -9,6 +9,8 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { PhoneNumberInput } from "@/components/ui/phone-number-input";
+import { DateInput } from "@/components/ui/date-input";
+
 import { CheckCircle } from "lucide-react";
 import { formatPhoneNumber, formatBirthday } from "@/lib/utils";
 import type { ProspectCard, FieldData } from "@/types/card";
@@ -44,8 +46,7 @@ const FIELD_LABELS: Record<string, string> = {
   entry_term: "Entry Term",
   major: "Major",
   city_state: "City, State",
-  gender: "Gender",
-  // Add more as needed
+  // Add more as needed - only for fields commonly detected by DocAI
 };
 
 interface ReviewFormProps {
@@ -219,16 +220,10 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
 
     // Handle date fields
     if (fieldConfig?.field_type === 'date' || actualFieldKey === "date_of_birth") {
-      let formattedValue = fieldValue;
-      if (actualFieldKey === "date_of_birth") {
-        formattedValue = formatBirthday(fieldValue);
-      }
       return (
-        <Input
-          type="text"
-          value={formattedValue}
-          onChange={(e) => handleFormChange(actualFieldKey, e.target.value)}
-          placeholder="MM/DD/YYYY"
+        <DateInput
+          value={fieldValue}
+          onChange={(value) => handleFormChange(actualFieldKey, value)}
           className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
         />
       );
@@ -317,6 +312,8 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           />
         </div>
       )}
+      
+
       
       <div className="space-y-3 sm:space-y-4">
         {selectedCardForReview ? (
