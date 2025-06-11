@@ -135,30 +135,6 @@ const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
   : null;
 
-// Add canonical field definitions
-const CANONICAL_CARD_FIELDS = [
-  "name",
-  "preferred_first_name",
-  "date_of_birth",
-  "email",
-  "cell",
-  "permission_to_text",
-  "address",
-  "city",
-  "state",
-  "zip_code",
-  "high_school",
-  "class_rank",
-  "students_in_class",
-  "gpa",
-  "student_type",
-  "entry_term",
-  "major",
-  "gender",
-  // Note: city_state and other combined fields are now filtered out during processing
-  // and should not be included in new school configurations
-];
-
 // CardField interface is now imported from SchoolService
 
 interface CardFieldValue {

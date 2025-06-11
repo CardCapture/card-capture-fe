@@ -185,12 +185,9 @@ const Dashboard = () => {
 
   // Dynamic field order based on school configuration (same logic as review modal)
   const reviewFieldOrder: string[] = useMemo(() => {
-    console.log('EventDetails - cardFields:', cardFields);
-    const enabled = cardFields.filter((field) => field.enabled);
-    console.log('EventDetails - enabled fields:', enabled);
-    const fieldOrder = enabled.map((field) => field.key);
-    console.log('EventDetails - reviewFieldOrder:', fieldOrder);
-    return fieldOrder;
+    return cardFields
+      .filter((field) => field.enabled)
+      .map((field) => field.key);
   }, [cardFields]);
 
   // Dynamic field mapping using labels from school configuration
