@@ -12,7 +12,169 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// --- New Dashboard Helper Functions ---
+// --- Text Normalization Functions ---
+
+/**
+ * Normalizes a name string from ALL CAPS to proper title case.
+ * Handles multiple words, preserves spacing, and handles common name patterns.
+ */
+export const normalizeName = (name: string | null | undefined): string => {
+  if (!name) return '';
+  
+  return name
+    .toLowerCase()
+    .split(/(\s+)/) // Split on whitespace but preserve the whitespace
+    .map(part => {
+      if (/\s/.test(part)) return part; // Preserve whitespace as-is
+      
+      // Capitalize first letter of each word
+      if (part.length > 0) {
+        return part.charAt(0).toUpperCase() + part.slice(1);
+      }
+      return part;
+    })
+    .join('');
+};
+
+/**
+ * Normalizes an email address to lowercase.
+ */
+export const normalizeEmail = (email: string | null | undefined): string => {
+  if (!email) return '';
+  return email.toLowerCase().trim();
+};
+
+/**
+ * Normalizes address text from ALL CAPS to proper title case.
+ * Handles street addresses, city names, etc.
+ */
+export const normalizeAddress = (address: string | null | undefined): string => {
+  if (!address) return '';
+  
+  return address
+    .toLowerCase()
+    .split(/(\s+)/)
+    .map(part => {
+      if (/\s/.test(part)) return part; // Preserve whitespace
+      
+      // Special handling for common address abbreviations
+      const upperCaseWords = ['N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW', 'ST', 'AVE', 'RD', 'DR', 'LN', 'CT', 'PL', 'BLVD'];
+      if (upperCaseWords.includes(part.toUpperCase())) {
+        return part.toUpperCase();
+      }
+      
+      // Capitalize first letter
+      if (part.length > 0) {
+        return part.charAt(0).toUpperCase() + part.slice(1);
+      }
+      return part;
+    })
+    .join('');
+};
+
+/**
+ * Normalizes school/institution names from ALL CAPS to proper title case.
+ * Handles common school name patterns and abbreviations.
+ */
+export const normalizeSchoolName = (schoolName: string | null | undefined): string => {
+  if (!schoolName) return '';
+  
+  return schoolName
+    .toLowerCase()
+    .split(/(\s+)/)
+    .map(part => {
+      if (/\s/.test(part)) return part; // Preserve whitespace
+      
+      // Keep certain abbreviations uppercase
+      const upperCaseWords = ['HS', 'MS', 'ES', 'K-12', 'IB', 'AP'];
+      if (upperCaseWords.includes(part.toUpperCase())) {
+        return part.toUpperCase();
+      }
+      
+      // Capitalize first letter
+      if (part.length > 0) {
+        return part.charAt(0).toUpperCase() + part.slice(1);
+      }
+      return part;
+    })
+    .join('');
+};
+
+/**
+ * Normalizes major/field of study from ALL CAPS to proper title case.
+ */
+export const normalizeMajor = (major: string | null | undefined): string => {
+  if (!major) return '';
+  
+  return major
+    .toLowerCase()
+    .split(/(\s+)/)
+    .map(part => {
+      if (/\s/.test(part)) return part; // Preserve whitespace
+      
+      // Keep certain abbreviations uppercase
+      const upperCaseWords = ['IT', 'CS', 'AI', 'ML', 'MBA', 'BS', 'BA', 'MS', 'MA', 'PhD'];
+      if (upperCaseWords.includes(part.toUpperCase())) {
+        return part.toUpperCase();
+      }
+      
+      // Capitalize first letter
+      if (part.length > 0) {
+        return part.charAt(0).toUpperCase() + part.slice(1);
+      }
+      return part;
+    })
+    .join('');
+};
+
+/**
+ * Normalizes general text fields based on field type.
+ * Applies appropriate normalization for different field types.
+ */
+export const normalizeFieldValue = (value: string | null | undefined, fieldKey: string): string => {
+  if (!value) return '';
+  
+  // Skip normalization for certain fields that should preserve original formatting
+  if (fieldKey === 'gpa' || fieldKey === 'class_rank' || fieldKey === 'students_in_class' || 
+      fieldKey === 'zip_code' || fieldKey === 'date_of_birth' || fieldKey === 'cell' ||
+      fieldKey === 'permission_to_text' || fieldKey === 'student_type' || fieldKey === 'entry_term') {
+    return value;
+  }
+  
+  // Apply field-specific normalization
+  if (fieldKey === 'email') {
+    return normalizeEmail(value);
+  }
+  
+  if (fieldKey === 'name' || fieldKey === 'preferred_first_name') {
+    return normalizeName(value);
+  }
+  
+  if (fieldKey === 'address' || fieldKey === 'city' || fieldKey === 'city_state') {
+    return normalizeAddress(value);
+  }
+  
+  if (fieldKey === 'state') {
+    // States can be abbreviations (keep uppercase) or full names (title case)
+    if (value.length <= 2) {
+      return value.toUpperCase();
+    }
+    return normalizeAddress(value);
+  }
+  
+  if (fieldKey === 'high_school') {
+    return normalizeSchoolName(value);
+  }
+  
+  if (fieldKey === 'major' || fieldKey === 'mapped_major') {
+    return normalizeMajor(value);
+  }
+  
+  // Default normalization for other text fields
+  return normalizeName(value);
+};
+
+// --- Existing Dashboard Helper Functions ---
 
 /**
  * Formats a phone number string into (XXX) XXX-XXXX or XXX-XXXX.

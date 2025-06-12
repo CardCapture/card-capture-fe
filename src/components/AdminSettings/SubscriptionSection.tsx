@@ -47,9 +47,6 @@ const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                   <p className="font-medium capitalize">{school.name} Plan</p>
-                  <p className="text-sm text-muted-foreground">
-                    {PRICING_DISPLAY[school.name] || "N/A"}
-                  </p>
                 </div>
                 <Button
                   onClick={handleStripeCheckout}

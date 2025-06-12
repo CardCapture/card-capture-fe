@@ -12,7 +12,7 @@ import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { DateInput } from "@/components/ui/date-input";
 
 import { CheckCircle } from "lucide-react";
-import { formatPhoneNumber, formatBirthday } from "@/lib/utils";
+import { formatPhoneNumber, formatBirthday, normalizeFieldValue } from "@/lib/utils";
 import type { ProspectCard, FieldData } from "@/types/card";
 import {
   Select,
@@ -99,7 +99,8 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   // Render field input based on field type
   const renderFieldInput = (fieldKey: string, actualFieldKey: string, isReviewed: boolean, needsReview: boolean) => {
     const fieldConfig = getFieldConfig(actualFieldKey);
-    const fieldValue = formData[actualFieldKey] || "";
+    const rawFieldValue = formData[actualFieldKey] || "";
+    const fieldValue = normalizeFieldValue(rawFieldValue, actualFieldKey);
 
     // Build conditional styling for reviewed/needs review states
     const getInputClassName = (baseClasses: string = "") => {
@@ -182,7 +183,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         <Input
           type="text"
           value={fieldValue}
-          onChange={(e) => handleFormChange(actualFieldKey, e.target.value)}
+          onChange={(e) => handleFormChange(actualFieldKey, normalizeFieldValue(e.target.value, actualFieldKey))}
           placeholder="Major from card"
           className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
         />
@@ -211,7 +212,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         <Input
           type="email"
           value={fieldValue}
-          onChange={(e) => handleFormChange(actualFieldKey, e.target.value)}
+          onChange={(e) => handleFormChange(actualFieldKey, normalizeFieldValue(e.target.value, actualFieldKey))}
           placeholder="Email address"
           className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
         />
@@ -234,7 +235,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       <Input
         type="text"
         value={fieldValue}
-        onChange={(e) => handleFormChange(actualFieldKey, e.target.value)}
+        onChange={(e) => handleFormChange(actualFieldKey, normalizeFieldValue(e.target.value, actualFieldKey))}
         placeholder={fieldConfig?.placeholder || getFieldLabel(fieldKey)}
         className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
       />

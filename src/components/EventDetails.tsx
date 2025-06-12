@@ -56,6 +56,7 @@ import {
   formatBirthday,
   formatDateOrTimeAgo,
   escapeCsvValue,
+  normalizeFieldValue,
 } from "@/lib/utils";
 import type { ProspectCard } from "@/types/card";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -165,18 +166,23 @@ const Dashboard = () => {
 
     // Handle both array and object formats
     if (Array.isArray(school.card_fields)) {
-      return school.card_fields;
+      return school.card_fields.map(field => ({
+        ...field,
+        label: field.label || field.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        visible: true // Default to visible for all fields
+      }));
     } else if (typeof school.card_fields === "object") {
       // Convert object format to array format
       return Object.entries(school.card_fields).map(([key, config]) => ({
         key,
-        label: undefined, // Will be handled by fallback logic
+        label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Generate label from key
         enabled:
           (config as { enabled?: boolean; required?: boolean })?.enabled ||
           false,
         required:
           (config as { enabled?: boolean; required?: boolean })?.required ||
           false,
+        visible: true, // Default to visible for all fields
       }));
     }
 
@@ -685,10 +691,10 @@ const Dashboard = () => {
             stringValue = String(value ?? "");
           }
           
-          let formattedValue = stringValue;
-          if (fieldKey === "cell") formattedValue = formatPhoneNumber(stringValue);
+          let formattedValue = normalizeFieldValue(stringValue, fieldKey);
+          if (fieldKey === "cell") formattedValue = formatPhoneNumber(formattedValue);
           if (fieldKey === "date_of_birth")
-            formattedValue = formatBirthday(stringValue);
+            formattedValue = formatBirthday(formattedValue);
           const tooltipContent =
             reviewNotes || (needsReview ? "Needs human review" : null);
           return (

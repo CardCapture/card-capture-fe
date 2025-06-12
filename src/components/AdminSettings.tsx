@@ -587,6 +587,7 @@ const AdminSettings: React.FC = () => {
       content = (
         <UserManagementSection
           users={users}
+          setUsers={setUsers}
           loading={loading}
           inviteDialogOpen={inviteDialogOpen}
           setInviteDialogOpen={setInviteDialogOpen}
