@@ -192,7 +192,6 @@ export class SchoolService {
     if (fieldKey === 'date_of_birth') return 'date';
     if (fieldKey === 'permission_to_text') return 'select';
     if (fieldKey === 'student_type') return 'select';
-    if (fieldKey === 'entry_term') return 'select';
     return 'text';
   }
 

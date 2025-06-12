@@ -164,35 +164,14 @@ const Dashboard = () => {
   const cardFields = useMemo(() => {
     if (!school?.card_fields) return [];
 
-    // Handle both array and object formats
-    if (Array.isArray(school.card_fields)) {
-      return school.card_fields.map(field => ({
-        ...field,
-        label: field.label || field.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        visible: true // Default to visible for all fields
-      }));
-    } else if (typeof school.card_fields === "object") {
-      // Convert object format to array format
-      return Object.entries(school.card_fields).map(([key, config]) => ({
-        key,
-        label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Generate label from key
-        enabled:
-          (config as { enabled?: boolean; required?: boolean })?.enabled ||
-          false,
-        required:
-          (config as { enabled?: boolean; required?: boolean })?.required ||
-          false,
-        visible: true, // Default to visible for all fields
-      }));
-    }
-
-    return [];
+    // Use the SchoolService transformation to apply proper field type inference
+    return SchoolService.transformCardFieldsForUI(school.card_fields);
   }, [school?.card_fields]);
 
   // Dynamic field order based on school configuration (same logic as review modal)
   const reviewFieldOrder: string[] = useMemo(() => {
     return cardFields
-      .filter((field) => field.enabled)
+      .filter((field) => field.visible)
       .map((field) => field.key);
   }, [cardFields]);
 
@@ -753,10 +732,10 @@ const Dashboard = () => {
   const fieldsToShow = useMemo(() => {
     if (!selectedCardForReview) return [];
     
-    // Only show fields that are explicitly enabled in the school's configuration
+    // Only show fields that are explicitly visible in the school's configuration
     // This prevents fields from one tenant's cards from appearing in another tenant's review modal
     return cardFields
-      .filter((f) => f.enabled)
+      .filter((f) => f.visible)
       .map((f) => f.key);
   }, [selectedCardForReview, cardFields]);
 
@@ -856,20 +835,16 @@ const Dashboard = () => {
     const transformedPrefs: Record<string, boolean> = {};
 
     if (Array.isArray(school.card_fields)) {
-      // Handle array format
-      school.card_fields.forEach((field) => {
-        if (typeof field === "object" && "key" in field && "enabled" in field) {
-          transformedPrefs[field.key] = field.enabled;
-        }
+      // Handle array format - use transformCardFieldsForUI to get proper CardField format
+      const transformedFields = SchoolService.transformCardFieldsForUI(school.card_fields);
+      transformedFields.forEach((field) => {
+        transformedPrefs[field.key] = field.visible;
       });
     } else if (typeof school.card_fields === "object") {
-      // Handle object format
-      Object.entries(school.card_fields).forEach(([key, config]) => {
-        if (typeof config === "object" && config && "enabled" in config) {
-          transformedPrefs[key] = (config as { enabled: boolean }).enabled;
-        } else if (typeof config === "boolean") {
-          transformedPrefs[key] = config;
-        }
+      // Handle object format - use transformCardFieldsForUI to get proper CardField format
+      const transformedFields = SchoolService.transformCardFieldsForUI(school.card_fields);
+      transformedFields.forEach((field) => {
+        transformedPrefs[field.key] = field.visible;
       });
     }
 

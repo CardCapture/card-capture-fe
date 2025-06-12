@@ -113,6 +113,19 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       }`;
     };
 
+    // Force entry_term and entry_year to always be text inputs
+    if (actualFieldKey === "entry_term" || actualFieldKey === "entry_year") {
+      return (
+        <Input
+          type="text"
+          value={fieldValue}
+          onChange={(e) => handleFormChange(actualFieldKey, normalizeFieldValue(e.target.value, actualFieldKey))}
+          placeholder={getFieldLabel(fieldKey)}
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
+        />
+      );
+    }
+
     // Handle select fields (dropdowns) with options
     if (fieldConfig?.field_type === 'select' && fieldConfig.options && fieldConfig.options.length > 0) {
       return (
@@ -254,50 +267,12 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
 
   // Dynamically map fieldsToShow keys to actual formData keys
   const getFormDataKey = (fieldKey: string): string => {
-    // First try exact match
+    // Check for exact match in formData or card fields
     if (fieldKey in formData || selectedCardForReview?.fields?.[fieldKey]) {
       return fieldKey;
     }
 
-    // Get available keys from both formData and card fields
-    const availableKeys = [
-      ...Object.keys(formData),
-      ...Object.keys(selectedCardForReview?.fields || {}),
-    ];
-    const uniqueKeys = [...new Set(availableKeys)];
-
-    // Try common semantic mappings
-    const semanticMappings: Record<string, string[]> = {
-      birthdate: ["date_of_birth", "birth_date", "dob"],
-      cell_phone: ["cell", "phone", "mobile", "cell_phone_number"],
-      city_state_zip: ["city", "state", "zip_code"], // composite field - will use first match
-      entry_year: ["entry_term", "entry_year"],
-    };
-
-    // Check semantic mappings
-    const possibleMappings = semanticMappings[fieldKey];
-    if (possibleMappings) {
-      for (const mapping of possibleMappings) {
-        if (uniqueKeys.includes(mapping)) {
-          return mapping;
-        }
-      }
-    }
-
-    // Try partial string matching (fuzzy matching)
-    const fuzzyMatch = uniqueKeys.find(
-      (key) =>
-        key.includes(fieldKey.toLowerCase()) ||
-        fieldKey.toLowerCase().includes(key) ||
-        key.replace(/_/g, "").toLowerCase() ===
-          fieldKey.replace(/_/g, "").toLowerCase()
-    );
-
-    if (fuzzyMatch) {
-      return fuzzyMatch;
-    }
-
-    // Return original if no mapping found
+    // Return original if no match found
     return fieldKey;
   };
 
