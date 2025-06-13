@@ -52,10 +52,14 @@ export class EventService {
     name: string;
     date: string;
     school_id: string;
+    slate_event_id?: string | null;
   }): Promise<Event> {
     try {
+      console.log("EventService DEBUG - Received data:", eventData);
       // Use backend API for event creation as it handles additional logic
-      return await backendEventsApi.createEvent(eventData);
+      const result = await backendEventsApi.createEvent(eventData);
+      console.log("EventService DEBUG - Backend response:", result);
+      return result;
     } catch (error) {
       console.error("EventService: Failed to create event", error);
       throw error;

@@ -1,37 +1,36 @@
 import React, { useRef } from "react";
-import { Input } from "./input";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-interface PhoneNumberInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+interface DateInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
   value: string;
   onChange: (value: string) => void;
   className?: string;
 }
 
-export function PhoneNumberInput({
+export function DateInput({
   value,
   onChange,
   className,
   ...props
-}: PhoneNumberInputProps) {
+}: DateInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Format the phone number as the user types
-  const formatPhoneNumber = (input: string) => {
+  // Format the date as MM/DD/YYYY
+  const formatDate = (input: string) => {
     // Remove all non-numeric characters
     const cleaned = input.replace(/\D/g, '');
     
-    // Limit to 10 digits
-    const truncated = cleaned.slice(0, 10);
-    
-    // Format the number with hyphens
-    const parts = [];
-    if (truncated.length > 0) parts.push(truncated.slice(0, 3));
-    if (truncated.length > 3) parts.push(truncated.slice(3, 6));
-    if (truncated.length > 6) parts.push(truncated.slice(6));
-    
-    return parts.join('-');
+    // Apply formatting based on length
+    if (cleaned.length <= 2) {
+      return cleaned;
+    } else if (cleaned.length <= 4) {
+      return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+    } else {
+      // Limit to 8 digits and format as MM/DD/YYYY
+      const truncated = cleaned.slice(0, 8);
+      return `${truncated.slice(0, 2)}/${truncated.slice(2, 4)}/${truncated.slice(4)}`;
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,8 +39,8 @@ export function PhoneNumberInput({
     const inputValue = e.target.value;
     
     // Get the old formatted value to compare
-    const oldFormatted = formatPhoneNumber(value);
-    const newFormatted = formatPhoneNumber(inputValue);
+    const oldFormatted = formatDate(value);
+    const newFormatted = formatDate(inputValue);
     
     // If the formatted value didn't actually change, don't update
     if (oldFormatted === newFormatted) {
@@ -84,10 +83,11 @@ export function PhoneNumberInput({
   return (
     <Input
       ref={inputRef}
-      type="tel"
+      type="text"
       inputMode="numeric"
-      value={formatPhoneNumber(value)}
+      value={formatDate(value)}
       onChange={handleChange}
+      placeholder="MM/DD/YYYY"
       className={cn(className)}
       {...props}
     />

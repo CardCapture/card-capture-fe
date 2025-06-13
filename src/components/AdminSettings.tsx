@@ -34,7 +34,7 @@ import {
   X,
 } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
-import { SchoolService } from "@/services/SchoolService";
+import { SchoolService, type CardField } from "@/services/SchoolService";
 import SettingsPreferences from "./SettingsPreferences";
 import { Link, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -135,35 +135,7 @@ const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
   : null;
 
-// Add canonical field definitions
-const CANONICAL_CARD_FIELDS = [
-  "name",
-  "preferred_first_name",
-  "date_of_birth",
-  "email",
-  "cell",
-  "permission_to_text",
-  "address",
-  "city",
-  "state",
-  "zip_code",
-  "high_school",
-  "class_rank",
-  "students_in_class",
-  "gpa",
-  "student_type",
-  "entry_term",
-  "major",
-  // Note: city_state and other combined fields are now filtered out during processing
-  // and should not be included in new school configurations
-];
-
-interface CardField {
-  key: string;
-  label: string;
-  visible: boolean;
-  required: boolean;
-}
+// CardField interface is now imported from SchoolService
 
 interface CardFieldValue {
   enabled: boolean;
@@ -392,44 +364,8 @@ const AdminSettings: React.FC = () => {
       return;
     }
 
-    // Handle both array and object formats for backward compatibility
-    let cardFieldsArray: Array<{
-      key: string;
-      enabled: boolean;
-      required: boolean;
-    }>;
-
-    if (Array.isArray(school.card_fields)) {
-      // New format: array of objects
-      cardFieldsArray = school.card_fields as Array<{
-        key: string;
-        enabled: boolean;
-        required: boolean;
-      }>;
-    } else {
-      // Legacy format: object with string keys
-      const cardFieldsObj = school.card_fields as Record<
-        string,
-        { enabled: boolean; required: boolean }
-      >;
-      cardFieldsArray = Object.entries(cardFieldsObj).map(([key, field]) => ({
-        key,
-        enabled: field.enabled,
-        required: field.required,
-      }));
-    }
-
-    const formattedFields = cardFieldsArray.map((field) => {
-      return {
-        key: field.key,
-        label: field.key
-          .split("_")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" "),
-        visible: field.enabled,
-        required: field.required,
-      };
-    });
+    // Use the SchoolService transformation method
+    const formattedFields = SchoolService.transformCardFieldsForUI(school.card_fields);
     setFields(formattedFields);
     setInitialFields(formattedFields);
     setLoadingFields(false);
@@ -443,25 +379,8 @@ const AdminSettings: React.FC = () => {
         return;
       }
 
-      // Build the card_fields array
-      const cardFields = updatedFields.map((field) => ({
-        key: field.key,
-        enabled: field.visible,
-        required: field.required,
-      }));
-
-      await SchoolService.updateCardFields(
-        school.id,
-        cardFields.map((field) => ({
-          key: field.key,
-          label: field.key
-            .split("_")
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(" "),
-          visible: field.enabled,
-          required: field.required,
-        }))
-      );
+      // Use the new CardField format directly
+      await SchoolService.updateCardFields(school.id, updatedFields);
 
       setFields(updatedFields);
       setInitialFields(updatedFields);
@@ -668,6 +587,7 @@ const AdminSettings: React.FC = () => {
       content = (
         <UserManagementSection
           users={users}
+          setUsers={setUsers}
           loading={loading}
           inviteDialogOpen={inviteDialogOpen}
           setInviteDialogOpen={setInviteDialogOpen}

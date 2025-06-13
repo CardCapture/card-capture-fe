@@ -7,6 +7,9 @@ export interface CardField {
   label: string;
   visible: boolean;
   required: boolean;
+  field_type?: 'text' | 'select' | 'checkbox' | 'email' | 'phone' | 'date';
+  options?: string[];
+  placeholder?: string;
 }
 
 export class SchoolService {
@@ -79,6 +82,10 @@ export class SchoolService {
         key: field.key,
         enabled: field.visible,
         required: field.required,
+        field_type: field.field_type || this.inferFieldType(field.key),
+        label: field.label !== this.generateDefaultLabel(field.key) ? field.label : undefined, // Only store if different from default
+        options: field.options && field.options.length > 0 ? field.options : undefined,
+        placeholder: field.placeholder !== this.generateDefaultPlaceholder(field.key) ? field.placeholder : undefined,
       }));
 
       await schoolsApi.updateCardFields(schoolId, cardFields);
@@ -129,26 +136,88 @@ export class SchoolService {
     if (Array.isArray(cardFields)) {
       return cardFields.map((field) => ({
         key: field.key,
-        label: field.key
-          .split("_")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" "),
+        label: field.label || this.generateDefaultLabel(field.key),
         visible: field.enabled,
         required: field.required,
+        field_type: field.field_type || this.inferFieldType(field.key),
+        options: field.options || [],
+        placeholder: field.placeholder || this.generateDefaultPlaceholder(field.key),
       }));
     } else if (typeof cardFields === "object") {
       return Object.entries(cardFields).map(([key, config]) => ({
         key,
-        label: key
-          .split("_")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" "),
+        label: config.label || this.generateDefaultLabel(key),
         visible: config.enabled,
         required: config.required,
+        field_type: config.field_type || this.inferFieldType(key),
+        options: config.options || [],
+        placeholder: config.placeholder || this.generateDefaultPlaceholder(key),
       }));
     }
 
     return [];
+  }
+
+  /**
+   * Generate a default label for a field key
+   */
+  static generateDefaultLabel(fieldKey: string): string {
+    // Handle special cases with better labels
+    const specialLabels: Record<string, string> = {
+      'cell': 'Phone Number',
+      'date_of_birth': 'Birthday',
+      'permission_to_text': 'Permission to Text',
+      'zip_code': 'Zip Code',
+      'high_school': 'High School/College',
+      'gpa': 'GPA',
+      'class_rank': 'Class Rank',
+      'students_in_class': 'Students in Class',
+      'student_type': 'Student Type',
+      'entry_term': 'Entry Term',
+      'preferred_first_name': 'Preferred Name',
+    };
+
+    return specialLabels[fieldKey] || fieldKey
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  /**
+   * Infer field type based on field key
+   */
+  static inferFieldType(fieldKey: string): 'text' | 'select' | 'checkbox' | 'email' | 'phone' | 'date' {
+    if (fieldKey === 'email') return 'email';
+    if (fieldKey === 'cell') return 'phone';
+    if (fieldKey === 'date_of_birth') return 'date';
+    if (fieldKey === 'permission_to_text') return 'select';
+    if (fieldKey === 'student_type') return 'select';
+    return 'text';
+  }
+
+  /**
+   * Generate a default placeholder for a field key
+   */
+  static generateDefaultPlaceholder(fieldKey: string): string {
+    const placeholders: Record<string, string> = {
+      'name': 'Full Name',
+      'preferred_first_name': 'Preferred Name',
+      'date_of_birth': 'MM/DD/YYYY',
+      'email': 'Email Address',
+      'cell': '(123) 456-7890',
+      'address': '123 Main St',
+      'city': 'City',
+      'state': 'State',
+      'zip_code': 'Zip Code',
+      'high_school': 'High School / College',
+      'class_rank': 'Class Rank',
+      'students_in_class': 'Total Students',
+      'gpa': 'GPA',
+      'student_type': 'Student Type',
+      'entry_term': 'Fall 2025',
+      'major': 'Intended Major',
+    };
+    return placeholders[fieldKey] || this.generateDefaultLabel(fieldKey);
   }
 
   /**

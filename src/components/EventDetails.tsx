@@ -56,6 +56,7 @@ import {
   formatBirthday,
   formatDateOrTimeAgo,
   escapeCsvValue,
+  normalizeFieldValue,
 } from "@/lib/utils";
 import type { ProspectCard } from "@/types/card";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -120,57 +121,6 @@ const Dashboard = () => {
   // Event Name
   const eventName = useEventName(selectedEvent, fetchEvents);
 
-  // Review Field Order (don't modify this)
-  const reviewFieldOrder: string[] = useMemo(
-    () => [
-      "name",
-      "preferred_first_name",
-      "date_of_birth",
-      "email",
-      "cell",
-      "permission_to_text",
-      "address",
-      "city",
-      "state",
-      "zip_code",
-      "high_school",
-      "class_rank",
-      "students_in_class",
-      "gpa",
-      "student_type",
-      "entry_term",
-      "major",
-      "mapped_major",
-    ],
-    []
-  );
-
-  // Field mapping (don't modify this)
-  const dataFieldsMap = useMemo(() => {
-    const map = new Map<string, string>();
-    [
-      { key: "name", label: "Name" },
-      { key: "preferred_first_name", label: "Preferred Name" },
-      { key: "email", label: "Email" },
-      { key: "cell", label: "Phone Number" },
-      { key: "date_of_birth", label: "Birthday" },
-      { key: "address", label: "Address" },
-      { key: "city", label: "City" },
-      { key: "state", label: "State" },
-      { key: "zip_code", label: "Zip Code" },
-      { key: "high_school", label: "High School/College" },
-      { key: "student_type", label: "Student Type" },
-      { key: "entry_term", label: "Entry Term" },
-      { key: "gpa", label: "GPA" },
-      { key: "class_rank", label: "Class Rank" },
-      { key: "students_in_class", label: "Students in Class" },
-      { key: "major", label: "Major" },
-      { key: "permission_to_text", label: "Permission to Text" },
-      { key: "mapped_major", label: "Mapped Major" },
-    ].forEach((field) => map.set(field.key, field.label));
-    return map;
-  }, []);
-
   // --- State Declarations (consolidated here) ---
   // Table state
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -209,6 +159,32 @@ const Dashboard = () => {
 
   // Use shared school hook
   const { school } = useSchool(selectedEvent?.school_id);
+
+  // Extract cardFields from school data first (moved up for dependency)
+  const cardFields = useMemo(() => {
+    if (!school?.card_fields) return [];
+
+    // Use the SchoolService transformation to apply proper field type inference
+    return SchoolService.transformCardFieldsForUI(school.card_fields);
+  }, [school?.card_fields]);
+
+  // Dynamic field order based on school configuration (same logic as review modal)
+  const reviewFieldOrder: string[] = useMemo(() => {
+    return cardFields
+      .filter((field) => field.visible)
+      .map((field) => field.key);
+  }, [cardFields]);
+
+  // Dynamic field mapping using labels from school configuration
+  const dataFieldsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    cardFields.forEach((field) => {
+      // Use label from school config, fallback to generated label if not present
+      const label = (field as any).label || field.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      map.set(field.key, label);
+    });
+    return map;
+  }, [cardFields]);
 
   // --- Refs ---
   const imageUrlRef = useRef<string>("");
@@ -249,28 +225,6 @@ const Dashboard = () => {
     isSaving,
     setIsSaving,
   } = useCardReviewModal(cards, reviewFieldOrder, fetchCards, dataFieldsMap);
-  // Extract cardFields from school data
-  const cardFields = useMemo(() => {
-    if (!school?.card_fields) return [];
-
-    // Handle both array and object formats
-    if (Array.isArray(school.card_fields)) {
-      return school.card_fields;
-    } else if (typeof school.card_fields === "object") {
-      // Convert object format to array format
-      return Object.entries(school.card_fields).map(([key, config]) => ({
-        key,
-        enabled:
-          (config as { enabled?: boolean; required?: boolean })?.enabled ||
-          false,
-        required:
-          (config as { enabled?: boolean; required?: boolean })?.required ||
-          false,
-      }));
-    }
-
-    return [];
-  }, [school?.card_fields]);
 
   const {
     isManualEntryModalOpen,
@@ -698,10 +652,28 @@ const Dashboard = () => {
           const isReviewed = fieldData?.reviewed === true;
           const reviewNotes = fieldData?.review_notes;
           const showIcon = needsReview;
-          let formattedValue = value ?? "";
-          if (fieldKey === "cell") formattedValue = formatPhoneNumber(value);
+          
+          // Ensure value is always a string - handle objects gracefully
+          let stringValue = "";
+          if (typeof value === "string") {
+            stringValue = value;
+          } else if (typeof value === "object" && value !== null) {
+            // If it's an object, try to extract a meaningful string
+            if (value.formatted_address) {
+              stringValue = value.formatted_address;
+            } else if (value.city && value.state) {
+              stringValue = `${value.city}, ${value.state}`;
+            } else {
+              stringValue = JSON.stringify(value);
+            }
+          } else {
+            stringValue = String(value ?? "");
+          }
+          
+          let formattedValue = normalizeFieldValue(stringValue, fieldKey);
+          if (fieldKey === "cell") formattedValue = formatPhoneNumber(formattedValue);
           if (fieldKey === "date_of_birth")
-            formattedValue = formatBirthday(value);
+            formattedValue = formatBirthday(formattedValue);
           const tooltipContent =
             reviewNotes || (needsReview ? "Needs human review" : null);
           return (
@@ -760,10 +732,10 @@ const Dashboard = () => {
   const fieldsToShow = useMemo(() => {
     if (!selectedCardForReview) return [];
     
-    // Only show fields that are explicitly enabled in the school's configuration
+    // Only show fields that are explicitly visible in the school's configuration
     // This prevents fields from one tenant's cards from appearing in another tenant's review modal
     return cardFields
-      .filter((f) => f.enabled)
+      .filter((f) => f.visible)
       .map((f) => f.key);
   }, [selectedCardForReview, cardFields]);
 
@@ -863,20 +835,16 @@ const Dashboard = () => {
     const transformedPrefs: Record<string, boolean> = {};
 
     if (Array.isArray(school.card_fields)) {
-      // Handle array format
-      school.card_fields.forEach((field) => {
-        if (typeof field === "object" && "key" in field && "enabled" in field) {
-          transformedPrefs[field.key] = field.enabled;
-        }
+      // Handle array format - use transformCardFieldsForUI to get proper CardField format
+      const transformedFields = SchoolService.transformCardFieldsForUI(school.card_fields);
+      transformedFields.forEach((field) => {
+        transformedPrefs[field.key] = field.visible;
       });
     } else if (typeof school.card_fields === "object") {
-      // Handle object format
-      Object.entries(school.card_fields).forEach(([key, config]) => {
-        if (typeof config === "object" && config && "enabled" in config) {
-          transformedPrefs[key] = (config as { enabled: boolean }).enabled;
-        } else if (typeof config === "boolean") {
-          transformedPrefs[key] = config;
-        }
+      // Handle object format - use transformCardFieldsForUI to get proper CardField format
+      const transformedFields = SchoolService.transformCardFieldsForUI(school.card_fields);
+      transformedFields.forEach((field) => {
+        transformedPrefs[field.key] = field.visible;
       });
     }
 
@@ -1195,6 +1163,7 @@ const Dashboard = () => {
                   majorsList={majorsList}
                   loadingMajors={loadingMajors}
                   onCardUpdated={fetchCards}
+                  cardFields={cardFields}
                 />
               </div>
             </div>

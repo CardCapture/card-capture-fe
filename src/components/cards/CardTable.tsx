@@ -45,7 +45,8 @@ import { downloadCSV } from "@/utils/csvExport";
 import { useCardTableActions } from "@/hooks/useCardTableActions";
 import { useLoader, TableLoader } from "@/contexts/LoaderContext";
 import { CardService } from "@/services/CardService";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { IntegrationsService } from "@/services/IntegrationsService";
 
 // Add any additional imports as needed
 
@@ -100,6 +101,31 @@ const CardTable = ({
 
   // Add retry functionality for AI failed cards
   const [isRetrying, setIsRetrying] = useState(false);
+  
+  // Check if school has Slate integration enabled
+  const [hasSlateIntegration, setHasSlateIntegration] = useState(false);
+  
+  // Check for SFTP/Slate integration on component mount
+  useEffect(() => {
+    const checkSlateIntegration = async () => {
+      if (!selectedEvent?.school_id) {
+        setHasSlateIntegration(false);
+        return;
+      }
+      
+      try {
+        const sftpConfig = await IntegrationsService.getSftpConfig(selectedEvent.school_id);
+        // Consider Slate configured if host and username are provided
+        const isConfigured = sftpConfig && sftpConfig.host && sftpConfig.username;
+        setHasSlateIntegration(!!isConfigured);
+      } catch (error) {
+        console.log("No SFTP configuration found for school");
+        setHasSlateIntegration(false);
+      }
+    };
+    
+    checkSlateIntegration();
+  }, [selectedEvent?.school_id]);
 
   // Handle bulk AI retry
   const handleBulkRetryAI = async () => {
@@ -174,7 +200,10 @@ const CardTable = ({
     downloadCSV(
       bulkSelection.selectedCards,
       `cards-export-${new Date().toISOString().split("T")[0]}.csv`,
-      eventName
+      eventName,
+      reviewFieldOrder, // Pass the dynamic field order
+      dataFieldsMap, // Pass the field labels mapping
+      selectedEvent?.slate_event_id // Pass the Slate Event ID
     );
 
     // Mark as exported via API
@@ -363,34 +392,52 @@ const CardTable = ({
                   </>
                 ) : (
                   <>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={bulkActions.isLoading}
-                          className="text-gray-700 hover:text-gray-900 gap-1.5 flex-1 sm:flex-none min-h-[40px]"
-                        >
-                          {bulkActions.isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Download className="h-4 w-4" />
-                          )}
-                          Export
-                          <ChevronDown className="h-3 w-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <DropdownMenuItem onSelect={handleExportClick}>
-                          <Download className="w-4 h-4 mr-2" />
-                          <span>Export to CSV</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={handleExportToSlateClick}>
-                          <Upload className="w-4 h-4 mr-2" />
-                          <span>Export to Slate</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* Export button logic: single button if only CSV, dropdown if both */}
+                    {hasSlateIntegration ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={bulkActions.isLoading}
+                            className="text-gray-700 hover:text-gray-900 gap-1.5 flex-1 sm:flex-none min-h-[40px]"
+                          >
+                            {bulkActions.isLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Download className="h-4 w-4" />
+                            )}
+                            Export
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem onSelect={handleExportClick}>
+                            <Download className="w-4 h-4 mr-2" />
+                            <span>Export to CSV</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={handleExportToSlateClick}>
+                            <Upload className="w-4 h-4 mr-2" />
+                            <span>Export to Slate</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleExportClick}
+                        disabled={bulkActions.isLoading}
+                        className="text-gray-700 hover:text-gray-900 gap-1.5 flex-1 sm:flex-none min-h-[40px]"
+                      >
+                        {bulkActions.isLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                        Export
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

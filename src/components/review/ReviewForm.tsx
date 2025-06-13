@@ -9,8 +9,10 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { PhoneNumberInput } from "@/components/ui/phone-number-input";
+import { DateInput } from "@/components/ui/date-input";
+
 import { CheckCircle } from "lucide-react";
-import { formatPhoneNumber, formatBirthday } from "@/lib/utils";
+import { formatPhoneNumber, formatBirthday, normalizeFieldValue } from "@/lib/utils";
 import type { ProspectCard, FieldData } from "@/types/card";
 import {
   Select,
@@ -23,6 +25,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { AIFailureBanner } from "@/components/cards/AIFailureBanner";
 import { CardService } from "@/services/CardService";
 import { useAIRetry } from "@/hooks/useAIRetry";
+import { SchoolService, type CardField } from "@/services/SchoolService";
 
 const FIELD_LABELS: Record<string, string> = {
   name: "Name",
@@ -43,8 +46,7 @@ const FIELD_LABELS: Record<string, string> = {
   entry_term: "Entry Term",
   major: "Major",
   city_state: "City, State",
-  gender: "Gender",
-  // Add more as needed
+  // Add more as needed - only for fields commonly detected by DocAI
 };
 
 interface ReviewFormProps {
@@ -58,6 +60,7 @@ interface ReviewFormProps {
   majorsList?: string[];
   loadingMajors?: boolean;
   onCardUpdated?: () => void;
+  cardFields?: CardField[]; // Add cardFields prop for field types
 }
 
 const ReviewForm: React.FC<ReviewFormProps> = ({
@@ -68,12 +71,183 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   handleFieldReview,
   selectedTab,
   dataFieldsMap,
-  majorsList,
-  loadingMajors,
+  majorsList = [],
+  loadingMajors = false,
   onCardUpdated,
+  cardFields = [],
 }) => {
-  // AI retry functionality
   const { retryCard, isRetrying } = useAIRetry(onCardUpdated);
+
+  // Get field configuration for field types and options
+  const getFieldConfig = (fieldKey: string): CardField | undefined => {
+    return cardFields.find(field => field.key === fieldKey);
+  };
+
+  // Helper to get field label with custom label support
+  const getFieldLabel = (fieldKey: string): string => {
+    const fieldConfig = getFieldConfig(fieldKey);
+    if (fieldConfig?.label) {
+      return fieldConfig.label;
+    }
+    
+    return fieldKey
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  // Render field input based on field type
+  const renderFieldInput = (fieldKey: string, actualFieldKey: string, isReviewed: boolean, needsReview: boolean) => {
+    const fieldConfig = getFieldConfig(actualFieldKey);
+    const rawFieldValue = formData[actualFieldKey] || "";
+    const fieldValue = normalizeFieldValue(rawFieldValue, actualFieldKey);
+
+    // Build conditional styling for reviewed/needs review states
+    const getInputClassName = (baseClasses: string = "") => {
+      return `${baseClasses} ${
+        isReviewed && selectedTab === "needs_human_review"
+          ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
+          : needsReview
+          ? "border-red-300 focus-visible:ring-red-400"
+          : ""
+      }`;
+    };
+
+    // Force entry_term and entry_year to always be text inputs
+    if (actualFieldKey === "entry_term" || actualFieldKey === "entry_year") {
+      return (
+        <Input
+          type="text"
+          value={fieldValue}
+          onChange={(e) => handleFormChange(actualFieldKey, normalizeFieldValue(e.target.value, actualFieldKey))}
+          placeholder={getFieldLabel(fieldKey)}
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
+        />
+      );
+    }
+
+    // Handle select fields (dropdowns) with options
+    if (fieldConfig?.field_type === 'select' && fieldConfig.options && fieldConfig.options.length > 0) {
+      return (
+        <Select
+          value={fieldValue}
+          onValueChange={(value) => handleFormChange(actualFieldKey, value)}
+        >
+          <SelectTrigger className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}>
+            <SelectValue placeholder={`Select ${getFieldLabel(fieldKey)}`} />
+          </SelectTrigger>
+          <SelectContent>
+            {fieldConfig.options.map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    // Handle special cases for backward compatibility
+    if (actualFieldKey === "permission_to_text") {
+      const options = fieldConfig?.options || ["Yes", "No"];
+      return (
+        <Select
+          value={fieldValue}
+          onValueChange={(value) => handleFormChange(actualFieldKey, value)}
+        >
+          <SelectTrigger className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}>
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    // Handle mapped_major field with type-ahead search if majors are available  
+    if (actualFieldKey === "mapped_major" && majorsList.length > 0) {
+      return (
+        <Combobox
+          options={majorsList}
+          value={fieldValue}
+          onValueChange={(value) => handleFormChange(actualFieldKey, value)}
+          placeholder="Search for a major..."
+          searchPlaceholder="Type to search majors..."
+          emptyMessage="No majors found."
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
+        />
+      );
+    }
+
+    // Keep major field as text input to preserve original card text
+    if (actualFieldKey === "major") {
+      return (
+        <Input
+          type="text"
+          value={fieldValue}
+          onChange={(e) => handleFormChange(actualFieldKey, normalizeFieldValue(e.target.value, actualFieldKey))}
+          placeholder="Major from card"
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
+        />
+      );
+    }
+
+    // Handle phone fields
+    if (fieldConfig?.field_type === 'phone' || actualFieldKey === "cell") {
+      let formattedValue = fieldValue;
+      if (actualFieldKey === "cell") {
+        formattedValue = formatPhoneNumber(fieldValue);
+      }
+      return (
+        <PhoneNumberInput
+          value={formattedValue}
+          onChange={(value) => handleFormChange(actualFieldKey, value)}
+          placeholder="(123) 456-7890"
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
+        />
+      );
+    }
+
+    // Handle email fields
+    if (fieldConfig?.field_type === 'email' || actualFieldKey === "email") {
+      return (
+        <Input
+          type="email"
+          value={fieldValue}
+          onChange={(e) => handleFormChange(actualFieldKey, normalizeFieldValue(e.target.value, actualFieldKey))}
+          placeholder="Email address"
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
+        />
+      );
+    }
+
+    // Handle date fields
+    if (fieldConfig?.field_type === 'date' || actualFieldKey === "date_of_birth") {
+      return (
+        <DateInput
+          value={fieldValue}
+          onChange={(value) => handleFormChange(actualFieldKey, value)}
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
+        />
+      );
+    }
+
+    // Default text input
+    return (
+      <Input
+        type="text"
+        value={fieldValue}
+        onChange={(e) => handleFormChange(actualFieldKey, normalizeFieldValue(e.target.value, actualFieldKey))}
+        placeholder={fieldConfig?.placeholder || getFieldLabel(fieldKey)}
+        className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
+      />
+    );
+  };
 
   // Check if the card has AI processing failure
   const hasAIFailure = selectedCardForReview ? CardService.isAIFailed(selectedCardForReview) : false;
@@ -87,50 +261,12 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
 
   // Dynamically map fieldsToShow keys to actual formData keys
   const getFormDataKey = (fieldKey: string): string => {
-    // First try exact match
+    // Check for exact match in formData or card fields
     if (fieldKey in formData || selectedCardForReview?.fields?.[fieldKey]) {
       return fieldKey;
     }
 
-    // Get available keys from both formData and card fields
-    const availableKeys = [
-      ...Object.keys(formData),
-      ...Object.keys(selectedCardForReview?.fields || {}),
-    ];
-    const uniqueKeys = [...new Set(availableKeys)];
-
-    // Try common semantic mappings
-    const semanticMappings: Record<string, string[]> = {
-      birthdate: ["date_of_birth", "birth_date", "dob"],
-      cell_phone: ["cell", "phone", "mobile", "cell_phone_number"],
-      city_state_zip: ["city", "state", "zip_code"], // composite field - will use first match
-      entry_year: ["entry_term", "entry_year"],
-    };
-
-    // Check semantic mappings
-    const possibleMappings = semanticMappings[fieldKey];
-    if (possibleMappings) {
-      for (const mapping of possibleMappings) {
-        if (uniqueKeys.includes(mapping)) {
-          return mapping;
-        }
-      }
-    }
-
-    // Try partial string matching (fuzzy matching)
-    const fuzzyMatch = uniqueKeys.find(
-      (key) =>
-        key.includes(fieldKey.toLowerCase()) ||
-        fieldKey.toLowerCase().includes(key) ||
-        key.replace(/_/g, "").toLowerCase() ===
-          fieldKey.replace(/_/g, "").toLowerCase()
-    );
-
-    if (fuzzyMatch) {
-      return fuzzyMatch;
-    }
-
-    // Return original if no mapping found
+    // Return original if no match found
     return fieldKey;
   };
 
@@ -147,6 +283,8 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         </div>
       )}
       
+
+      
       <div className="space-y-3 sm:space-y-4">
         {selectedCardForReview ? (
           <>
@@ -154,19 +292,11 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
               const actualFieldKey = getFormDataKey(fieldKey);
               const fieldData: FieldData | undefined =
                 selectedCardForReview.fields?.[actualFieldKey];
-              const label = fieldKey
-                .split("_")
-                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(" ");
+              const label = getFieldLabel(fieldKey);
               const needsReview = !!fieldData?.requires_human_review;
               const isReviewed = !!fieldData?.reviewed;
               const reviewNotes = fieldData?.review_notes || undefined;
               const showIcon = needsReview;
-              let formattedValue = fieldData?.value ?? "";
-              if (actualFieldKey === "cell")
-                formattedValue = formatPhoneNumber(fieldData?.value ?? "");
-              if (actualFieldKey === "date_of_birth")
-                formattedValue = formatBirthday(fieldData?.value ?? "");
               const tooltipContent =
                 typeof reviewNotes === "string" && reviewNotes.length > 0
                   ? reviewNotes
@@ -199,50 +329,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                     {label}:
                   </Label>
                   <div className="sm:col-span-3 flex items-center gap-2">
-                    {actualFieldKey === "cell" ? (
-                      <PhoneNumberInput
-                        id={fieldKey}
-                        name={fieldKey}
-                        value={formData[actualFieldKey] ?? ""}
-                        onChange={(value) =>
-                          handleFormChange(actualFieldKey, value)
-                        }
-                        className={`h-10 sm:h-8 text-sm flex-1 ${
-                          isReviewed && selectedTab === "needs_human_review"
-                            ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
-                            : showIcon
-                            ? "border-red-300 focus-visible:ring-red-400"
-                            : ""
-                        }`}
-                      />
-                    ) : fieldKey === "mapped_major" &&
-                      Array.isArray(majorsList) &&
-                      majorsList.length > 0 ? (
-                      <Combobox
-                        options={majorsList}
-                        value={formData[actualFieldKey] ?? ""}
-                        onChange={(value) =>
-                          handleFormChange(actualFieldKey, value)
-                        }
-                        placeholder="Select Mapped Major"
-                      />
-                    ) : (
-                      <Input
-                        id={fieldKey}
-                        name={fieldKey}
-                        value={formData[actualFieldKey] ?? ""}
-                        onChange={(e) =>
-                          handleFormChange(actualFieldKey, e.target.value)
-                        }
-                        className={`h-10 sm:h-8 text-sm flex-1 ${
-                          isReviewed && selectedTab === "needs_human_review"
-                            ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
-                            : showIcon
-                            ? "border-red-300 focus-visible:ring-red-400"
-                            : ""
-                        }`}
-                      />
-                    )}
+                    {renderFieldInput(fieldKey, actualFieldKey, isReviewed, needsReview)}
                     {showIcon && (
                       <TooltipProvider delayDuration={100}>
                         <Tooltip>
