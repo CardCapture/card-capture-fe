@@ -7,6 +7,7 @@ export interface Event {
   created_at: string;
   updated_at: string;
   school_id: string;
+  slate_event_id?: string | null;
 }
 
 export type EventWithStats = Event & {

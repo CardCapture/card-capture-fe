@@ -9,7 +9,7 @@ export function useCardTableActions(
     description: string;
     variant?: "default" | "destructive";
   }) => void,
-  selectedEvent: { name: string; id: string; school_id: string } | null,
+  selectedEvent: { name: string; id: string; school_id: string; slate_event_id?: string | null } | null,
   dataFieldsMap: Map<string, string>
 ) {
   const handleArchiveSelected = useCallback(async (idsToArchive: string[]) => {
@@ -129,6 +129,7 @@ export function useCardTableActions(
       const exportData = selectedCards.map((card) => ({
         id: card.document_id, // Use document_id for the backend
         event_name: selectedEvent.name,
+        slate_event_id: selectedEvent.slate_event_id,
         fields: card.fields
       }));
 
@@ -279,7 +280,48 @@ export function useCardTableActions(
         const selectedCards = filteredCards.filter((card) => selectedIds.includes(card.id));
         console.log('selectedCards found:', selectedCards.length);
         
-        const headers = ["Event", ...Array.from(dataFieldsMap.values())];
+        // Helper function to split names
+        const splitName = (fullName: string): { firstName: string; lastName: string } => {
+          if (!fullName || typeof fullName !== 'string') {
+            return { firstName: '', lastName: '' };
+          }
+
+          const trimmedName = fullName.trim();
+          if (!trimmedName) {
+            return { firstName: '', lastName: '' };
+          }
+
+          const nameParts = trimmedName.split(/\s+/).filter(part => part.length > 0);
+          
+          if (nameParts.length === 0) {
+            return { firstName: '', lastName: '' };
+          } else if (nameParts.length === 1) {
+            return { firstName: nameParts[0], lastName: '' };
+          } else if (nameParts.length === 2) {
+            return { firstName: nameParts[0], lastName: nameParts[1] };
+          } else {
+            return { 
+              firstName: nameParts[0], 
+              lastName: nameParts.slice(1).join(' ') 
+            };
+          }
+        };
+
+        // Create modified field keys and headers that replace 'name' with 'first_name' and 'last_name'
+        const modifiedFieldKeys: string[] = [];
+        const modifiedHeaders: string[] = ["Event", "Slate Event ID"];
+        
+        Array.from(dataFieldsMap.keys()).forEach(key => {
+          if (key === 'name') {
+            modifiedFieldKeys.push('first_name', 'last_name');
+            modifiedHeaders.push('First Name', 'Last Name');
+          } else {
+            modifiedFieldKeys.push(key);
+            modifiedHeaders.push(dataFieldsMap.get(key) || key);
+          }
+        });
+
+        const headers = modifiedHeaders;
         const csvContent = [
           headers.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","),
           ...selectedCards.map((card) => {
@@ -290,10 +332,19 @@ export function useCardTableActions(
             >;
             return [
               `"${eventName.replace(/"/g, '""')}"`,
-              ...Array.from(dataFieldsMap.keys()).map(
-                (key) =>
-                  `"${String(fields?.[key]?.value ?? "").replace(/"/g, '""')}"`
-              ),
+              `"${(selectedEvent?.slate_event_id || "").replace(/"/g, '""')}"`,
+              ...modifiedFieldKeys.map((key) => {
+                let value = "";
+                if (key === 'first_name' || key === 'last_name') {
+                  // Handle name splitting
+                  const fullName = String(fields?.['name']?.value ?? "");
+                  const { firstName, lastName } = splitName(fullName);
+                  value = key === 'first_name' ? firstName : lastName;
+                } else {
+                  value = String(fields?.[key]?.value ?? "");
+                }
+                return `"${value.replace(/"/g, '""')}"`;
+              }),
             ].join(",");
           }),
         ].join("\n");

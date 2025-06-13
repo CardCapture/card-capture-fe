@@ -12,7 +12,10 @@ export const backendEventsApi = {
     name: string;
     date: string;
     school_id: string;
+    slate_event_id?: string | null;
   }): Promise<Event> {
+    console.log("Backend API DEBUG - Sending to backend:", eventData);
+    
     const response = await authFetch(`${API_BASE_URL}/events`, {
       method: "POST",
       headers: {
@@ -21,11 +24,17 @@ export const backendEventsApi = {
       body: JSON.stringify(eventData),
     });
 
+    console.log("Backend API DEBUG - Response status:", response.status);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Backend API DEBUG - Error response:", errorText);
       throw new Error(`Failed to create event (${response.status})`);
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log("Backend API DEBUG - Success response:", result);
+    return result;
   },
 
   /**

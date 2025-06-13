@@ -202,7 +202,8 @@ const CardTable = ({
       `cards-export-${new Date().toISOString().split("T")[0]}.csv`,
       eventName,
       reviewFieldOrder, // Pass the dynamic field order
-      dataFieldsMap // Pass the field labels mapping
+      dataFieldsMap, // Pass the field labels mapping
+      selectedEvent?.slate_event_id // Pass the Slate Event ID
     );
 
     // Mark as exported via API

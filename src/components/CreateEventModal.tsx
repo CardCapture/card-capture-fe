@@ -38,6 +38,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 }) => {
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [slateEventId, setSlateEventId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const { user } = useAuth();
 
@@ -55,6 +56,15 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const handleEventDateChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setEventDate(e.target.value);
+    },
+    []
+  );
+
+  const handleSlateEventIdChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      console.log("Slate Event ID input changed:", e.target.value);
+      setSlateEventId(e.target.value);
+      console.log("Slate Event ID state will be set to:", e.target.value);
     },
     []
   );
@@ -78,17 +88,26 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
       }
       setIsCreating(true);
       try {
-        await EventService.createEvent({
+        const eventData = {
           name: eventName,
           date: eventDate,
           school_id: schoolId,
-        });
+          slate_event_id: slateEventId.trim() || null,
+        };
+        
+        console.log("CREATE EVENT DEBUG - Frontend sending data:", eventData);
+        console.log("CREATE EVENT DEBUG - slateEventId state:", slateEventId);
+        console.log("CREATE EVENT DEBUG - slateEventId.trim():", slateEventId.trim());
+        console.log("CREATE EVENT DEBUG - slateEventId.trim() || null:", slateEventId.trim() || null);
+        
+        await EventService.createEvent(eventData);
 
         toast.created("Event");
         onEventCreated();
         onClose();
         setEventName("");
         setEventDate("");
+        setSlateEventId("");
       } catch (error) {
         console.error("Error creating event:", error);
         toast.error(
@@ -99,7 +118,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         setIsCreating(false);
       }
     },
-    [eventName, eventDate, schoolId, onEventCreated, onClose]
+    [eventName, eventDate, slateEventId, schoolId, onEventCreated, onClose]
   );
 
   return (
@@ -127,6 +146,16 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 type="date"
                 value={eventDate}
                 onChange={handleEventDateChange}
+                disabled={isCreating}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="slate-event-id">Slate Event ID (Optional)</Label>
+              <Input
+                id="slate-event-id"
+                placeholder="Enter Slate Event ID"
+                value={slateEventId}
+                onChange={handleSlateEventIdChange}
                 disabled={isCreating}
               />
             </div>

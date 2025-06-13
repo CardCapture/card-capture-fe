@@ -169,24 +169,18 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       );
     }
 
-    // Handle mapped_major field with select if majors are available  
+    // Handle mapped_major field with type-ahead search if majors are available  
     if (actualFieldKey === "mapped_major" && majorsList.length > 0) {
       return (
-        <Select
+        <Combobox
+          options={majorsList}
           value={fieldValue}
           onValueChange={(value) => handleFormChange(actualFieldKey, value)}
-        >
-          <SelectTrigger className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}>
-            <SelectValue placeholder="Select a major..." />
-          </SelectTrigger>
-          <SelectContent>
-            {majorsList.map((major) => (
-              <SelectItem key={major} value={major}>
-                {major}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Search for a major..."
+          searchPlaceholder="Type to search majors..."
+          emptyMessage="No majors found."
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
+        />
       );
     }
 
