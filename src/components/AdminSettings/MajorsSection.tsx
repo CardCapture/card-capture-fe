@@ -29,15 +29,13 @@ interface MajorsSectionProps {
   setSearch: (search: string) => void;
   showImport: boolean;
   setShowImport: (show: boolean) => void;
-  isDirty: boolean;
-  setIsDirty: (dirty: boolean) => void;
   editIndex: number | null;
   setEditIndex: (index: number | null) => void;
   editValue: string;
   setEditValue: (value: string) => void;
   addMajorsInput: string;
   setAddMajorsInput: (input: string) => void;
-  saveMajors: () => Promise<void>;
+  saveMajors: (majorsOverride?: string[]) => Promise<void>;
   loadingMajors: boolean;
 }
 
@@ -49,8 +47,6 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
   setSearch,
   showImport,
   setShowImport,
-  isDirty,
-  setIsDirty,
   editIndex,
   setEditIndex,
   editValue,
@@ -100,7 +96,7 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
   }, []);
 
   // Bulk actions
-  const handleBulkDelete = useCallback(() => {
+  const handleBulkDelete = useCallback(async () => {
     const selectedMajorsSet = new Set();
     selectedIndices.forEach(idx => {
       if (idx < filteredMajors.length) {
@@ -110,19 +106,36 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
     
     const newMajors = editedMajors.filter(major => !selectedMajorsSet.has(major));
     setEditedMajors(newMajors);
-    setIsDirty(true);
     clearSelection();
-    toast.success(`${selectedIndices.size} major${selectedIndices.size > 1 ? "s" : ""} deleted`);
-  }, [selectedIndices, filteredMajors, editedMajors, setEditedMajors, setIsDirty, clearSelection]);
+    
+    // Auto-save the changes immediately
+    try {
+      await saveMajors(newMajors);
+      toast.success(`${selectedIndices.size} major${selectedIndices.size > 1 ? "s" : ""} deleted and saved`);
+    } catch (error) {
+      // If save fails, revert the local state
+      setEditedMajors(editedMajors);
+      toast.error("Failed to save changes");
+    }
+  }, [selectedIndices, filteredMajors, editedMajors, setEditedMajors, clearSelection, saveMajors]);
 
   // Individual row callbacks
   const handleEditMajor = useCallback(
-    (idx: number) => {
+    async (idx: number) => {
       if (editValue.trim() && editValue !== editedMajors[idx]) {
         const newMajors = [...editedMajors];
         newMajors[idx] = editValue.trim();
         setEditedMajors(newMajors);
-        setIsDirty(true);
+        
+        // Auto-save the changes immediately
+        try {
+          await saveMajors(newMajors);
+          toast.success("Major updated and saved");
+        } catch (error) {
+          // If save fails, revert the local state
+          setEditedMajors(editedMajors);
+          toast.error("Failed to save changes");
+        }
       }
       setEditIndex(null);
       setEditValue("");
@@ -131,19 +144,28 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
       editValue,
       editedMajors,
       setEditedMajors,
-      setIsDirty,
       setEditIndex,
       setEditValue,
+      saveMajors,
     ]
   );
 
   const handleDeleteMajor = useCallback(
-    (idx: number) => {
+    async (idx: number) => {
       const newMajors = editedMajors.filter((_, i) => i !== idx);
       setEditedMajors(newMajors);
-      setIsDirty(true);
+      
+      // Auto-save the changes immediately
+      try {
+        await saveMajors(newMajors);
+        toast.success("Major deleted and saved");
+      } catch (error) {
+        // If save fails, revert the local state
+        setEditedMajors(editedMajors);
+        toast.error("Failed to save changes");
+      }
     },
-    [editedMajors, setEditedMajors, setIsDirty]
+    [editedMajors, setEditedMajors, saveMajors]
   );
 
   const handleShowImport = useCallback(() => {
@@ -151,7 +173,7 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
     setAddMajorsInput("");
   }, [setShowImport, setAddMajorsInput]);
 
-  const handleAddMajors = useCallback(() => {
+  const handleAddMajors = useCallback(async () => {
     // Parse and add new majors
     const newMajors = addMajorsInput
       .split("\n")
@@ -161,10 +183,19 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
     if (newMajors.length > 0) {
       const updatedMajors = [...newMajors, ...editedMajors];
       setEditedMajors(updatedMajors);
-      setIsDirty(true);
-      toast.success(
-        `${newMajors.length} major${newMajors.length > 1 ? "s" : ""} added`
-      );
+      
+      // Auto-save the majors immediately
+      try {
+        await saveMajors(updatedMajors);
+        toast.success(
+          `${newMajors.length} major${newMajors.length > 1 ? "s" : ""} added and saved`
+        );
+      } catch (error) {
+        // If save fails, revert the local state
+        setEditedMajors(editedMajors);
+        toast.error("Failed to save majors");
+        return;
+      }
     }
     setShowImport(false);
     setAddMajorsInput("");
@@ -172,9 +203,9 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
     addMajorsInput,
     editedMajors,
     setEditedMajors,
-    setIsDirty,
     setShowImport,
     setAddMajorsInput,
+    saveMajors,
   ]);
 
   const handleCancelImport = useCallback(() => {
@@ -330,7 +361,7 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
                 {filteredMajors.map((major, idx) => (
                   <TableRow
                     key={idx}
-                    className={`hover:bg-gray-50 ${
+                    className={`group hover:bg-gray-50 ${
                       isSelected(idx) ? "bg-blue-50" : ""
                     }`}
                   >
@@ -371,19 +402,31 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
                           className="border border-blue-200 bg-blue-50 px-2 py-1 text-base font-normal focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md"
                         />
                       ) : (
-                        <span 
-                          className="text-base font-normal cursor-pointer hover:bg-gray-50 px-2 py-1 rounded-md block transition-colors"
-                          onDoubleClick={() => {
-                            setEditIndex(idx);
-                            setEditValue(major);
-                          }}
-                          title="Double-click to edit"
-                        >
-                          {major}
-                        </span>
+                        <div className="flex items-center">
+                          <span 
+                            className="text-base font-normal cursor-pointer hover:bg-gray-50 px-2 py-1 rounded-md transition-colors"
+                            onDoubleClick={() => {
+                              setEditIndex(idx);
+                              setEditValue(major);
+                            }}
+                            title="Double-click to edit"
+                          >
+                            {major}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMajor(idx);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-all ml-2"
+                            title="Delete major"
+                            type="button"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </TableCell>
-
                   </TableRow>
                 ))}
                                  {filteredMajors.length === 0 && (
@@ -397,18 +440,7 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
             </Table>
           </div>
           
-          {/* Sticky Save Button */}
-          {isDirty && (
-            <div className="sticky bottom-0 left-0 w-full flex justify-end pt-4 bg-gradient-to-t from-white via-white/80 to-transparent z-10">
-              <Button
-                onClick={() => saveMajors()}
-                className="shadow-md"
-                variant="default"
-              >
-                Save Changes
-              </Button>
-            </div>
-          )}
+
         </CardContent>
       </Card>
     </div>

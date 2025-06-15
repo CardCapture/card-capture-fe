@@ -197,7 +197,6 @@ const AdminSettings: React.FC = () => {
   const [editedMajors, setEditedMajors] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [showImport, setShowImport] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
   const [initialMajors, setInitialMajors] = useState<string>("");
   const [loadingMajors, setLoadingMajors] = useState(true);
   const [editIndex, setEditIndex] = useState<number | null>(null);
@@ -413,7 +412,10 @@ const AdminSettings: React.FC = () => {
 
   // Save majors (from editedMajors or textarea)
   const saveMajors = async (majorsOverride?: string[]) => {
-    if (!session?.user?.id || !schoolId) return;
+    if (!session?.user?.id || !schoolId) {
+      return;
+    }
+    
     try {
       // Helper function to clean majors array
       const cleanMajors = (majorsList: string[]): string[] =>
@@ -421,10 +423,12 @@ const AdminSettings: React.FC = () => {
 
       // Determine source of majors based on current flow
       let rawMajors: string[];
-      if (showImport) {
-        rawMajors = majors.split("\n");
-      } else if (majorsOverride) {
+      if (majorsOverride) {
+        // Always prioritize majorsOverride when provided (for auto-save operations)
         rawMajors = majorsOverride;
+      } else if (showImport) {
+        // Only use textarea content when explicitly importing and no override provided
+        rawMajors = majors.split("\n");
       } else if (majorsList.length === 0) {
         // Initial state: use textarea content
         rawMajors = majors.split("\n");
@@ -436,12 +440,8 @@ const AdminSettings: React.FC = () => {
 
       await SchoolService.updateMajors(schoolId, majorsToSave);
 
-      // Update all related state
-      setMajorsList(majorsToSave);
-      setEditedMajors(majorsToSave);
-      setMajors(majorsToSave.join("\n"));
-      setInitialMajors(majorsToSave.join("\n"));
-      setIsDirty(false);
+      // Reload majors from database to ensure UI reflects actual saved data
+      await loadMajors();
       setShowImport(false);
       toast.success("Majors updated successfully");
     } catch (error) {
@@ -451,24 +451,40 @@ const AdminSettings: React.FC = () => {
   };
 
   // Edit major handler
-  const handleEditMajor = (idx: number) => {
+  const handleEditMajor = async (idx: number) => {
     if (editValue.trim() && !editedMajors.includes(editValue.trim())) {
       const newMajors = [...editedMajors];
       newMajors[idx] = editValue.trim();
       setEditedMajors(newMajors);
       setEditIndex(null);
       setEditValue("");
-      setIsDirty(true);
-      saveMajors(newMajors);
-      toast.success("Major updated successfully");
+      
+      // Auto-save immediately
+      try {
+        await saveMajors(newMajors);
+        toast.success("Major updated and saved");
+      } catch (error) {
+        // If save fails, revert the local state
+        setEditedMajors(editedMajors);
+        toast.error("Failed to save major");
+      }
     }
   };
 
   // Delete major handler
-  const handleDeleteMajor = (idx: number) => {
-    setEditedMajors(editedMajors.filter((_, i) => i !== idx));
-    setIsDirty(true);
-    toast.success("Major deleted");
+  const handleDeleteMajor = async (idx: number) => {
+    const newMajors = editedMajors.filter((_, i) => i !== idx);
+    setEditedMajors(newMajors);
+    
+    // Auto-save immediately
+    try {
+      await saveMajors(newMajors);
+      toast.success("Major deleted and saved");
+    } catch (error) {
+      // If save fails, revert the local state
+      setEditedMajors(editedMajors);
+      toast.error("Failed to save changes");
+    }
   };
 
   // Dynamic heading and content based on active menu
@@ -569,8 +585,6 @@ const AdminSettings: React.FC = () => {
           setSearch={setSearch}
           showImport={showImport}
           setShowImport={setShowImport}
-          isDirty={isDirty}
-          setIsDirty={setIsDirty}
           editIndex={editIndex}
           setEditIndex={setEditIndex}
           editValue={editValue}

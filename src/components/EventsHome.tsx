@@ -52,6 +52,7 @@ import {
   Plus,
   UserPlus,
   CheckCircle,
+  ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -570,6 +571,16 @@ const DashboardCopy = () => {
         ),
         enableSorting: true,
       },
+      {
+        id: "chevron",
+        header: "",
+        cell: () => (
+          <div className="flex justify-end">
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+          </div>
+        ),
+        enableSorting: false,
+      },
     ],
     []
   );
@@ -891,12 +902,12 @@ const DashboardCopy = () => {
                     ))}
                   </TableHeader>
                   <TableBody>
-                    <TableLoader id={LOADER_ID} rowCount={5} colCount={6} />
+                    <TableLoader id={LOADER_ID} rowCount={5} colCount={7} />
                     {!isLoading(LOADER_ID) && filteredEvents.length > 0
                       ? table.getRowModel().rows.map((row) => (
                           <TableRow
                             key={row.id}
-                            className={`hover:bg-gray-50 cursor-pointer ${
+                            className={`hover:bg-gray-50 cursor-pointer transition-colors ${
                               row.getIsSelected() ? "bg-blue-50" : ""
                             }`}
                             onClick={(e) => {

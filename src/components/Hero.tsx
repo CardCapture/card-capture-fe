@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Camera, ArrowRight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Carousel } from '@/components/ui/carousel';
 import { useNavigate } from 'react-router-dom';
 
 const Hero = () => {
@@ -10,6 +11,40 @@ const Hero = () => {
   useEffect(() => {
     setVisible(true);
   }, []);
+
+  // Carousel images
+  const carouselImages = [
+    {
+      src: 'https://assets.cardcapture.io/storage/v1/object/public/assets/create_event.jpg',
+      alt: 'Create Event - Set up new recruitment events',
+      caption: 'Set up events in seconds' 
+    },
+    {
+      src: 'https://assets.cardcapture.io/storage/v1/object/public/assets//field_preferences%20.jpg',
+      alt: 'Field Preferences - Customize data fields',
+      caption: 'Manage and confirgure your field preferences'
+    },
+    {
+      src: 'https://assets.cardcapture.io/storage/v1/object/public/assets/manage_majors.jpg',
+      alt: 'Manage Majors - Configure academic programs',
+      caption: 'Automatically map card inputs to your school\'s majors'
+    },
+    {
+      src: 'https://assets.cardcapture.io/storage/v1/object/public/assets/needs_review.jpg',
+      alt: 'Needs Review - Cards requiring attention',
+      caption: 'AI flags only what needs your attention'
+    },
+    {
+      src: 'https://assets.cardcapture.io/storage/v1/object/public/assets/needs_review_modal.jpg',
+      alt: 'Review Modal - Detailed card review interface',
+      caption: 'Review and approve in one click'
+    },
+    {
+      src: 'https://assets.cardcapture.io/storage/v1/object/public/assets/ready_for_export.jpg',
+      alt: 'Ready for Export - Processed cards ready for download',
+      caption: 'Export clean data to CSV or send to Slate'
+    }
+  ];
 
   return (
     <section className="relative min-h-[80vh] flex items-center py-16 overflow-hidden">
@@ -64,19 +99,12 @@ const Hero = () => {
 
           <div className={`relative ${visible ? 'animate-fade-in opacity-100' : 'opacity-0'} animation-delay-300`}>
             <div className="aspect-[4/3] rounded-2xl overflow-hidden glass-panel shadow-lg">
-              <div className="relative h-full">
-                <img 
-                  src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2340&q=80" 
-                  alt="College recruitment" 
-                  className="object-cover w-full h-full rounded-2xl opacity-90"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent rounded-2xl"></div>
-
-                <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                  <p className="text-xl font-medium">Streamline your recruitment process</p>
-                  <p className="text-sm opacity-90 mt-1">Focus more on connecting with students, less on paperwork</p>
-                </div>
-              </div>
+              <Carousel 
+                images={carouselImages}
+                autoPlay={true}
+                autoPlayInterval={4000}
+                className="h-full"
+              />
             </div>
           </div>
         </div>

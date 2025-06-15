@@ -150,10 +150,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="slate-event-id">Slate Event ID (Optional)</Label>
+              <Label htmlFor="slate-event-id">Event ID (Optional)</Label>
               <Input
                 id="slate-event-id"
-                placeholder="Enter Slate Event ID"
+                placeholder="Enter Event ID"
                 value={slateEventId}
                 onChange={handleSlateEventIdChange}
                 disabled={isCreating}
