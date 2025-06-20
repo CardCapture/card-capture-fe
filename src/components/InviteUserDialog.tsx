@@ -35,9 +35,9 @@ import { Check, Crown, Camera, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const inviteUserSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().trim().email("Please enter a valid email address"),
+  firstName: z.string().trim().min(1, "First name is required"),
+  lastName: z.string().trim().min(1, "Last name is required"),
   roles: z
     .array(z.enum(["admin", "recruiter", "reviewer"]))
     .min(1, "At least one role is required"),
@@ -145,17 +145,7 @@ export function InviteUserDialog({
           </div>
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit((data) => {
-                // Trim whitespace from all fields
-                const trimmedData = {
-                  ...data,
-                  email: data.email.trim(),
-                  firstName: data.firstName.trim(),
-                  lastName: data.lastName.trim(),
-                  roles: data.roles,
-                };
-                onSubmit(trimmedData);
-              })}
+              onSubmit={form.handleSubmit(onSubmit)}
               className="space-y-6"
             >
               <FormField
