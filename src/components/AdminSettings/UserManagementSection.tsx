@@ -17,7 +17,8 @@ import { useBulkUserSelection } from "@/hooks/useBulkUserSelection";
 import { UserService } from "@/services/UserService";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/lib/toast";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, Clock, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,6 +76,16 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
       .toLowerCase()
       .includes(search.toLowerCase())
   );
+
+  // Helper functions for user status
+  const isCurrentUser = (user: UserProfile) => user.email === session?.user?.email;
+  const isPendingInvite = (user: UserProfile) => !user.last_sign_in_at;
+  const isActiveUser = (user: UserProfile) => !!user.last_sign_in_at;
+
+  // Calculate user statistics
+  const activeUsersCount = users.filter(isActiveUser).length;
+  const pendingInvitesCount = users.filter(isPendingInvite).length;
+  const totalUsers = users.length;
 
   // Bulk selection
   const bulkSelection = useBulkUserSelection(filteredUsers);
@@ -202,6 +213,26 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
               <div className="text-muted-foreground text-sm mb-4">
                 User Management
               </div>
+              {/* User Statistics */}
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">{activeUsersCount}</span> Active
+                  </span>
+                </div>
+                {pendingInvitesCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-orange-500" />
+                    <span className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">{pendingInvitesCount}</span> Pending
+                    </span>
+                  </div>
+                )}
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{totalUsers}</span> Total
+                </div>
+              </div>
             </div>
             <Button
               onClick={() => setInviteDialogOpen(true)}
@@ -279,20 +310,31 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                     >
                       <TableCell>
                         <div className="flex justify-center">
-                          <input
-                            type="checkbox"
-                            checked={bulkSelection.isSelected(user.id)}
-                            onChange={() => bulkSelection.toggleSelection(user.id)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
-                          />
+                          {!isCurrentUser(user) ? (
+                            <input
+                              type="checkbox"
+                              checked={bulkSelection.isSelected(user.id)}
+                              onChange={() => bulkSelection.toggleSelection(user.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+                            />
+                          ) : (
+                            <div className="w-4 h-4" /> // Placeholder to maintain alignment
+                          )}
                         </div>
                       </TableCell>
                       <TableCell 
                         className="px-5 py-4"
                         onClick={() => handleRowClick(user)}
                       >
-                        {user.first_name} {user.last_name}
+                        <div className="flex items-center gap-2">
+                          <span>{user.first_name} {user.last_name}</span>
+                          {isCurrentUser(user) && (
+                            <Badge variant="secondary" className="text-xs">
+                              You
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell 
                         className="px-5 py-4"
@@ -304,9 +346,19 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                         className="px-5 py-4 text-center"
                         onClick={() => handleRowClick(user)}
                       >
-                        {Array.isArray(user.role)
-                          ? user.role.join(", ")
-                          : user.role}
+                        <div className="flex items-center justify-center gap-2">
+                          <span>
+                            {Array.isArray(user.role)
+                              ? user.role.join(", ")
+                              : user.role}
+                          </span>
+                          {isPendingInvite(user) && (
+                            <Badge variant="outline" className="text-xs flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              Pending
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell 
                         className="px-5 py-4 text-right"
@@ -324,18 +376,21 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                           : "-"}
                       </TableCell>
                       <TableCell className="w-12">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setUserToDelete(user);
-                            setShowIndividualDeleteConfirm(true);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50 p-1 h-auto"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {!isCurrentUser(user) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUserToDelete(user);
+                              setShowIndividualDeleteConfirm(true);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50 p-1 h-auto"
+                            title="Delete user"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
