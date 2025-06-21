@@ -101,4 +101,25 @@ export const usersApi = {
       throw new Error(`Failed to invite user (${response.status})`);
     }
   },
+
+  /**
+   * Send password reset email
+   */
+  async resetPassword(email: string, token?: string): Promise<void> {
+    const response = await authFetch(
+      `${API_BASE_URL}/auth/reset-password`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      },
+      token
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to send password reset email (${response.status})`);
+    }
+  },
 };
