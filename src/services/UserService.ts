@@ -71,6 +71,18 @@ export class UserService {
   }
 
   /**
+   * Send password reset email
+   */
+  static async resetPassword(email: string, token?: string): Promise<void> {
+    try {
+      await usersApi.resetPassword(email, token);
+    } catch (error) {
+      console.error("UserService: Failed to send password reset email", error);
+      throw error;
+    }
+  }
+
+  /**
    * Transform UserProfile to UserToEdit format
    */
   static transformToEditFormat(user: UserProfile): UserToEdit {

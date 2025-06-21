@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { UserService } from "@/services/UserService";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/lib/toast";
-import { Trash2, X, Check, Crown, Camera, Eye } from "lucide-react";
+import { Trash2, X, Check, Crown, Camera, Eye, Mail } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,6 +106,7 @@ export function EditUserModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
   const { session } = useAuth();
 
   const form = useForm<EditUserFormValues>({
@@ -184,6 +185,26 @@ export function EditUserModal({
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!user?.email) return;
+
+    setIsSendingReset(true);
+    try {
+      await UserService.resetPassword(user.email, session?.access_token);
+
+      toast.success(`Password reset email sent to ${user.email}`);
+    } catch (error) {
+      console.error("Error sending password reset email:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to send password reset email. Please try again."
+      );
+    } finally {
+      setIsSendingReset(false);
+    }
+  };
+
   return (
     <>
       <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -242,6 +263,19 @@ export function EditUserModal({
                     <FormControl>
                       <Input value={user.email} disabled />
                     </FormControl>
+                    <div className="flex justify-end mt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetPassword}
+                        disabled={isSendingReset || isSubmitting || isDeleting}
+                        className="flex items-center gap-2 text-xs"
+                      >
+                        <Mail className="h-3 w-3" />
+                        {isSendingReset ? "Sending..." : "Send Reset Email"}
+                      </Button>
+                    </div>
                   </FormItem>
                 )}
                 <FormField

@@ -39,6 +39,7 @@ const GetStartedPage = React.lazy(() => import("./pages/GetStartedPage"));
 const ThankYouPage = React.lazy(() => import("./pages/ThankYouPage"));
 const PrivacyPage = React.lazy(() => import("./pages/PrivacyPage"));
 const AcceptInvitePage = React.lazy(() => import("./pages/AcceptInvitePage"));
+const ResetPasswordPage = React.lazy(() => import("./pages/ResetPasswordPage"));
 const AboutPage = React.lazy(() => import("./pages/AboutPage"));
 const ContactPage = React.lazy(() => import("./pages/ContactPage"));
 const SuperAdminPage = React.lazy(() => import("./pages/SuperAdminPage"));
@@ -72,6 +73,7 @@ function App() {
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/accept-invite" element={<AcceptInvitePage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
                 </Route>
 
                 {/* SuperAdmin routes */}
