@@ -17,18 +17,49 @@ import { toast } from "@/lib/toast";
 const ResetPasswordPage = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Handle hash fragment redirect from Supabase
+  // Handle both magic link and hash fragment redirect from Supabase
   useEffect(() => {
-    const handleHashRedirect = async () => {
+    const handleAuthRedirect = async () => {
       console.log("🔍 Current URL:", window.location.href);
       console.log("🔍 Hash:", location.hash);
+      console.log("🔍 Location state:", location.state);
 
-      // If we have a hash in the URL, we were redirected from Supabase auth
+      // Check if we came from our magic link system
+      if (location.state?.fromMagicLink) {
+        console.log("✅ Arrived from magic link system - ready for password reset");
+        
+        // Clear any existing error since magic link was successful
+        setError(null);
+        
+        // Check if user is authenticated (magic link should have set session)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log("✅ User session found - ready for password reset");
+          setIsAuthenticated(true);
+          // Clear the state to prevent re-processing on navigation
+          window.history.replaceState(null, "", location.pathname);
+          return;
+                 } else {
+           console.log("⚠️ No session found, but magic link indicated success");
+           // For password reset, we might not always have a session
+           // Check if email was passed from magic link
+           if (location.state?.email && location.state.email !== 'Please enter your email') {
+             setEmail(location.state.email);
+             console.log("✅ Email found from magic link:", location.state.email);
+           }
+           setIsAuthenticated(false);
+           return;
+         }
+      }
+
+      // If we have a hash in the URL, we were redirected from legacy Supabase auth
       if (location.hash) {
         try {
           // Parse the hash fragment to get the tokens
@@ -55,6 +86,7 @@ const ResetPasswordPage = () => {
             }
 
             console.log("✅ Session set successfully:", data);
+            setIsAuthenticated(true);
             
             // Clear the hash without triggering a reload
             window.history.replaceState(null, "", location.pathname);
@@ -66,13 +98,14 @@ const ResetPasswordPage = () => {
           console.error("❌ Error handling hash redirect:", err);
           setError("Error processing reset link. Please try again or contact support.");
         }
-      } else {
-        console.error("❌ No hash fragment found");
-        setError("Invalid reset link. Please check the link and try again.");
+      } else if (!location.state?.fromMagicLink) {
+        // Only show error if this wasn't from our magic link system
+        console.log("ℹ️ No hash fragment found and not from magic link - direct access");
+        setError("Please click the reset link from your email, or request a new password reset.");
       }
     };
 
-    handleHashRedirect();
+    handleAuthRedirect();
   }, [location]);
 
   const passwordRequirements = [
@@ -121,16 +154,38 @@ const ResetPasswordPage = () => {
       return;
     }
 
+    // For non-authenticated users (magic link flow), require email
+    if (!isAuthenticated && !email) {
+      setError("Email is required");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Update user with new password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password,
-      });
+      if (isAuthenticated) {
+        // User has an active session (legacy hash fragment flow)
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: password,
+        });
 
-      if (updateError) {
-        throw updateError;
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        // User came from magic link, try to sign in with new password
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
+
+        if (signInError) {
+          // If sign in fails, the user probably needs to set their password first
+          // We need to call the backend to handle password reset for magic link users
+          console.log("Password reset needed for magic link user");
+          setError("Please contact support to complete your password reset, or try using the email link again.");
+          return;
+        }
       }
 
       // Show success message
@@ -156,11 +211,29 @@ const ResetPasswordPage = () => {
         <CardHeader>
           <CardTitle>Reset Your Password</CardTitle>
           <CardDescription>
-            Please enter your new password below.
+            {isAuthenticated 
+              ? "Please enter your new password below."
+              : location.state?.fromMagicLink 
+                ? "Your reset link has been verified. Please enter your new password below."
+                : "Please enter your email and new password below."
+            }
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {!isAuthenticated && (
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  required={!isAuthenticated}
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="password">New Password</Label>
               <Input
