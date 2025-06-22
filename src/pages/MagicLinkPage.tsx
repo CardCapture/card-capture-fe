@@ -44,13 +44,15 @@ const MagicLinkPage: React.FC = () => {
         // Set the session from the magic link result
         if (result.session) {
           console.log('🔑 Setting session from magic link');
-          // The session is typically handled automatically by Supabase when we get the auth response
           // For magic links, we may need to manually set the session
           if (result.session.access_token && result.session.refresh_token) {
+            console.log('🔑 Setting session with tokens');
             await supabase.auth.setSession({
               access_token: result.session.access_token,
               refresh_token: result.session.refresh_token
             });
+          } else if (result.session.user_created) {
+            console.log('🔑 User created, session info:', result.session);
           }
         }
 
@@ -94,30 +96,57 @@ const MagicLinkPage: React.FC = () => {
             setState('success');
             setMessage('Processing your request...');
             
-                         // Still redirect to appropriate page based on type
-             const linkType = searchParams.get('type');
-             if (linkType === 'password_reset') {
-               setTimeout(() => {
-                 navigate('/reset-password', { 
-                   state: { 
-                     email: 'Please enter your email',
-                     fromMagicLink: true 
+            // Still redirect to appropriate page based on type
+            const linkType = searchParams.get('type');
+            if (linkType === 'password_reset') {
+              setTimeout(() => {
+                navigate('/reset-password', { 
+                  state: { 
+                    email: 'Please enter your email',
+                    fromMagicLink: true 
+                  }
+                });
+              }, 2000);
+                         } else if (linkType === 'invite') {
+               // For already processed invites, try to get user info from current session
+               const getUserInfo = async () => {
+                 try {
+                   const { data: { user } } = await supabase.auth.getUser();
+                   if (user) {
+                     navigate('/accept-invite', { 
+                       state: { 
+                         email: user.email,
+                         fromMagicLink: true,
+                         userAlreadyExists: true,
+                         hasSession: true
+                       }
+                     });
+                   } else {
+                     navigate('/accept-invite', { 
+                       state: { 
+                         fromMagicLink: true,
+                         needsManualEmail: true,
+                         hasSession: false
+                       }
+                     });
                    }
-                 });
-               }, 2000);
-             } else if (linkType === 'invite') {
-               setTimeout(() => {
-                 navigate('/accept-invite', { 
-                   state: { 
-                     fromMagicLink: true 
-                   }
-                 });
-               }, 2000);
-             } else {
-               setTimeout(() => {
-                 navigate('/dashboard');
-               }, 2000);
-             }
+                 } catch {
+                   navigate('/accept-invite', { 
+                     state: { 
+                       fromMagicLink: true,
+                       needsManualEmail: true,
+                       hasSession: false
+                     }
+                   });
+                 }
+               };
+               
+               setTimeout(getUserInfo, 2000);
+            } else {
+              setTimeout(() => {
+                navigate('/dashboard');
+              }, 2000);
+            }
             return;
           } else if (error.message.includes('404')) {
             setState('error');

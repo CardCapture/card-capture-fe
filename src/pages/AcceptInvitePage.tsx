@@ -49,6 +49,9 @@ const AcceptInvitePage = () => {
         if (location.state?.email) {
           setEmail(location.state.email);
           console.log("✅ Email found from magic link:", location.state.email);
+        } else if (location.state?.needsManualEmail) {
+          console.log("⚠️ Manual email entry required");
+          // Don't set an error, just let user enter email manually
         }
         
         // Extract metadata from magic link (user info, school info, etc.)
@@ -271,13 +274,84 @@ const AcceptInvitePage = () => {
     setLoading(true);
 
     try {
-      // Update user with new password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password,
-      });
+              // For magic link invites, we need a different approach since there might not be an active session
+        if (location.state?.fromMagicLink) {
+          console.log("🔄 Processing magic link invite - checking session status");
+          
+          // Check if we already have a session (from successful magic link processing)
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session) {
+            console.log("✅ Found existing session - updating password");
+            // User has a session, can directly update password
+            const { error: updateError } = await supabase.auth.updateUser({
+              password: password,
+            });
+            
+            if (updateError) {
+              throw updateError;
+            }
+            console.log("✅ Password updated successfully");
+          } else if (location.state?.hasSession === false) {
+            console.log("🔄 No session available - trying to sign in with new password");
+            // No session but user should exist - try to sign in with the password they just set
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
 
-      if (updateError) {
-        throw updateError;
+            if (signInError) {
+              console.error("❌ Sign in failed:", signInError.message);
+              throw new Error("Unable to sign in with the provided password. The invitation may have expired or the user account may not be properly set up. Please contact support.");
+            }
+            console.log("✅ Sign in successful");
+          } else {
+            console.log("🔄 Trying sign in first, then password update if needed");
+            // Try to sign in first
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+
+            if (signInError) {
+              // Sign in failed, try to update password if we can get a session
+              const { data: { session: currentSession } } = await supabase.auth.getSession();
+              
+              if (currentSession) {
+                console.log("🔄 Updating password with existing session");
+                const { error: updateError } = await supabase.auth.updateUser({
+                  password: password,
+                });
+                
+                if (updateError) {
+                  throw updateError;
+                }
+              } else {
+                console.error("❌ No session available for password update");
+                throw new Error("Unable to authenticate. Please try signing in with your email and the password you just set, or contact support if this continues.");
+              }
+            }
+            console.log("✅ Authentication successful");
+          }
+      } else {
+        // Legacy flow - user should have an active session
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: password,
+        });
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        // Sign in the user with their new credentials
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          throw signInError;
+        }
       }
 
       // Show success message
@@ -285,16 +359,6 @@ const AcceptInvitePage = () => {
         "Your account has been activated successfully.",
         "Success!"
       );
-
-      // Sign in the user with their new credentials
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        throw signInError;
-      }
 
       // If we have a school_id (from URL params or magic link metadata), assign the user to the school
       const currentSchoolId = schoolId || location.state?.metadata?.school_id;
@@ -367,7 +431,9 @@ const AcceptInvitePage = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled
+                disabled={!!email && !location.state?.needsManualEmail}
+                placeholder={location.state?.needsManualEmail ? "Enter your email address" : ""}
+                required
               />
             </div>
             <div className="space-y-2">
