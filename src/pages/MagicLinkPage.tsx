@@ -41,20 +41,8 @@ const MagicLinkPage: React.FC = () => {
         const result = await usersApi.consumeMagicLink(token, type);
         console.log('✅ Magic link processed:', result);
 
-        // Set the session from the magic link result
-        if (result.session) {
-          console.log('🔑 Setting session from magic link');
-          // For magic links, we may need to manually set the session
-          if (result.session.access_token && result.session.refresh_token) {
-            console.log('🔑 Setting session with tokens');
-            await supabase.auth.setSession({
-              access_token: result.session.access_token,
-              refresh_token: result.session.refresh_token
-            });
-          } else if (result.session.user_created) {
-            console.log('🔑 User created, session info:', result.session);
-          }
-        }
+        // For invite magic links, no session handling needed
+        console.log('✅ Magic link processed successfully');
 
         setState('success');
         
@@ -75,7 +63,7 @@ const MagicLinkPage: React.FC = () => {
               state: { 
                 email: result.email,
                 metadata: result.metadata,
-                fromMagicLink: true 
+                fromMagicLink: true
               }
             });
           }, 2000);

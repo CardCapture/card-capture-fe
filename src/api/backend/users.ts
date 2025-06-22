@@ -157,7 +157,7 @@ export const usersApi = {
     type: string;
     email: string;
     user_id?: string;
-    session: any;
+    session?: any;
     redirect_url: string;
     metadata?: any;
   }> {
@@ -170,6 +170,40 @@ export const usersApi = {
 
     if (!response.ok) {
       throw new Error(`Failed to consume magic link (${response.status})`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Create user account for invite flow
+   */
+  async createUser(userData: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    role: string[];
+    school_id: string;
+  }): Promise<{
+    success: boolean;
+    user_id: string;
+    email: string;
+    message: string;
+  }> {
+    const response = await authFetch(
+      `${API_BASE_URL}/auth/create-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to create user account (${response.status})`);
     }
 
     return response.json();

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { SchoolService } from "@/services/SchoolService";
 import { ProfileService } from "@/services/ProfileService";
+import { usersApi } from "@/api/backend/users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,13 +46,16 @@ const AcceptInvitePage = () => {
         // Clear any existing error since magic link was successful
         setError(null);
         
-        // Extract email from magic link state
-        if (location.state?.email) {
-          setEmail(location.state.email);
-          console.log("✅ Email found from magic link:", location.state.email);
-        } else if (location.state?.needsManualEmail) {
-          console.log("⚠️ Manual email entry required");
-          // Don't set an error, just let user enter email manually
+        // Extract email and metadata from magic link state
+        if (location.state?.fromMagicLink) {
+          if (location.state?.email) {
+            setEmail(location.state.email);
+            console.log("✅ Email found from magic link:", location.state.email);
+          }
+          
+          if (location.state?.metadata) {
+            console.log("✅ Metadata found from magic link:", location.state.metadata);
+          }
         }
         
         // Extract metadata from magic link (user info, school info, etc.)
@@ -274,66 +278,36 @@ const AcceptInvitePage = () => {
     setLoading(true);
 
     try {
-              // For magic link invites, we need a different approach since there might not be an active session
+                      // For magic link invites, create the user account
         if (location.state?.fromMagicLink) {
-          console.log("🔄 Processing magic link invite - checking session status");
+          console.log("🔄 Processing magic link invite - creating user account");
           
-          // Check if we already have a session (from successful magic link processing)
-          const { data: { session } } = await supabase.auth.getSession();
+          const metadata = location.state?.metadata || {};
           
-          if (session) {
-            console.log("✅ Found existing session - updating password");
-            // User has a session, can directly update password
-            const { error: updateError } = await supabase.auth.updateUser({
-              password: password,
-            });
-            
-            if (updateError) {
-              throw updateError;
-            }
-            console.log("✅ Password updated successfully");
-          } else if (location.state?.hasSession === false) {
-            console.log("🔄 No session available - trying to sign in with new password");
-            // No session but user should exist - try to sign in with the password they just set
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
+          // Create user account with their password and metadata
+          await usersApi.createUser({
+            email,
+            password,
+            first_name: metadata.first_name || '',
+            last_name: metadata.last_name || '',
+            role: metadata.role || [],
+            school_id: metadata.school_id || ''
+          });
 
-            if (signInError) {
-              console.error("❌ Sign in failed:", signInError.message);
-              throw new Error("Unable to sign in with the provided password. The invitation may have expired or the user account may not be properly set up. Please contact support.");
-            }
-            console.log("✅ Sign in successful");
-          } else {
-            console.log("🔄 Trying sign in first, then password update if needed");
-            // Try to sign in first
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
+          console.log("✅ User account created successfully");
 
-            if (signInError) {
-              // Sign in failed, try to update password if we can get a session
-              const { data: { session: currentSession } } = await supabase.auth.getSession();
-              
-              if (currentSession) {
-                console.log("🔄 Updating password with existing session");
-                const { error: updateError } = await supabase.auth.updateUser({
-                  password: password,
-                });
-                
-                if (updateError) {
-                  throw updateError;
-                }
-              } else {
-                console.error("❌ No session available for password update");
-                throw new Error("Unable to authenticate. Please try signing in with your email and the password you just set, or contact support if this continues.");
-              }
-            }
-            console.log("✅ Authentication successful");
+          // Now sign them in with their new credentials
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (signInError) {
+            throw new Error("Account created but sign-in failed. Please try signing in with your email and password.");
           }
-      } else {
+
+          console.log("✅ Sign in successful after account creation");
+        } else {
         // Legacy flow - user should have an active session
         const { error: updateError } = await supabase.auth.updateUser({
           password: password,
@@ -431,8 +405,8 @@ const AcceptInvitePage = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={!!email && !location.state?.needsManualEmail}
-                placeholder={location.state?.needsManualEmail ? "Enter your email address" : ""}
+                disabled={false}  // Always editable for verification
+                placeholder="Enter your email address"
                 required
               />
             </div>
