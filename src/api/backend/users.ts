@@ -122,4 +122,56 @@ export const usersApi = {
       throw new Error(`Failed to send password reset email (${response.status})`);
     }
   },
+
+  /**
+   * Validate magic link token
+   */
+  async validateMagicLink(token: string): Promise<{
+    id: number;
+    token: string;
+    email: string;
+    type: string;
+    metadata: any;
+    expires_at: string;
+    used: boolean;
+    created_at: string;
+  }> {
+    const response = await authFetch(
+      `${API_BASE_URL}/auth/magic-link/validate?token=${encodeURIComponent(token)}`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to validate magic link (${response.status})`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Consume magic link
+   */
+  async consumeMagicLink(token: string, linkType: string): Promise<{
+    type: string;
+    email: string;
+    user_id?: string;
+    session: any;
+    redirect_url: string;
+    metadata?: any;
+  }> {
+    const response = await authFetch(
+      `${API_BASE_URL}/auth/magic-link/consume?token=${encodeURIComponent(token)}&link_type=${encodeURIComponent(linkType)}`,
+      {
+        method: "POST",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to consume magic link (${response.status})`);
+    }
+
+    return response.json();
+  },
 };
