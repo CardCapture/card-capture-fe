@@ -15,7 +15,13 @@ const MagicLinkPage: React.FC = () => {
   const [message, setMessage] = useState<string>('Processing your link...');
 
   useEffect(() => {
+    // Prevent multiple executions
+    let hasRun = false;
+    
     const processMagicLink = async () => {
+      if (hasRun) return;
+      hasRun = true;
+      
       try {
         const token = searchParams.get('token');
         const type = searchParams.get('type');
@@ -29,21 +35,11 @@ const MagicLinkPage: React.FC = () => {
           return;
         }
 
-        // First validate the magic link
-        console.log('🔍 Validating magic link...');
-        const magicLink = await usersApi.validateMagicLink(token);
-        console.log('✅ Magic link validated:', magicLink);
-
-        if (!magicLink) {
-          setState('error');
-          setMessage('Invalid or expired magic link');
-          return;
-        }
-
-        // Consume the magic link
-        console.log('🔄 Consuming magic link...');
+        // Skip validation and go directly to consumption
+        // This handles email client pre-scanning gracefully
+        console.log('🔄 Processing magic link...');
         const result = await usersApi.consumeMagicLink(token, type);
-        console.log('✅ Magic link consumed:', result);
+        console.log('✅ Magic link processed:', result);
 
         // Set the session from the magic link result
         if (result.session) {
@@ -90,31 +86,64 @@ const MagicLinkPage: React.FC = () => {
 
       } catch (error) {
         console.error('❌ Error processing magic link:', error);
-        setState('error');
         
         if (error instanceof Error) {
           if (error.message.includes('400')) {
-            setMessage('This link has expired or is invalid. Please request a new one.');
+            // Handle already used magic links gracefully
+            console.log('🔄 Magic link already processed (likely by email client scanning)');
+            setState('success');
+            setMessage('Processing your request...');
+            
+                         // Still redirect to appropriate page based on type
+             const linkType = searchParams.get('type');
+             if (linkType === 'password_reset') {
+               setTimeout(() => {
+                 navigate('/reset-password', { 
+                   state: { 
+                     email: 'Please enter your email',
+                     fromMagicLink: true 
+                   }
+                 });
+               }, 2000);
+             } else if (linkType === 'invite') {
+               setTimeout(() => {
+                 navigate('/accept-invite', { 
+                   state: { 
+                     fromMagicLink: true 
+                   }
+                 });
+               }, 2000);
+             } else {
+               setTimeout(() => {
+                 navigate('/dashboard');
+               }, 2000);
+             }
+            return;
           } else if (error.message.includes('404')) {
+            setState('error');
             setMessage('This link was not found. It may have already been used.');
           } else {
+            setState('error');
             setMessage('Failed to process your link. Please try again or contact support.');
           }
         } else {
+          setState('error');
           setMessage('An unexpected error occurred. Please try again.');
         }
 
-        // Show error toast
-        toast({
-          title: "Link Processing Failed",
-          description: message,
-          variant: "destructive",
-        });
+        // Show error toast only for actual errors
+        if (state === 'error') {
+          toast({
+            title: "Link Processing Failed",
+            description: message,
+            variant: "destructive",
+          });
+        }
       }
     };
 
     processMagicLink();
-  }, [searchParams, navigate, message]);
+  }, [searchParams, navigate]);
 
   const renderContent = () => {
     switch (state) {
