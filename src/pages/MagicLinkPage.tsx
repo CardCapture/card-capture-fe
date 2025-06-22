@@ -48,15 +48,53 @@ const MagicLinkPage: React.FC = () => {
         setState('success');
         
         if (result.type === 'password_reset') {
-          setMessage('Password reset link verified! Redirecting to reset password page...');
-          setTimeout(() => {
-            navigate('/reset-password', { 
-              state: { 
-                email: result.email,
-                fromMagicLink: true 
-              }
-            });
-          }, 2000);
+          // If the backend provided session tokens, set them up
+          if (result.session && result.session.access_token) {
+            console.log('🔑 Setting up session from magic link...');
+            try {
+              await supabase.auth.setSession({
+                access_token: result.session.access_token,
+                refresh_token: result.session.refresh_token || ''
+              });
+              console.log('✅ Session established for password reset');
+              
+              setMessage('Password reset link verified and authenticated! Redirecting...');
+              setTimeout(() => {
+                navigate('/reset-password', { 
+                  state: { 
+                    email: result.email,
+                    fromMagicLink: true,
+                    hasSession: true
+                  }
+                });
+              }, 2000);
+            } catch (sessionError) {
+              console.error('❌ Error setting session:', sessionError);
+              // Fallback to normal flow without session
+              setMessage('Password reset link verified! Redirecting to reset password page...');
+              setTimeout(() => {
+                navigate('/reset-password', { 
+                  state: { 
+                    email: result.email,
+                    fromMagicLink: true,
+                    requiresSignin: result.requires_signin || false
+                  }
+                });
+              }, 2000);
+            }
+          } else {
+            // No session provided - normal flow
+            setMessage('Password reset link verified! Redirecting to reset password page...');
+            setTimeout(() => {
+              navigate('/reset-password', { 
+                state: { 
+                  email: result.email,
+                  fromMagicLink: true,
+                  requiresSignin: result.requires_signin || false
+                }
+              });
+            }, 2000);
+          }
         } else if (result.type === 'invite') {
           setMessage('Invitation verified! Redirecting to complete your account setup...');
           setTimeout(() => {

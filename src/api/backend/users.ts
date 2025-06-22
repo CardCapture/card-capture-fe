@@ -160,6 +160,7 @@ export const usersApi = {
     session?: any;
     redirect_url: string;
     metadata?: any;
+    requires_signin?: boolean;
   }> {
     const response = await authFetch(
       `${API_BASE_URL}/auth/magic-link/consume?token=${encodeURIComponent(token)}&link_type=${encodeURIComponent(linkType)}`,
