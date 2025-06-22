@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { usersApi } from '@/api/backend/users';
 import { supabase } from '@/lib/supabaseClient';
@@ -13,14 +13,15 @@ const MagicLinkPage: React.FC = () => {
   const navigate = useNavigate();
   const [state, setState] = useState<MagicLinkState>('loading');
   const [message, setMessage] = useState<string>('Processing your link...');
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
-    // Prevent multiple executions
-    let hasRun = false;
-    
     const processMagicLink = async () => {
-      if (hasRun) return;
-      hasRun = true;
+      if (hasProcessed.current) {
+        console.log('🚫 Magic link already processed, skipping');
+        return;
+      }
+      hasProcessed.current = true;
       
       try {
         const token = searchParams.get('token');
@@ -160,7 +161,7 @@ const MagicLinkPage: React.FC = () => {
     };
 
     processMagicLink();
-  }, [searchParams, navigate]);
+  }, []);
 
   const renderContent = () => {
     switch (state) {
