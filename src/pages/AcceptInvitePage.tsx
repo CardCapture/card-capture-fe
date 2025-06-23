@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { SchoolService } from "@/services/SchoolService";
 import { ProfileService } from "@/services/ProfileService";
+import { usersApi } from "@/api/backend/users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,13 +32,72 @@ const AcceptInvitePage = () => {
   const schoolId = searchParams.get("school_id");
   const invitedEmail = searchParams.get("email");
 
-  // Handle hash fragment redirect from Supabase
+  // Handle both magic link and hash fragment redirect from Supabase
   useEffect(() => {
-    const handleHashRedirect = async () => {
+    const handleAuthRedirect = async () => {
       console.log("🔍 Current URL:", window.location.href);
       console.log("🔍 Hash:", location.hash);
+      console.log("🔍 Location state:", location.state);
 
-      // If we have a hash in the URL, we were redirected from Supabase auth
+      // Check if we came from our magic link system
+      if (location.state?.fromMagicLink) {
+        console.log("✅ Arrived from magic link system - ready for invite acceptance");
+        
+        // Clear any existing error since magic link was successful
+        setError(null);
+        
+        // Extract email and metadata from magic link state
+        if (location.state?.fromMagicLink) {
+          if (location.state?.email) {
+            setEmail(location.state.email);
+            console.log("✅ Email found from magic link:", location.state.email);
+          }
+          
+          if (location.state?.metadata) {
+            console.log("✅ Metadata found from magic link:", location.state.metadata);
+          }
+        }
+        
+        // Extract metadata from magic link (user info, school info, etc.)
+        if (location.state?.metadata) {
+          const metadata = location.state.metadata;
+          console.log("✅ Metadata found from magic link:", metadata);
+          
+          // Set email if not already set
+          if (!location.state.email && metadata.email) {
+            setEmail(metadata.email);
+          }
+          
+          // If we have school_id in metadata, we can use it
+          if (metadata.school_id && !schoolId) {
+            // Update URL params to include school_id for consistency
+            const newSearchParams = new URLSearchParams(searchParams);
+            newSearchParams.set('school_id', metadata.school_id);
+            window.history.replaceState(
+              null, 
+              "",
+              `${location.pathname}?${newSearchParams.toString()}`
+            );
+          }
+        }
+        
+        // Check if user is already authenticated (magic link might have set session)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log("✅ User session found from magic link");
+          // Get user details
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData?.user?.email && !email) {
+            setEmail(userData.user.email);
+          }
+        }
+        
+        // Clear the state to prevent re-processing on navigation
+        window.history.replaceState(null, "", location.pathname + location.search);
+        return;
+      }
+
+      // If we have a hash in the URL, we were redirected from legacy Supabase auth
       if (location.hash) {
         try {
           // Parse the hash fragment to get the tokens
@@ -110,7 +170,7 @@ const AcceptInvitePage = () => {
             "Error processing invite link. Please try again or contact support."
           );
         }
-      } else {
+      } else if (!location.state?.fromMagicLink) {
         // Check if we have query parameters instead (some email clients might convert hash to query)
         const queryToken = searchParams.get("access_token");
         const queryType = searchParams.get("type");
@@ -125,29 +185,40 @@ const AcceptInvitePage = () => {
           // Redirect to hash format
           window.location.hash = `#${searchParams.toString()}`;
         } else {
-          console.error("❌ No hash fragment or query params found");
-          setError("Invalid invite link. Please check the link and try again.");
+          // Only show error if this wasn't from our magic link system
+          console.log("ℹ️ No hash fragment or query params found and not from magic link - direct access");
+          setError("Please click the invitation link from your email, or request a new invitation.");
         }
       }
     };
 
-    handleHashRedirect();
+    handleAuthRedirect();
   }, [location, searchParams]);
 
-  // Fallback to use invited email from query params if no email was set from auth flow
+  // Fallback to use invited email from query params or metadata if no email was set from auth flow
   useEffect(() => {
-    if (!email && invitedEmail) {
-      console.log("🔄 Using email from query params as fallback:", invitedEmail);
-      setEmail(invitedEmail);
+    if (!email) {
+      // Try magic link metadata first, then query params
+      const metadataEmail = location.state?.metadata?.email;
+      const fallbackEmail = metadataEmail || invitedEmail;
+      
+      if (fallbackEmail) {
+        console.log("🔄 Using email from fallback:", fallbackEmail);
+        setEmail(fallbackEmail);
+      }
     }
-  }, [email, invitedEmail]);
+  }, [email, invitedEmail, location.state?.metadata?.email]);
 
   // Fetch school information if school_id is provided
   useEffect(() => {
     const fetchSchoolInfo = async () => {
-      if (schoolId) {
+      // Get school_id from URL params or magic link metadata
+      const currentSchoolId = schoolId || 
+        (location.state?.metadata?.school_id);
+      
+      if (currentSchoolId) {
         try {
-          const schoolData = await SchoolService.getSchoolData(schoolId);
+          const schoolData = await SchoolService.getSchoolData(currentSchoolId);
           setSchoolInfo({ name: schoolData.name });
         } catch (err) {
           console.error("Error fetching school:", err);
@@ -156,7 +227,7 @@ const AcceptInvitePage = () => {
     };
 
     fetchSchoolInfo();
-  }, [schoolId]);
+  }, [schoolId, location.state?.metadata?.school_id]);
 
   const passwordRequirements = [
     {
@@ -207,13 +278,54 @@ const AcceptInvitePage = () => {
     setLoading(true);
 
     try {
-      // Update user with new password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password,
-      });
+                      // For magic link invites, create the user account
+        if (location.state?.fromMagicLink) {
+          console.log("🔄 Processing magic link invite - creating user account");
+          
+          const metadata = location.state?.metadata || {};
+          
+          // Create user account with their password and metadata
+          await usersApi.createUser({
+            email,
+            password,
+            first_name: metadata.first_name || '',
+            last_name: metadata.last_name || '',
+            role: metadata.role || [],
+            school_id: metadata.school_id || ''
+          });
 
-      if (updateError) {
-        throw updateError;
+          console.log("✅ User account created successfully");
+
+          // Now sign them in with their new credentials
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (signInError) {
+            throw new Error("Account created but sign-in failed. Please try signing in with your email and password.");
+          }
+
+          console.log("✅ Sign in successful after account creation");
+        } else {
+        // Legacy flow - user should have an active session
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: password,
+        });
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        // Sign in the user with their new credentials
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          throw signInError;
+        }
       }
 
       // Show success message
@@ -222,18 +334,11 @@ const AcceptInvitePage = () => {
         "Success!"
       );
 
-      // Sign in the user with their new credentials
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        throw signInError;
-      }
-
-      // If we have a school_id, assign the user to the school and make them admin
-      if (schoolId) {
+      // If we have a school_id (from URL params or magic link metadata), assign the user to the school
+      const currentSchoolId = schoolId || location.state?.metadata?.school_id;
+      const userRole = location.state?.metadata?.role || ["admin"]; // Default to admin if not specified
+      
+      if (currentSchoolId) {
         try {
           // Get the current user ID from the session
           const {
@@ -241,8 +346,8 @@ const AcceptInvitePage = () => {
           } = await supabase.auth.getUser();
           if (user?.id) {
             await ProfileService.updateProfile(user.id, {
-              school_id: schoolId,
-              role: "admin",
+              school_id: currentSchoolId,
+              role: Array.isArray(userRole) ? userRole[0] : userRole, // Take first role if array
             });
           }
         } catch (profileError) {
@@ -271,7 +376,16 @@ const AcceptInvitePage = () => {
         <CardHeader>
           <CardTitle>Set Your Password</CardTitle>
           <CardDescription>
-            {schoolInfo ? (
+            {location.state?.fromMagicLink ? (
+              schoolInfo ? (
+                <>
+                  Your invitation to join <strong>{schoolInfo.name}</strong> has been verified.
+                  Please set a password for your account to complete the registration process.
+                </>
+              ) : (
+                "Your invitation has been verified. Please set a password for your account to complete the registration process."
+              )
+            ) : schoolInfo ? (
               <>
                 You've been invited to join <strong>{schoolInfo.name}</strong>{" "}
                 as an administrator. Please set a password for your account to
@@ -291,7 +405,9 @@ const AcceptInvitePage = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled
+                disabled={false}  // Always editable for verification
+                placeholder="Enter your email address"
+                required
               />
             </div>
             <div className="space-y-2">
