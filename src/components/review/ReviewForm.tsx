@@ -12,7 +12,7 @@ import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { DateInput } from "@/components/ui/date-input";
 
 import { CheckCircle } from "lucide-react";
-import { formatPhoneNumber, formatBirthday, normalizeFieldValue } from "@/lib/utils";
+import { formatPhoneNumber, formatBirthday, normalizeFieldValue, normalizeAddress } from "@/lib/utils";
 import type { ProspectCard, FieldData } from "@/types/card";
 import {
   Select,
@@ -232,6 +232,20 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         <DateInput
           value={fieldValue}
           onChange={(value) => handleFormChange(actualFieldKey, value)}
+          className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
+        />
+      );
+    }
+
+    // Special handling for address field to prevent cursor jumping
+    if (actualFieldKey === 'address') {
+      return (
+        <Input
+          type="text"
+          value={fieldValue}
+          onChange={(e) => handleFormChange(actualFieldKey, e.target.value)}
+          onBlur={(e) => handleFormChange(actualFieldKey, normalizeAddress(e.target.value))}
+          placeholder={fieldConfig?.placeholder || getFieldLabel(fieldKey)}
           className={getInputClassName("h-10 sm:h-8 text-sm flex-1")}
         />
       );
