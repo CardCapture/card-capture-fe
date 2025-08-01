@@ -135,9 +135,12 @@ export const normalizeFieldValue = (value: string | null | undefined, fieldKey: 
   if (!value) return '';
   
   // Skip normalization for certain fields that should preserve original formatting
+  // Includes select fields that need exact value matching for dropdowns
   if (fieldKey === 'gpa' || fieldKey === 'class_rank' || fieldKey === 'students_in_class' || 
       fieldKey === 'zip_code' || fieldKey === 'date_of_birth' || fieldKey === 'cell' ||
-      fieldKey === 'permission_to_text' || fieldKey === 'student_type' || fieldKey === 'entry_term') {
+      fieldKey === 'permission_to_text' || fieldKey === 'student_type' || fieldKey === 'entry_term' ||
+      fieldKey === 'gender' || fieldKey === 'familiarity_with_acu' || fieldKey === 'rank' ||
+      fieldKey === 'mapped_major') {
     return value;
   }
   
@@ -166,7 +169,7 @@ export const normalizeFieldValue = (value: string | null | undefined, fieldKey: 
     return normalizeSchoolName(value);
   }
   
-  if (fieldKey === 'major' || fieldKey === 'mapped_major') {
+  if (fieldKey === 'major') {
     return normalizeMajor(value);
   }
   
