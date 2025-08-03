@@ -253,7 +253,7 @@ export function AddressGroupWithStatus({
       )}
       
       {(isGoogleVerified || (!addressNeedsReview && hasValidationOccurred)) && (
-        <div className="flex items-center gap-2 text-sm text-green-600">
+        <div className="flex items-center gap-2 text-sm text-green-600 w-fit">
           <CheckCircle className="w-3 h-3" />
           <span>Address verified by Google Maps</span>
         </div>
