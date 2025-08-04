@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import type { ProspectCard } from "@/types/card";
+import { standardizeState } from "@/utils/stateUtils";
 
 export function useCardTableActions(
   filteredCards: ProspectCard[],
@@ -342,6 +343,10 @@ export function useCardTableActions(
                   value = key === 'first_name' ? firstName : lastName;
                 } else {
                   value = String(fields?.[key]?.value ?? "");
+                  // Standardize state values for consistent CSV output
+                  if (key === 'state') {
+                    value = standardizeState(value);
+                  }
                 }
                 return `"${value.replace(/"/g, '""')}"`;
               }),

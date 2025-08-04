@@ -1,4 +1,5 @@
 import type { ProspectCard } from "@/types/card";
+import { standardizeState } from "./stateUtils";
 
 /**
  * Splits a full name into first name and last name
@@ -244,21 +245,21 @@ export function downloadCSV(
     }
     
     // Extract value from field data
-    if (typeof fieldData === "string") return fieldData;
-    if (typeof fieldData === "object") {
-      if (fieldData.value !== undefined) {
-        return String(fieldData.value || "");
-      }
-      // Handle cases where the field is an object but value is stored differently
-      if (fieldData.text !== undefined) {
-        return String(fieldData.text || "");
-      }
-      if (fieldData.content !== undefined) {
-        return String(fieldData.content || "");
-      }
+    let value: string;
+    if (typeof fieldData === "string") {
+      value = fieldData;
+    } else if (typeof fieldData === "object" && fieldData.value !== undefined) {
+      value = String(fieldData.value || "");
+    } else {
+      return "";
     }
     
-    return "";
+    // Standardize state values for consistent CSV output
+    if (fieldName === "state") {
+      return standardizeState(value);
+    }
+    
+    return value;
   };
 
   // Create CSV content
