@@ -40,9 +40,101 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { SchoolService, type CardField } from "@/services/SchoolService";
 
+// Address field grouping
+const ADDRESS_FIELDS = ['address', 'city', 'state', 'zip_code'];
+const isAddressField = (key: string) => ADDRESS_FIELDS.includes(key);
+
 interface CardFieldPreferencesProps {
   fields: CardField[];
   onFieldsChange: (fields: CardField[]) => void;
+}
+
+// Address group row component
+function AddressGroupRow({ fields, onGroupUpdate, onGroupDelete }: {
+  fields: CardField[];
+  onGroupUpdate: (updates: Partial<CardField>) => void;
+  onGroupDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: 'address-group' });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const firstField = fields[0]; // Use first field for group settings
+
+  const updateVisible = (visible: boolean) => {
+    onGroupUpdate({
+      visible,
+      required: visible ? firstField.required : false
+    });
+  };
+
+  const updateRequired = (required: boolean) => {
+    onGroupUpdate({ required });
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style} className="group bg-blue-50 border-blue-200">
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <button
+            className="touch-none cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4 text-gray-400" />
+          </button>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="font-medium">Address Group</span>
+            <Badge variant="secondary" className="text-xs">
+              {fields.length} fields
+            </Badge>
+          </div>
+        </div>
+        <div className="text-xs text-gray-600 mt-1 ml-6">
+          {fields.map(f => f.label).join(', ')}
+        </div>
+      </TableCell>
+      
+      <TableCell>
+        <span className="text-sm text-gray-500">Multiple</span>
+      </TableCell>
+
+      <TableCell>
+        <Switch
+          checked={firstField.visible}
+          onCheckedChange={updateVisible}
+        />
+      </TableCell>
+      
+      <TableCell>
+        <Switch
+          checked={firstField.required}
+          onCheckedChange={updateRequired}
+          disabled={!firstField.visible}
+        />
+      </TableCell>
+      
+      <TableCell>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onGroupDelete}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50 p-1 h-auto"
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
 }
 
 // Enhanced row component with editing capabilities
@@ -210,14 +302,55 @@ function SortableRow({ field, onFieldUpdate, onFieldDelete }: {
 export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPreferencesProps) {
   console.log('[CardFieldPreferences] fields:', fields);
 
+  // Group fields by type (address group vs individual) while preserving original order
+  const groupedFields = React.useMemo(() => {
+    const addressFields = fields.filter(field => isAddressField(field.key));
+    
+    const groups: Array<{ type: 'regular' | 'address', field?: CardField, fields?: CardField[] }> = [];
+    let addressGroupAdded = false;
+    
+    // Process fields in original order to preserve positioning
+    fields.forEach(field => {
+      if (isAddressField(field.key)) {
+        // Only add address group once at the position of first address field
+        if (!addressGroupAdded && addressFields.length > 0) {
+          // Sort address fields in a consistent order
+          const sortedAddressFields = ADDRESS_FIELDS
+            .map(key => addressFields.find(f => f.key === key))
+            .filter(Boolean) as CardField[];
+          groups.push({ type: 'address', fields: sortedAddressFields });
+          addressGroupAdded = true;
+        }
+        // Skip individual address fields since they're in the group
+      } else {
+        // Add regular fields
+        groups.push({ type: 'regular', field });
+      }
+    });
+    
+    return groups;
+  }, [fields]);
+
   const updateField = (key: string, updatedField: CardField) => {
     onFieldsChange(fields.map(field => 
       field.key === key ? updatedField : field
     ));
   };
 
+  // Update all address fields when group settings change
+  const updateAddressGroup = (updates: Partial<CardField>) => {
+    const addressFieldKeys = fields.filter(f => isAddressField(f.key)).map(f => f.key);
+    onFieldsChange(fields.map(field => 
+      addressFieldKeys.includes(field.key) ? { ...field, ...updates } : field
+    ));
+  };
+
   const deleteField = (key: string) => {
     onFieldsChange(fields.filter(field => field.key !== key));
+  };
+
+  const deleteAddressGroup = () => {
+    onFieldsChange(fields.filter(field => !isAddressField(field.key)));
   };
 
   const sensors = useSensors(
@@ -231,10 +364,29 @@ export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPrefer
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
     if (active.id !== over.id) {
-      const oldIndex = fields.findIndex(f => f.key === active.id);
-      const newIndex = fields.findIndex(f => f.key === over.id);
-      const newFields = arrayMove(fields, oldIndex, newIndex);
-      onFieldsChange(newFields);
+      // Handle group-based reordering
+      const oldIndex = groupedFields.findIndex(g => 
+        g.type === 'address' ? 'address-group' === active.id : g.field?.key === active.id
+      );
+      const newIndex = groupedFields.findIndex(g => 
+        g.type === 'address' ? 'address-group' === over.id : g.field?.key === over.id
+      );
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newGroupOrder = arrayMove(groupedFields, oldIndex, newIndex);
+        
+        // Flatten back to field array
+        const newFields: CardField[] = [];
+        newGroupOrder.forEach(group => {
+          if (group.type === 'address' && group.fields) {
+            newFields.push(...group.fields);
+          } else if (group.type === 'regular' && group.field) {
+            newFields.push(group.field);
+          }
+        });
+        
+        onFieldsChange(newFields);
+      }
     }
   };
 
@@ -271,15 +423,25 @@ export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPrefer
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <SortableContext items={fields.map(f => f.key)} strategy={verticalListSortingStrategy}>
-                {fields.map((field) => (
-                  <SortableRow
-                    key={field.key}
-                    field={field}
-                    onFieldUpdate={(updatedField) => updateField(field.key, updatedField)}
-                    onFieldDelete={deleteField}
-                  />
-                ))}
+              <SortableContext 
+                items={groupedFields.map(g => g.type === 'address' ? 'address-group' : g.field!.key)} 
+                strategy={verticalListSortingStrategy}
+              >
+                {groupedFields.map((group, index) => {
+                  if (group.type === 'address' && group.fields) {
+                    return <AddressGroupRow key="address-group" fields={group.fields} onGroupUpdate={updateAddressGroup} onGroupDelete={deleteAddressGroup} />;
+                  } else if (group.type === 'regular' && group.field) {
+                    return (
+                      <SortableRow
+                        key={group.field.key}
+                        field={group.field}
+                        onFieldUpdate={(updatedField) => updateField(group.field!.key, updatedField)}
+                        onFieldDelete={deleteField}
+                      />
+                    );
+                  }
+                  return null;
+                })}
               </SortableContext>
             </DndContext>
           </TableBody>
@@ -288,74 +450,122 @@ export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPrefer
 
       {/* Mobile Cards */}
       <div className="block sm:hidden space-y-4">
-        {fields.map((field) => (
-          <div key={field.key} className="rounded-md border p-4 space-y-3 group">
-            <div className="flex items-center justify-between">
-              <div className="font-medium">{field.label}</div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => deleteField(field.key)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50 p-1 h-auto ml-1"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-            
-            <div className="space-y-2">
-              <div>
-                <Label className="text-sm text-gray-600">Type</Label>
-                <Select
-                  value={field.field_type || 'text'}
-                  onValueChange={(newType: CardField['field_type']) => updateField(field.key, { ...field, field_type: newType })}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="phone">Phone</SelectItem>
-                    <SelectItem value="date">Date</SelectItem>
-                    <SelectItem value="select">Select</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {(field.field_type === 'select' || field.field_type === 'checkbox') && (
-                <div>
-                  <Label className="text-sm text-gray-600">Options</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {field.options?.map((option, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {option}
-                      </Badge>
-                    ))}
-                    {(!field.options || field.options.length === 0) && (
-                      <span className="text-sm text-gray-500">No options</span>
-                    )}
+        {groupedFields.map((group, index) => {
+          if (group.type === 'address' && group.fields) {
+            const firstField = group.fields[0];
+            return (
+              <div key="address-group" className="rounded-md border p-4 space-y-3 group bg-blue-50 border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium flex items-center gap-2">
+                    <span>Address Group</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {group.fields.length} fields
+                    </Badge>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={deleteAddressGroup}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50 p-1 h-auto ml-1"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
-              )}
-            </div>
+                
+                <div className="text-sm text-gray-600">
+                  Includes: {group.fields.map(f => f.label).join(', ')}
+                </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Visible</span>
-              <Switch
-                checked={field.visible}
-                onCheckedChange={(visible) => updateField(field.key, { ...field, visible, required: visible ? field.required : false })}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Required</span>
-              <Switch
-                checked={field.required}
-                onCheckedChange={(required) => updateField(field.key, { ...field, required })}
-                disabled={!field.visible}
-              />
-            </div>
-          </div>
-        ))}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Visible</span>
+                  <Switch
+                    checked={firstField.visible}
+                    onCheckedChange={(visible) => updateAddressGroup({ visible, required: visible ? firstField.required : false })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Required</span>
+                  <Switch
+                    checked={firstField.required}
+                    onCheckedChange={(required) => updateAddressGroup({ required })}
+                    disabled={!firstField.visible}
+                  />
+                </div>
+              </div>
+            );
+          } else if (group.type === 'regular' && group.field) {
+            const field = group.field;
+            return (
+              <div key={field.key} className="rounded-md border p-4 space-y-3 group">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium">{field.label}</div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteField(field.key)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50 p-1 h-auto ml-1"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  <div>
+                    <Label className="text-sm text-gray-600">Type</Label>
+                    <Select
+                      value={field.field_type || 'text'}
+                      onValueChange={(newType: CardField['field_type']) => updateField(field.key, { ...field, field_type: newType })}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="phone">Phone</SelectItem>
+                        <SelectItem value="date">Date</SelectItem>
+                        <SelectItem value="select">Select</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {(field.field_type === 'select' || field.field_type === 'checkbox') && (
+                    <div>
+                      <Label className="text-sm text-gray-600">Options</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {field.options?.map((option, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {option}
+                          </Badge>
+                        ))}
+                        {(!field.options || field.options.length === 0) && (
+                          <span className="text-sm text-gray-500">No options</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Visible</span>
+                  <Switch
+                    checked={field.visible}
+                    onCheckedChange={(visible) => updateField(field.key, { ...field, visible, required: visible ? field.required : false })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Required</span>
+                  <Switch
+                    checked={field.required}
+                    onCheckedChange={(required) => updateField(field.key, { ...field, required })}
+                    disabled={!field.visible}
+                  />
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })}
       </div>
     </>
   );

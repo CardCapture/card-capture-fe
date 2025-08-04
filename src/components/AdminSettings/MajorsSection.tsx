@@ -18,8 +18,166 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X, GripVertical, Edit, Check } from "lucide-react";
 import { toast } from "@/lib/toast";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+// Sortable major row component
+function SortableMajorRow({ 
+  major, 
+  index, 
+  isSelected, 
+  onToggleSelection,
+  onEdit,
+  onDelete,
+  editIndex,
+  editValue,
+  setEditValue,
+  onSaveEdit,
+  onCancelEdit
+}: {
+  major: string;
+  index: number;
+  isSelected: boolean;
+  onToggleSelection: (index: number) => void;
+  onEdit: (index: number, value: string) => void;
+  onDelete: (index: number) => void;
+  editIndex: number | null;
+  editValue: string;
+  setEditValue: (value: string) => void;
+  onSaveEdit: (index: number) => void;
+  onCancelEdit: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: `major-${index}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const isEditing = editIndex === index;
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className={`group hover:bg-gray-50 ${isSelected ? "bg-blue-50" : ""}`}
+    >
+      <TableCell>
+        <div className="flex justify-center">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelection(index)}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+          />
+        </div>
+      </TableCell>
+      
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <button
+            className="touch-none cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4 text-gray-400" />
+          </button>
+          
+          {isEditing ? (
+            <div className="flex items-center gap-1 min-w-0 flex-1">
+              <Input
+                autoFocus
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    onSaveEdit(index);
+                  }
+                  if (e.key === "Escape") {
+                    onCancelEdit();
+                  }
+                }}
+                onBlur={() => {
+                  if (editValue.trim() && editValue !== major) {
+                    onSaveEdit(index);
+                  } else {
+                    onCancelEdit();
+                  }
+                }}
+                className="border border-blue-200 bg-blue-50 px-2 py-1 text-base font-normal focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md h-8"
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onSaveEdit(index)}
+                className="h-8 w-8 p-0"
+              >
+                <Check className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onCancelEdit}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <span className="font-medium">{major}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onEdit(index, major)}
+                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Edit className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </TableCell>
+      
+      <TableCell>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(index);
+          }}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50 p-1 h-auto"
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+}
 
 interface MajorsSectionProps {
   majorsList: string[];
@@ -56,6 +214,14 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
   saveMajors,
   loadingMajors,
 }) => {
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
   // Bulk selection state
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
 
@@ -119,36 +285,7 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
     }
   }, [selectedIndices, filteredMajors, editedMajors, setEditedMajors, clearSelection, saveMajors]);
 
-  // Individual row callbacks
-  const handleEditMajor = useCallback(
-    async (idx: number) => {
-      if (editValue.trim() && editValue !== editedMajors[idx]) {
-        const newMajors = [...editedMajors];
-        newMajors[idx] = editValue.trim();
-        setEditedMajors(newMajors);
-        
-        // Auto-save the changes immediately
-        try {
-          await saveMajors(newMajors);
-          toast.success("Major updated and saved");
-        } catch (error) {
-          // If save fails, revert the local state
-          setEditedMajors(editedMajors);
-          toast.error("Failed to save changes");
-        }
-      }
-      setEditIndex(null);
-      setEditValue("");
-    },
-    [
-      editValue,
-      editedMajors,
-      setEditedMajors,
-      setEditIndex,
-      setEditValue,
-      saveMajors,
-    ]
-  );
+
 
   const handleDeleteMajor = useCallback(
     async (idx: number) => {
@@ -167,6 +304,54 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
     },
     [editedMajors, setEditedMajors, saveMajors]
   );
+
+  // Handle drag end for reordering
+  const handleDragEnd = useCallback((event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const oldIndex = parseInt(active.id.replace('major-', ''));
+      const newIndex = parseInt(over.id.replace('major-', ''));
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newMajors = arrayMove(filteredMajors, oldIndex, newIndex);
+        setEditedMajors(newMajors);
+      }
+    }
+  }, [filteredMajors, setEditedMajors]);
+
+  // Handle edit functions
+  const handleEditMajor = useCallback(async (index: number) => {
+    if (editValue.trim() && editValue !== filteredMajors[index]) {
+      const newMajors = [...editedMajors];
+      const majorIndex = newMajors.findIndex(m => m === filteredMajors[index]);
+      if (majorIndex !== -1) {
+        newMajors[majorIndex] = editValue.trim();
+        setEditedMajors(newMajors);
+        
+        // Auto-save the changes
+        try {
+          await saveMajors(newMajors);
+          toast.success("Major updated and saved");
+        } catch (error) {
+          // If save fails, revert the local state
+          setEditedMajors(editedMajors);
+          toast.error("Failed to save changes");
+        }
+      }
+    }
+    setEditIndex(null);
+    setEditValue("");
+  }, [editValue, filteredMajors, editedMajors, setEditedMajors, setEditIndex, setEditValue, saveMajors]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditIndex(null);
+    setEditValue("");
+  }, [setEditIndex, setEditValue]);
+
+  const handleStartEdit = useCallback((index: number, value: string) => {
+    setEditIndex(index);
+    setEditValue(value);
+  }, [setEditIndex, setEditValue]);
 
   const handleShowImport = useCallback(() => {
     setShowImport(true);
@@ -334,7 +519,7 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
           {/* Selection Action Bar */}
           <SelectionActionBar />
 
-          {/* Table */}
+          {/* Table with Drag and Drop */}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -355,83 +540,40 @@ const MajorsSection: React.FC<MajorsSectionProps> = ({
                     </div>
                   </TableHead>
                   <TableHead>Major</TableHead>
+                  <TableHead className="w-16"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMajors.map((major, idx) => (
-                  <TableRow
-                    key={idx}
-                    className={`group hover:bg-gray-50 ${
-                      isSelected(idx) ? "bg-blue-50" : ""
-                    }`}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext 
+                    items={filteredMajors.map((_, idx) => `major-${idx}`)} 
+                    strategy={verticalListSortingStrategy}
                   >
-                    <TableCell>
-                      <div className="flex justify-center">
-                        <input
-                          type="checkbox"
-                          checked={isSelected(idx)}
-                          onChange={() => toggleSelection(idx)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {editIndex === idx ? (
-                        <Input
-                          autoFocus
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleEditMajor(idx);
-                            }
-                            if (e.key === "Escape") {
-                              setEditIndex(null);
-                              setEditValue("");
-                            }
-                          }}
-                          onBlur={() => {
-                            if (editValue.trim() && editValue !== major) {
-                              handleEditMajor(idx);
-                            } else {
-                              setEditIndex(null);
-                              setEditValue("");
-                            }
-                          }}
-                          className="border border-blue-200 bg-blue-50 px-2 py-1 text-base font-normal focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                        />
-                      ) : (
-                        <div className="flex items-center">
-                          <span 
-                            className="text-base font-normal cursor-pointer hover:bg-gray-50 px-2 py-1 rounded-md transition-colors"
-                            onDoubleClick={() => {
-                              setEditIndex(idx);
-                              setEditValue(major);
-                            }}
-                            title="Double-click to edit"
-                          >
-                            {major}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteMajor(idx);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-all ml-2"
-                            title="Delete major"
-                            type="button"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                                 {filteredMajors.length === 0 && (
+                    {filteredMajors.map((major, idx) => (
+                      <SortableMajorRow
+                        key={`major-${idx}`}
+                        major={major}
+                        index={idx}
+                        isSelected={isSelected(idx)}
+                        onToggleSelection={toggleSelection}
+                        onEdit={handleStartEdit}
+                        onDelete={handleDeleteMajor}
+                        editIndex={editIndex}
+                        editValue={editValue}
+                        setEditValue={setEditValue}
+                        onSaveEdit={handleEditMajor}
+                        onCancelEdit={handleCancelEdit}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+                {filteredMajors.length === 0 && (
                    <TableRow>
-                     <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
+                     <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                        No majors found.
                      </TableCell>
                    </TableRow>
