@@ -142,11 +142,27 @@ export function AddressSuggestionsPanel({
                 <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <MapPin className="w-8 h-8 text-orange-600" />
                 </div>
-                <h4 className="font-medium text-gray-900 mb-2">No suggestions found</h4>
-                <p className="text-sm text-gray-600">
-                  We couldn't find any address suggestions for the current information. 
-                  Please verify the address manually.
-                </p>
+                {suggestions?.error ? (
+                  <>
+                    <h4 className="font-medium text-gray-900 mb-2">Address Needs Attention</h4>
+                    <p className="text-sm text-gray-600 mb-4">
+                      {suggestions.error}
+                    </p>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-xs text-blue-700 font-medium">
+                        💡 Tip: Make sure your address includes a house number for accurate validation
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="font-medium text-gray-900 mb-2">No suggestions found</h4>
+                    <p className="text-sm text-gray-600">
+                      We couldn't find any address suggestions for the current information. 
+                      Please verify the address manually.
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </CardContent>

@@ -158,10 +158,11 @@ export function AddressGroupWithStatus({
       return {
         type: 'cannot_validate',
         icon: <AlertTriangle className="w-4 h-4 text-orange-600" />,
-        text: 'Could not validate address',
+        text: suggestions.error || 'Could not validate address',
         textColor: 'text-orange-700',
         bgColor: 'bg-orange-50',
-        action: {
+        // Only show action for generic errors, not for specific house number error
+        action: !suggestions.error?.includes('add a house number') ? {
           text: 'Edit address to retry',
           onClick: () => {
             // Focus the first address field to encourage editing
@@ -171,7 +172,7 @@ export function AddressGroupWithStatus({
               addressInput.select();
             }
           }
-        }
+        } : null
       };
     }
     
@@ -274,19 +275,42 @@ export function AddressGroupWithStatus({
       {status?.type === 'cannot_validate' && (
         <div className="flex items-center gap-2 text-sm text-orange-600">
           <AlertTriangle className="w-3 h-3" />
-          <span>Could not validate address.</span>
-          <button 
-            onClick={() => {
-              const addressInput = document.querySelector('input[placeholder="Street Address"]') as HTMLInputElement;
-              if (addressInput) {
-                addressInput.focus();
-                addressInput.select();
-              }
-            }}
-            className="text-orange-700 underline hover:no-underline font-medium"
-          >
-            Edit to retry
-          </button>
+          {status.text.includes('add a house number') ? (
+            <span>
+              Please{' '}
+              <button 
+                onClick={() => {
+                  const addressInput = document.querySelector('input[placeholder="Street Address"]') as HTMLInputElement;
+                  if (addressInput) {
+                    addressInput.focus();
+                    addressInput.select();
+                  }
+                }}
+                className="text-orange-700 underline hover:no-underline font-medium"
+              >
+                add a house number
+              </button>
+              {' '}to validate the address
+            </span>
+          ) : (
+            <>
+              <span>{status.text}</span>
+              {status.action && (
+                <button 
+                  onClick={() => {
+                    const addressInput = document.querySelector('input[placeholder="Street Address"]') as HTMLInputElement;
+                    if (addressInput) {
+                      addressInput.focus();
+                      addressInput.select();
+                    }
+                  }}
+                  className="text-orange-700 underline hover:no-underline font-medium"
+                >
+                  {status.action.text}
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 
