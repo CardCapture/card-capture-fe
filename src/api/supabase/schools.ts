@@ -6,6 +6,7 @@ export interface SchoolData {
   email: string;
   stripe_customer_id: string | null;
   created_at: string;
+  enable_signup_sheets?: boolean; // Feature flag for signup sheet functionality
   card_fields?:
     | Array<{
         key: string;

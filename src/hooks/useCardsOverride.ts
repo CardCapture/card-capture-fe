@@ -150,6 +150,7 @@ export function useCardsOverride(eventId?: string) {
           trimmed_image_path: card.trimmed_image_path,
           ai_error_message: card.ai_error_message,
           review_data: card.review_data,
+          upload_type: card.upload_type || "inquiry_card", // Add missing upload_type field
         };
 
         // Debug log the mapped card

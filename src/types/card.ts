@@ -34,6 +34,7 @@ export interface ProspectCard {
   trimmed_image_path?: string;
   ai_error_message?: string;
   review_data?: any;
+  upload_type?: string; // "inquiry_card" or "signup_sheet"
 }
 
 // ScannerResult remains the same

@@ -24,6 +24,7 @@ import {
   UserPlus,
   ChevronDown,
   RotateCcw,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,10 +48,44 @@ import { useLoader, TableLoader } from "@/contexts/LoaderContext";
 import { CardService } from "@/services/CardService";
 import { useState, useEffect } from "react";
 import { IntegrationsService } from "@/services/IntegrationsService";
+import type { SchoolData } from "@/api/supabase/schools";
 
 // Add any additional imports as needed
 
-const CardTable = ({
+interface CardTableProps {
+  table: any;
+  handleRowClick: any;
+  selectedTab: any;
+  filteredCards: any;
+  paginatedCards: any;
+  currentPage: any;
+  totalPages: any;
+  setCurrentPage: any;
+  pageSize: any;
+  setPageSize: any;
+  getStatusCount: any;
+  hideExported: any;
+  setHideExported: any;
+  searchQuery: any;
+  setSearchQuery: any;
+  debouncedSearch: any;
+  isUploading: any;
+  selectedEvent: any;
+  dataFieldsMap: any;
+  reviewFieldOrder: any;
+  fileInputRef: any;
+  handleFileSelect: any;
+  handleCaptureCard: any;
+  handleImportFile: any;
+  handleManualEntry: any;
+  handleSignupSheet: any;
+  fetchCards: any;
+  bulkSelection: any;
+  isLoading?: boolean;
+  school?: SchoolData | null; // Add school data for feature flags
+}
+
+const CardTable: React.FC<CardTableProps> = ({
   table,
   handleRowClick,
   selectedTab,
@@ -76,9 +111,11 @@ const CardTable = ({
   handleCaptureCard,
   handleImportFile,
   handleManualEntry,
+  handleSignupSheet, // Add signup sheet handler
   fetchCards, // Add this prop for refreshing data
   bulkSelection, // Add bulkSelection as a prop
   isLoading = false, // Add isLoading prop for the loader
+  school, // Add school data for feature flags
 }) => {
   // Get loader context to check cards loading state
   const { isLoading: isGlobalLoading } = useLoader();
@@ -259,6 +296,12 @@ const CardTable = ({
                 <Upload className="w-4 h-4 mr-2" />
                 <span>Import Card(s)</span>
               </DropdownMenuItem>
+              {school?.enable_signup_sheets && (
+                <DropdownMenuItem onSelect={handleSignupSheet}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  <span>Upload Sign-up Sheet</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onSelect={handleManualEntry}>
                 <UserPlus className="w-4 h-4 mr-2" />
                 <span>Enter Manually</span>

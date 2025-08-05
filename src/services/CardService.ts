@@ -21,6 +21,7 @@ export interface RawCardData {
   school_id?: string;
   user_id?: string;
   trimmed_image_path?: string;
+  upload_type?: string; // Add upload_type field
   [key: string]: unknown;
 }
 
@@ -252,6 +253,7 @@ export class CardService {
         school_id: card.school_id || "",
         user_id: card.user_id,
         trimmed_image_path: card.trimmed_image_path,
+        upload_type: card.upload_type || "inquiry_card", // Add upload_type mapping
       };
 
       return transformedCard;

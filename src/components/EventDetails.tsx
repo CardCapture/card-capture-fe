@@ -48,6 +48,7 @@ import {
 // Custom Components and Hooks
 import { useToast } from "@/hooks/use-toast";
 import { useCardsOverride } from "@/hooks/useCardsOverride";
+import { useSchool } from "@/hooks/useSchool";
 import { useEvents } from "@/hooks/useEvents";
 import { useAuth } from "@/contexts/AuthContext";
 // Utilities and Types
@@ -85,8 +86,9 @@ import { useBulkActions } from "@/hooks/useBulkActions";
 import { toast } from "@/lib/toast"; // Updated import
 import CameraCapture from "@/components/card-scanner/CameraCapture";
 import { useLoader } from "@/contexts/LoaderContext";
-import { useSchool } from "@/hooks/useSchool";
 import { EventHeader } from "./EventDetails/EventHeader";
+import { SignupSheetUpload } from "@/components/SignupSheetUpload";
+import { SignupSheetProcessing } from "@/components/SignupSheetProcessing";
 
 // === Component Definition ===
 const Dashboard = () => {
@@ -100,6 +102,7 @@ const Dashboard = () => {
     loading: eventsLoading,
     fetchEvents,
   } = useEvents(profile?.school_id);
+  const { school, loading: schoolLoading } = useSchool(profile?.school_id);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const {
     cards,
@@ -157,8 +160,7 @@ const Dashboard = () => {
     boolean
   > | null>(null);
 
-  // Use shared school hook
-  const { school } = useSchool(selectedEvent?.school_id);
+  // Use shared school hook (already defined above with profile?.school_id)
 
   // Extract cardFields from school data first (moved up for dependency)
   const cardFields = useMemo(() => {
@@ -235,6 +237,27 @@ const Dashboard = () => {
     handleManualEntrySubmit,
     handleManualEntryChange,
   } = useManualEntryModal(selectedEvent, fetchCards, cardFields);
+
+  // Signup sheet modal state
+  const [isSignupSheetModalOpen, setIsSignupSheetModalOpen] = useState(false);
+  const [isSignupSheetProcessing, setIsSignupSheetProcessing] = useState(false);
+  
+  // Handler for signup sheet upload
+  const handleSignupSheet = useCallback(() => {
+    setIsSignupSheetModalOpen(true);
+  }, []);
+
+  // Handler for signup sheet upload completion
+  const handleSignupSheetComplete = useCallback(async () => {
+    setIsSignupSheetModalOpen(false);
+    setIsSignupSheetProcessing(true);
+    
+    // Wait a bit then refresh and hide processing
+    setTimeout(async () => {
+      await fetchCards(); // Refresh cards after upload
+      setIsSignupSheetProcessing(false);
+    }, 2000); // Show processing for 2 seconds minimum
+  }, [fetchCards]);
 
   // --- Callbacks ---
   const debouncedSearch = useCallback((query: string) => {
@@ -574,9 +597,10 @@ const Dashboard = () => {
           const card = row.original;
           const currentStatus = determineCardStatus(card);
           const exportedAt = card.exported_at;
+          const isSignupSheet = card.upload_type === "signup_sheet";
           let displayText: string;
           if (currentStatus === "needs_human_review") {
-            displayText = "Needs Review";
+            displayText = isSignupSheet ? "Sign-up Sheet" : "Needs Review";
           } else if (currentStatus === "reviewed") {
             displayText = "Ready for Export";
           } else if (currentStatus === "exported") {
@@ -595,7 +619,12 @@ const Dashboard = () => {
             if (currentStatus === "reviewed") {
               return "border-green-500 text-green-700 bg-green-50 font-semibold text-xs px-3 py-1 rounded-full";
             } else if (currentStatus === "needs_human_review") {
-              return "border-yellow-400 text-yellow-800 bg-yellow-50 font-semibold text-xs px-3 py-1 rounded-full";
+              // Use purple/indigo for signup sheets, yellow for regular needs review
+              if (isSignupSheet) {
+                return "border-indigo-400 text-indigo-800 bg-indigo-50 font-semibold text-xs px-3 py-1 rounded-full";
+              } else {
+                return "border-yellow-400 text-yellow-800 bg-yellow-50 font-semibold text-xs px-3 py-1 rounded-full";
+              }
             } else if (currentStatus === "exported") {
               return "border-blue-500 text-blue-700 bg-blue-50 font-semibold text-xs px-3 py-1 rounded-full";
             } else if (currentStatus === "archived") {
@@ -623,9 +652,24 @@ const Dashboard = () => {
           }
           return (
             <div className="flex flex-col gap-1">
-              <Badge variant="outline" className={getBadgeClasses()}>
-                {displayText}
-              </Badge>
+              {isSignupSheet ? (
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Badge variant="outline" className={getBadgeClasses()}>
+                        {displayText}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Imported from sign-up sheet, please review</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <Badge variant="outline" className={getBadgeClasses()}>
+                  {displayText}
+                </Badge>
+              )}
             </div>
           );
         },
@@ -651,7 +695,8 @@ const Dashboard = () => {
           const needsReview = fieldData?.requires_human_review === true;
           const isReviewed = fieldData?.reviewed === true;
           const reviewNotes = fieldData?.review_notes;
-          const showIcon = needsReview;
+          const isSignupSheet = row.original.upload_type === "signup_sheet";
+          const showIcon = needsReview && !isSignupSheet; // Hide red icons for signup sheets
           
           // Ensure value is always a string - handle objects gracefully
           let stringValue = "";
@@ -982,6 +1027,9 @@ const Dashboard = () => {
 
         {/* Main Content - Mobile Responsive */}
         <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
+          {/* Signup Sheet Processing Indicator */}
+          <SignupSheetProcessing show={isSignupSheetProcessing} />
+          
           <Card className="overflow-hidden">
             <CardContent className="p-3 sm:p-6">
               {/* Mobile-Responsive Tabs */}
@@ -1085,10 +1133,12 @@ const Dashboard = () => {
                 handleFileSelect={handleFileSelect}
                 handleCaptureCard={handleCaptureCard}
                 handleImportFile={handleImportFile}
+                handleSignupSheet={handleSignupSheet}
                 handleManualEntry={handleManualEntry}
                 fetchCards={fetchCards}
                 bulkSelection={bulkSelection}
                 isLoading={cardsLoading}
+                school={school} // Add school data for feature flags
               />
             </CardContent>
           </Card>
@@ -1250,6 +1300,23 @@ const Dashboard = () => {
           onSubmit={handleManualEntrySubmit}
           cardFields={cardFields}
         />
+
+        {/* Signup Sheet Upload Modal */}
+        <Dialog open={isSignupSheetModalOpen} onOpenChange={setIsSignupSheetModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Upload Sign-up Sheet</DialogTitle>
+              <DialogDescription>
+                Upload a photo of a sign-up sheet to digitize the student information
+              </DialogDescription>
+            </DialogHeader>
+            <SignupSheetUpload
+              eventId={eventId!}
+              schoolId={selectedEvent?.school_id || ''}
+              onUploadComplete={handleSignupSheetComplete}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </ErrorBoundary>
   );

@@ -363,11 +363,14 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       data => data?.requires_human_review
     );
     
+    const isSignupSheet = selectedCardForReview?.upload_type === "signup_sheet";
+    const showRedIcon = hasAnyReviewNeeded && !isSignupSheet; // Hide red icons for signup sheets
+    
     return (
       <div key="address-group" className="flex items-start gap-4 py-1">
         {/* Label - Fixed Width */}
         <Label className="w-32 text-right text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1 justify-end shrink-0 pt-2">
-          {hasAnyReviewNeeded && (
+          {showRedIcon && (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger>
@@ -418,6 +421,26 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         </div>
       )}
       
+      {/* Sign-up Sheet Badge */}
+      {selectedCardForReview?.upload_type === "signup_sheet" && (
+        <div className="mb-4 flex items-center gap-2">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-md text-indigo-800 text-sm font-medium">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm1 2a1 1 0 000 2h6a1 1 0 100-2H7zm6 7a1 1 0 011 1v3a1 1 0 11-2 0v-3a1 1 0 011-1zm-3 3a1 1 0 100 2h.01a1 1 0 100-2H10zm-4 1a1 1 0 011-1h.01a1 1 0 110 2H7a1 1 0 01-1-1zm1-4a1 1 0 100 2h.01a1 1 0 100-2H7zm2 0a1 1 0 100 2h.01a1 1 0 100-2H9zm2 0a1 1 0 100 2h.01a1 1 0 100-2H11zm2 0a1 1 0 100 2h.01a1 1 0 100-2H13zm-8-2a1 1 0 011-1h.01a1 1 0 110 2H6a1 1 0 01-1-1zm1-2a1 1 0 100 2h.01a1 1 0 100-2H6zm2 0a1 1 0 100 2h.01a1 1 0 100-2H8zm2 0a1 1 0 100 2h.01a1 1 0 100-2H10zm2 0a1 1 0 100 2h.01a1 1 0 100-2H12z" clipRule="evenodd"/>
+                  </svg>
+                  Sign-up Sheet
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Imported from sign-up sheet - please verify all fields</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
 
       
       <div className="space-y-2">
@@ -437,7 +460,9 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
               const needsReview = !!fieldData?.requires_human_review;
               const isReviewed = !!fieldData?.reviewed;
               const reviewNotes = fieldData?.review_notes || undefined;
-              const showIcon = needsReview;
+              const isSignupSheet = selectedCardForReview?.upload_type === "signup_sheet";
+              const showRedIcon = needsReview && !isReviewed && !isSignupSheet; // Hide red icons for signup sheets
+              const showReviewCircle = needsReview; // Always show review circles when review is needed
               const tooltipContent =
                 typeof reviewNotes === "string" && reviewNotes.length > 0
                   ? reviewNotes
@@ -454,7 +479,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                     htmlFor={fieldKey}
                     className="w-32 text-right text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1 justify-end shrink-0"
                   >
-                    {showIcon && !isReviewed && (
+                    {showRedIcon && (
                       <TooltipProvider delayDuration={100}>
                         <Tooltip>
                           <TooltipTrigger>
@@ -478,7 +503,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                   
                   {/* Status Zone - Next to Field */}
                   <div className="flex items-center gap-2">
-                    {showIcon && (
+                    {showReviewCircle && (
                     <TooltipProvider delayDuration={100}>
                       <Tooltip>
                         <TooltipTrigger asChild>
