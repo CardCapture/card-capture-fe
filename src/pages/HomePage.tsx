@@ -1,6 +1,7 @@
 // src/pages/HomePage.tsx
 import { useEffect } from 'react';
 import Hero from '@/components/Hero';
+import HowItWorks from '@/components/HowItWorks';
 import Features from '@/components/Features';
 
 const HomePage = () => {
@@ -12,6 +13,7 @@ const HomePage = () => {
   return (
     <>
       <Hero />
+      <HowItWorks />
       <Features />
     </>
   );
