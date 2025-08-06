@@ -14,7 +14,7 @@ const Features = () => {
     {
       icon: <Zap className="h-6 w-6 text-green-500" />,
       title: "24-Hour Follow-Up",
-      description: "Reach prospective students within 24 hours of an event — while they're still excited about your school.",
+      description: "Reach prospective students within 24 hours of an event while they're still excited about your school.",
     },
     {
       icon: <Database className="h-6 w-6 text-blue-500" />,
@@ -82,7 +82,7 @@ const Features = () => {
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">The Complete Process</h2>
             <p className="text-lg md:text-xl font-medium text-foreground/90 leading-relaxed tracking-tight max-w-4xl mx-auto">
-              Turn cards into leads <span className="font-bold text-primary">instantly</span> Engage with prospects and reclaim your <span className="font-bold text-primary">time</span>
+              Turn cards into leads <span className="font-bold text-primary">instantly</span> Engage with prospects, and reclaim your <span className="font-bold text-primary">time</span>
             </p>
           </div>
 
@@ -144,7 +144,7 @@ const Features = () => {
               {/* Quote - Right Side */}
               <div className="lg:col-span-2 text-center lg:text-left">
                 <blockquote className="text-xl md:text-2xl font-medium text-foreground mb-6 lg:mb-8 leading-relaxed">
-                  "CardCapture turned hours of data entry into minutes — and now we’re following up with students the day after every event."
+                  "CardCapture turned hours of data entry into minutes and now we’re following up with students the day after every event."
                 </blockquote>
                 <div className="flex flex-col lg:items-start items-center">
                   <div className="font-semibold text-xl mb-1">Dr. Grant Greenwood</div>
