@@ -104,7 +104,7 @@ const Hero = () => {
               <div className="mb-12">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-1 h-8 bg-gradient-to-b from-primary to-primary/60 rounded-full"></div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-foreground">How it works in 15 seconds</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold text-foreground">How it works</h2>
                 </div>
               </div>
               
