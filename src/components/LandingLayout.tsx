@@ -75,7 +75,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                 className="px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Request Demo
+                Schedule a Demo
               </Link>
               
               {user ? (
@@ -118,7 +118,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                 className="block px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Request Demo
+                Schedule a Demo
               </Link>
               {user ? (
                 <Button 
@@ -155,7 +155,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                 <span className="font-bold text-lg tracking-tight">CardCapture</span>
               </div>
               <p className="text-sm text-foreground/70">
-                Transform handwritten prospect cards into digital data with AI-powered technology.
+                Get inquiry cards into your CRM in 15 seconds, not 3 minutes.
               </p>
             </div>
             <div>

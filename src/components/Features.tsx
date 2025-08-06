@@ -7,44 +7,44 @@ const Features = () => {
 
   const features = [
     {
-      icon: <Camera className="h-6 w-6 text-primary" />,
-      title: "Smart Capture",
-      description: "Take photos of handwritten cards or upload existing images. Our advanced OCR technology handles the rest.",
+      icon: <Clock className="h-6 w-6 text-primary" />,
+      title: "12x Faster Processing",
+      description: "Go from 3 minutes per card to just 15 seconds. Transform your most time-consuming task into your fastest.",
     },
     {
-      icon: <Brain className="h-6 w-6 text-green-500" />,
-      title: "AI-Powered Review",
-      description: "Our AI reviewer does the first pass, reducing manual data entry by 95%. Humans review and clean up what's left.",
+      icon: <Zap className="h-6 w-6 text-green-500" />,
+      title: "24-Hour Follow-Up",
+      description: "Reach prospective students within 24 hours of an event — while they're still excited about your school.",
     },
     {
-      icon: <Check className="h-6 w-6 text-blue-500" />,
-      title: "Accurate Recognition",
-      description: "State-of-the-art handwriting recognition with high accuracy, even for challenging handwriting styles.",
+      icon: <Database className="h-6 w-6 text-blue-500" />,
+      title: "Direct CRM Integration",
+      description: "Send data straight to Slate with our secure SFTP connection. No manual imports required.",
     },
     {
-      icon: <Database className="h-6 w-6 text-indigo-500" />,
-      title: "CRM Integration",
-      description: "Seamlessly sync with Slate through our secure SFTP connection.",
+      icon: <Brain className="h-6 w-6 text-indigo-500" />,
+      title: "AI-Powered Accuracy",
+      description: "Advanced AI reads handwriting with high accuracy, even for challenging writing styles.",
     },
     {
-      icon: <FileSpreadsheet className="h-6 w-6 text-amber-500" />,
-      title: "Flexible Export",
-      description: "Export to CSV, Excel, or directly to your CRM. Customize export formats to match your needs.",
+      icon: <Camera className="h-6 w-6 text-amber-500" />,
+      title: "Simple Capture",
+      description: "Just take photos with your phone or upload existing images. No special equipment needed.",
     },
     {
-      icon: <AlertTriangle className="h-6 w-6 text-purple-500" />,
+      icon: <Check className="h-6 w-6 text-purple-500" />,
       title: "Smart Validation",
-      description: "Automated data validation ensures accuracy and flags potential issues for review.",
+      description: "Automated data validation catches errors and flags only what needs human review.",
     },
     {
-      icon: <Shield className="h-6 w-6 text-orange-500" />,
-      title: "Secure Storage",
-      description: "Enterprise-grade security with encrypted storage and secure data transmission.",
+      icon: <FileSpreadsheet className="h-6 w-6 text-orange-500" />,
+      title: "Flexible Export",
+      description: "Export to CSV, Excel, or send directly to your CRM. Works with any enrollment system.",
     },
     {
-      icon: <Zap className="h-6 w-6 text-yellow-500" />,
+      icon: <UserCheck className="h-6 w-6 text-yellow-500" />,
       title: "Bulk Processing",
-      description: "Handle large volumes of cards efficiently with our bulk processing capabilities.",
+      description: "Upload and process hundreds of cards at once. Perfect for large events and college fairs.",
     },
   ];
 
@@ -54,9 +54,9 @@ const Features = () => {
       <section className="py-20 bg-secondary/30">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Powerful Features for Modern Recruitment</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Stop Losing Leads to Slow Data Entry</h2>
             <p className="text-lg text-foreground/70">
-              Transform your recruitment and college fair process with our comprehensive suite of features designed for efficiency and accuracy.
+              Replace 3 minutes of manual entry with 15 seconds of smart processing. Get inquiry card data into your CRM faster so you can reach students while they're still engaged.
             </p>
           </div>
 
@@ -81,9 +81,9 @@ const Features = () => {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">The Complete Process</h2>
             <p className="text-lg text-foreground/70">
-              Get started in minutes with our streamlined process.
+              Every step optimized for speed, accuracy, and seamless CRM integration.
             </p>
           </div>
 
@@ -94,25 +94,25 @@ const Features = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Capture</h3>
               <p className="text-foreground/70">
-                Take photos of your prospect cards or upload existing images.
+                Snap photos of inquiry cards with your phone or upload existing images. No special equipment required.
               </p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Brain className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">AI Review</h3>
+              <h3 className="text-xl font-semibold mb-2">AI Processing</h3>
               <p className="text-foreground/70">
-                Our AI reviewer does the first pass, reducing manual data entry by 95%.
+                Advanced AI extracts student data from handwritten cards with exceptional accuracy.
               </p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <UserCheck className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Human Review</h3>
+              <h3 className="text-xl font-semibold mb-2">Quick Review</h3>
               <p className="text-foreground/70">
-                Review only the 5% of cards flagged by AI for verification.
+                Review and approve the data in one click. Only flagged fields need attention.
               </p>
             </div>
             <div className="text-center">
@@ -121,8 +121,39 @@ const Features = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Export</h3>
               <p className="text-foreground/70">
-                Export your data to your preferred format or sync directly with your CRM.
+                Send clean data to Slate automatically or export to CSV. Start follow-up within hours.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonial Section */}
+      <section className="py-20 bg-secondary/30">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+              {/* Grant's Photo - Left Side */}
+              <div className="flex justify-center lg:justify-start">
+                <img 
+                  src="https://assets.cardcapture.io/storage/v1/object/public/assets//grant.jpeg" 
+                  alt="Dr. Grant Greenwood"
+                  className="w-48 h-48 lg:w-56 lg:h-56 rounded-2xl object-cover shadow-lg"
+                />
+              </div>
+              
+              {/* Quote - Right Side */}
+              <div className="lg:col-span-2 text-center lg:text-left">
+                <div className="text-4xl md:text-5xl text-primary mb-4 lg:mb-6">"</div>
+                <blockquote className="text-xl md:text-2xl font-medium text-foreground mb-6 lg:mb-8 leading-relaxed">
+                  CardCapture has completely transformed our recruiting process. What used to take hours now takes minutes — and I'm able to start contacting our leads within 24 hours of an event.
+                </blockquote>
+                <div className="flex flex-col lg:items-start items-center">
+                  <div className="font-semibold text-xl mb-1">Dr. Grant Greenwood</div>
+                  <div className="text-foreground/70 text-lg">VP of Enrollment Management</div>
+                  <div className="text-foreground/70 text-lg">McMurry University</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -131,9 +162,9 @@ const Features = () => {
       {/* CTA Section */}
       <section className="py-20 bg-primary text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Transform Your Recruitment Process?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Reply in Hours Instead of Days?</h2>
           <p className="text-lg opacity-90 max-w-2xl mx-auto mb-8">
-            Join hundreds of recruitment teams who have streamlined their prospect card management with CardCapture.
+            Join admissions teams who've cut their lead processing time by 12x and improved their yield with faster follow-up.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
@@ -142,7 +173,7 @@ const Features = () => {
               className="text-lg"
               onClick={() => navigate('/get-started')}
             >
-              Request Demo
+              Schedule a Demo
             </Button>
           </div>
         </div>
