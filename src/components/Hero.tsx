@@ -58,7 +58,7 @@ const Hero = () => {
             </h1>
 
             <p className="text-xl md:text-2xl font-medium text-foreground/90 leading-relaxed tracking-tight max-w-2xl">
-              Process inquiry cards in <span className="font-bold text-primary">15 seconds</span>. Follow up in <span className="font-bold text-primary">24 hours</span>.
+              Process inquiry cards in <span className="font-bold text-primary">15 seconds</span> Follow up in <span className="font-bold text-primary">24 hours</span>
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">

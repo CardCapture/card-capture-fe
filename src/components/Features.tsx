@@ -55,11 +55,10 @@ const Features = () => {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Stop Losing Leads to Slow Data Entry</h2>
-            <p className="text-lg text-foreground/70">
-              Replace 3 minutes of manual entry with 15 seconds of smart processing. Get inquiry card data into your CRM faster so you can reach students while they're still engaged.
+            <p className="text-xl md:text-2xl font-medium text-foreground/90 leading-relaxed tracking-tight">
+              Get cards into your CRM <span className="font-bold text-primary">today</span> Follow up <span className="font-bold text-primary">tomorrow</span>
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => (
               <div 
@@ -82,8 +81,8 @@ const Features = () => {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">The Complete Process</h2>
-            <p className="text-lg text-foreground/70">
-              Every step optimized for speed, accuracy, and seamless CRM integration.
+            <p className="text-lg md:text-xl font-medium text-foreground/90 leading-relaxed tracking-tight max-w-4xl mx-auto">
+              Turn cards into leads <span className="font-bold text-primary">instantly</span> Engage with prospects and reclaim your <span className="font-bold text-primary">time</span>
             </p>
           </div>
 
@@ -94,7 +93,7 @@ const Features = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Capture</h3>
               <p className="text-foreground/70">
-                Snap photos of inquiry cards with your phone or upload existing images. No special equipment required.
+                Snap photos of inquiry cards with your phone or upload existing images
               </p>
             </div>
             <div className="text-center">
@@ -103,7 +102,7 @@ const Features = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">AI Processing</h3>
               <p className="text-foreground/70">
-                Advanced AI extracts student data from handwritten cards with exceptional accuracy.
+                Advanced AI extracts student data from handwritten cards
               </p>
             </div>
             <div className="text-center">
@@ -112,7 +111,7 @@ const Features = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Quick Review</h3>
               <p className="text-foreground/70">
-                Review and approve the data in one click. Only flagged fields need attention.
+                Review and approve the data in one click. Only flagged fields need attention
               </p>
             </div>
             <div className="text-center">
@@ -121,7 +120,7 @@ const Features = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Export</h3>
               <p className="text-foreground/70">
-                Send clean data to Slate automatically or export to CSV. Start follow-up within hours.
+                Send clean data to Slate automatically or export to CSV. Start follow-up within hours
               </p>
             </div>
           </div>
@@ -144,9 +143,8 @@ const Features = () => {
               
               {/* Quote - Right Side */}
               <div className="lg:col-span-2 text-center lg:text-left">
-                <div className="text-4xl md:text-5xl text-primary mb-4 lg:mb-6">"</div>
                 <blockquote className="text-xl md:text-2xl font-medium text-foreground mb-6 lg:mb-8 leading-relaxed">
-                  CardCapture has completely transformed our recruiting process. What used to take hours now takes minutes — and I'm able to start contacting our leads within 24 hours of an event.
+                  "CardCapture turned hours of data entry into minutes — and now we’re following up with students the day after every event."
                 </blockquote>
                 <div className="flex flex-col lg:items-start items-center">
                   <div className="font-semibold text-xl mb-1">Dr. Grant Greenwood</div>
@@ -162,9 +160,9 @@ const Features = () => {
       {/* CTA Section */}
       <section className="py-20 bg-primary text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Reply in Hours Instead of Days?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Ditch Data Entry?</h2>
           <p className="text-lg opacity-90 max-w-2xl mx-auto mb-8">
-            Join admissions teams who've cut their lead processing time by 12x and improved their yield with faster follow-up.
+            Join admissions teams who've cut their lead processing time by <b>12x</b> and improved their yield with <b>faster follow-up</b>.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 

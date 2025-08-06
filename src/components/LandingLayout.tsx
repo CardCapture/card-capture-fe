@@ -155,7 +155,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                 <span className="font-bold text-lg tracking-tight">CardCapture</span>
               </div>
               <p className="text-sm text-foreground/70">
-                Get inquiry cards into your CRM in 15 seconds, not 3 minutes.
+              Process cards in <b>minutes</b>, not hours. Contact leads in <b>hours</b>, not days
               </p>
             </div>
             <div>
