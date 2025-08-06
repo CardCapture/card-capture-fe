@@ -64,9 +64,124 @@ export function AddressGroupWithStatus({
     minChangeThreshold: 2,
   });
 
+  // Simplified approach: Check if address was verified by Google Maps during pipeline processing
+  // Look for explicit verification indicators rather than trying to track sources
+  const wasVerifiedDuringProcessing = (
+    addressFieldData && 
+    !addressFieldData.requires_human_review &&
+    (
+      // Direct indicators of Google Maps verification
+      (addressFieldData.review_notes && addressFieldData.review_notes.toLowerCase().includes('confirmed valid')) ||
+      (addressFieldData.source === "smart_validation") ||
+      (addressFieldData.source === "address_validation") ||
+      (addressFieldData.source === "google_maps")
+    )
+  );
+  
+  const isCurrentlyVerified = appliedSuggestion?.source === "google_maps" && appliedSuggestion?.confidence === "high";
+  
+  // Track if the current values match the original verified values (only for originally verified addresses)
+  const originalValues = React.useMemo(() => {
+    if (wasVerifiedDuringProcessing) {
+      return {
+        address: addressFieldData?.value || "",
+        city: cityFieldData?.value || "",
+        state: stateFieldData?.value || "", 
+        zipCode: zipCodeFieldData?.value || ""
+      };
+    }
+    return null;
+  }, [wasVerifiedDuringProcessing, addressFieldData?.value, cityFieldData?.value, stateFieldData?.value, zipCodeFieldData?.value]);
+  
+  const currentValues = React.useMemo(() => ({
+    address: address || "",
+    city: city || "",
+    state: state || "",
+    zipCode: zipCode || ""
+  }), [address, city, state, zipCode]);
+  
+  // Check if current values match original verified values
+  const valuesMatchOriginal = originalValues && 
+    originalValues.address === currentValues.address &&
+    originalValues.city === currentValues.city &&
+    originalValues.state === currentValues.state &&
+    originalValues.zipCode === currentValues.zipCode;
+  
+  // Check if validation failed (validation occurred but API returned failure or no suggestions)
+  const validationFailed = hasValidationOccurred && suggestions && (
+    !suggestions.success || !suggestions.has_suggestions || suggestions.suggestions.length === 0
+  );
+  
+  // SIMPLIFIED VERIFICATION LOGIC:
+  // Show verified ONLY if:
+  // 1. Address was verified during processing AND user hasn't changed it, OR  
+  // 2. Address was verified in current session AND suggestion matches exactly what user typed
+  let isGoogleVerified = false;
+  
+  console.log("🔍 Address Verification Debug:", {
+    wasVerifiedDuringProcessing,
+    valuesMatchOriginal,
+    validationFailed,
+    hasValidationOccurred,
+    suggestionsCount: suggestions?.suggestions?.length || 0,
+    originalValues: originalValues ? {
+      address: originalValues.address,
+      city: originalValues.city,
+      state: originalValues.state,
+      zipCode: originalValues.zipCode
+    } : null,
+    currentValues: {
+      address: currentValues.address,
+      city: currentValues.city,
+      state: currentValues.state,
+      zipCode: currentValues.zipCode
+    },
+    inputProps: {
+      address: address,
+      city: city,
+      state: state,
+      zipCode: zipCode
+    },
+    addressFieldData: {
+      value: addressFieldData?.value,
+      source: addressFieldData?.source,
+      requires_human_review: addressFieldData?.requires_human_review
+    }
+  });
+  
+  if (wasVerifiedDuringProcessing && valuesMatchOriginal && !validationFailed) {
+    // Pipeline verified and unchanged AND current validation successful (or not yet attempted)
+    isGoogleVerified = true;
+    console.log("✅ Showing verified: Pipeline verified and unchanged");
+  } else if (validationFailed) {
+    isGoogleVerified = false;
+    console.log("❌ NOT showing verified: Validation failed");
+  } else if (isCurrentlyVerified && appliedSuggestion) {
+    // Verified in this session - only show verified if suggestion exactly matches user input
+    const suggestionMatchesInput = 
+      appliedSuggestion.address === (address || "") &&
+      appliedSuggestion.city === (city || "") &&
+      appliedSuggestion.state === (state || "") &&
+      appliedSuggestion.zip_code === (zipCode || "");
+    
+    isGoogleVerified = suggestionMatchesInput;
+    console.log(`${suggestionMatchesInput ? "✅" : "❌"} Showing verified: Current session, matches input: ${suggestionMatchesInput}`);
+  } else {
+    console.log("❌ NOT showing verified");
+  }
+  
+  // If user edited a previously verified address, clear the applied suggestion
+  // This forces re-evaluation of the new address
+
   // Trigger validation when address fields change
   React.useEffect(() => {
     const hasAddressData = address || city || state || zipCode;
+    
+    // If the user has edited fields away from original verified values, clear applied suggestion
+    // This ensures the verification badge disappears immediately when they start editing
+    if (originalValues && !valuesMatchOriginal && appliedSuggestion) {
+      setAppliedSuggestion(null);
+    }
     
     if (hasAddressData) {
       const request = {
@@ -77,7 +192,7 @@ export function AddressGroupWithStatus({
       };
       validateAddress(request);
     }
-  }, [address, city, state, zipCode, validateAddress]);
+  }, [address, city, state, zipCode, validateAddress, originalValues, valuesMatchOriginal, appliedSuggestion]);
 
   // Handle applying a suggestion
   const handleApplySuggestion = (suggestion: AddressSuggestion) => {
@@ -109,9 +224,6 @@ export function AddressGroupWithStatus({
     
     return baseClasses;
   };
-
-  // Check if address is Google verified
-  const isGoogleVerified = appliedSuggestion?.source === "google_maps" && appliedSuggestion?.confidence === "high";
   
   // Check if address actually needs human review
   const addressNeedsReview = addressFieldData?.requires_human_review || 
@@ -138,42 +250,75 @@ export function AddressGroupWithStatus({
       return null; // No status message for verified addresses - badge will be shown separately
     }
     
-    // Only show suggestions if the address actually requires human review
-    if (hasValidationOccurred && suggestions?.has_suggestions && suggestions.suggestions.length > 0 && addressNeedsReview) {
+    // Show suggestions if we have them and validation occurred
+    if (hasValidationOccurred && suggestions?.has_suggestions && suggestions.suggestions.length > 0) {
+      // For high confidence suggestions, show "verify address" instead of "address can be improved"
+      const hasHighConfidenceSuggestion = suggestions.suggestions.some(s => s.confidence === 'high');
+      
       return {
         type: 'has_suggestions',
         icon: <Lightbulb className="w-4 h-4 text-yellow-600" />,
-        text: 'Address can be improved',
+        text: hasHighConfidenceSuggestion ? 'Address can be verified' : 'Address can be improved',
         textColor: 'text-yellow-700',
         bgColor: 'bg-yellow-50',
         action: {
-          text: 'View suggestions',
+          text: hasHighConfidenceSuggestion ? 'Verify address' : 'View suggestions',
           onClick: () => setIsPanelOpen(true)
         }
       };
     }
     
-    // Only show cannot validate if the address needs review
-    if (hasValidationOccurred && suggestions && !suggestions.has_suggestions && addressNeedsReview) {
-      return {
-        type: 'cannot_validate',
-        icon: <AlertTriangle className="w-4 h-4 text-orange-600" />,
-        text: suggestions.error || 'Could not validate address',
-        textColor: 'text-orange-700',
-        bgColor: 'bg-orange-50',
-        // Only show action for generic errors, not for specific house number error
-        action: !suggestions.error?.includes('add a house number') ? {
-          text: 'Edit address to retry',
-          onClick: () => {
-            // Focus the first address field to encourage editing
-            const addressInput = document.querySelector('input[placeholder="Street Address"]') as HTMLInputElement;
-            if (addressInput) {
-              addressInput.focus();
-              addressInput.select();
+    // Show error if validation occurred but address couldn't be verified
+    if (hasValidationOccurred && !isGoogleVerified) {
+      // Case 1: No suggestions found at all
+      if (suggestions && !suggestions.has_suggestions) {
+        return {
+          type: 'cannot_validate',
+          icon: <AlertTriangle className="w-4 h-4 text-orange-600" />,
+          text: suggestions.error || 'Could not validate address',
+          textColor: 'text-orange-700',
+          bgColor: 'bg-orange-50',
+          action: !suggestions.error?.includes('add a house number') ? {
+            text: 'Edit address to retry',
+            onClick: () => {
+              const addressInput = document.querySelector('input[placeholder="Street Address"]') as HTMLInputElement;
+              if (addressInput) {
+                addressInput.focus();
+                addressInput.select();
+              }
             }
-          }
-        } : null
-      };
+          } : null
+        };
+      }
+      
+      // Case 2: Suggestions found but don't match user input (invalid address)
+      if (suggestions?.has_suggestions && isCurrentlyVerified && appliedSuggestion) {
+        const suggestionMatchesInput = 
+          appliedSuggestion.address === (address || "") &&
+          appliedSuggestion.city === (city || "") &&
+          appliedSuggestion.state === (state || "") &&
+          appliedSuggestion.zip_code === (zipCode || "");
+          
+        if (!suggestionMatchesInput) {
+          return {
+            type: 'invalid_address',
+            icon: <AlertTriangle className="w-4 h-4 text-orange-600" />,
+            text: 'Address appears to be invalid',
+            textColor: 'text-orange-700',
+            bgColor: 'bg-orange-50',
+            action: {
+              text: 'Edit address to retry',
+              onClick: () => {
+                const addressInput = document.querySelector('input[placeholder="Street Address"]') as HTMLInputElement;
+                if (addressInput) {
+                  addressInput.focus();
+                  addressInput.select();
+                }
+              }
+            }
+          };
+        }
+      }
     }
     
     // Has address data but not validated yet
@@ -253,7 +398,7 @@ export function AddressGroupWithStatus({
         </div>
       )}
       
-      {(isGoogleVerified || (!addressNeedsReview && hasValidationOccurred)) && (
+      {isGoogleVerified && (
         <div className="flex items-center gap-2 text-sm text-green-600 w-fit">
           <CheckCircle className="w-3 h-3" />
           <span>Address verified by Google Maps</span>

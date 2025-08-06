@@ -57,8 +57,76 @@ export function AddressFieldWithSuggestions({
     minChangeThreshold: 2,
   });
 
+  // Simplified approach: Check if address was verified by Google Maps during pipeline processing
+  const wasVerifiedDuringProcessing = (
+    addressFieldData && 
+    !addressFieldData.requires_human_review &&
+    (
+      // Direct indicators of Google Maps verification
+      (addressFieldData.review_notes && addressFieldData.review_notes.toLowerCase().includes('confirmed valid')) ||
+      (addressFieldData.source === "smart_validation") ||
+      (addressFieldData.source === "address_validation") ||
+      (addressFieldData.source === "google_maps")
+    )
+  );
+  
+  const isCurrentlyVerified = appliedSuggestion?.source === "google_maps" && appliedSuggestion?.confidence === "high";
+  
+  // Track if the current values match the original verified values (only for originally verified addresses)
+  const originalValues = React.useMemo(() => {
+    if (wasVerifiedDuringProcessing) {
+      return {
+        address: addressFieldData?.value || "",
+        city: cityFieldData?.value || "",
+        state: stateFieldData?.value || "", 
+        zipCode: zipCodeFieldData?.value || ""
+      };
+    }
+    return null;
+  }, [wasVerifiedDuringProcessing, addressFieldData?.value, cityFieldData?.value, stateFieldData?.value, zipCodeFieldData?.value]);
+  
+  const currentValues = React.useMemo(() => ({
+    address: address || "",
+    city: city || "",
+    state: state || "",
+    zipCode: zipCode || ""
+  }), [address, city, state, zipCode]);
+  
+  // Check if current values match original verified values
+  const valuesMatchOriginal = originalValues && 
+    originalValues.address === currentValues.address &&
+    originalValues.city === currentValues.city &&
+    originalValues.state === currentValues.state &&
+    originalValues.zipCode === currentValues.zipCode;
+  
+  // SIMPLIFIED VERIFICATION LOGIC:
+  // Show verified ONLY if:
+  // 1. Address was verified during processing AND user hasn't changed it, OR  
+  // 2. Address was verified in current session AND suggestion matches exactly what user typed
+  let isGoogleVerified = false;
+  
+  if (wasVerifiedDuringProcessing && valuesMatchOriginal) {
+    // Pipeline verified and unchanged
+    isGoogleVerified = true;
+  } else if (isCurrentlyVerified && appliedSuggestion) {
+    // Verified in this session - only show verified if suggestion exactly matches user input
+    const suggestionMatchesInput = 
+      appliedSuggestion.address === (address || "") &&
+      appliedSuggestion.city === (city || "") &&
+      appliedSuggestion.state === (state || "") &&
+      appliedSuggestion.zip_code === (zipCode || "");
+    
+    isGoogleVerified = suggestionMatchesInput;
+  }
+
   // Trigger validation when address fields change
   useEffect(() => {
+    // If the user has edited fields away from original verified values, clear applied suggestion
+    // This ensures the verification badge disappears immediately when they start editing
+    if (originalValues && !valuesMatchOriginal && appliedSuggestion) {
+      setAppliedSuggestion(null);
+    }
+    
     const request: AddressSuggestionsRequest = {
       address: address || "",
       city: city || "",
@@ -67,7 +135,7 @@ export function AddressFieldWithSuggestions({
     };
     
     validateAddress(request);
-  }, [address, city, state, zipCode, validateAddress]);
+  }, [address, city, state, zipCode, validateAddress, originalValues, valuesMatchOriginal, appliedSuggestion]);
 
   // Show suggestions when we get results
   useEffect(() => {
@@ -126,9 +194,6 @@ export function AddressFieldWithSuggestions({
     
     return baseClasses;
   };
-
-  // Check if address is Google verified
-  const isGoogleVerified = appliedSuggestion?.source === "google_maps" && appliedSuggestion?.confidence === "high";
 
   return (
     <div className={`relative ${className}`}>
