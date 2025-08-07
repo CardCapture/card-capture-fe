@@ -1023,6 +1023,7 @@ const Dashboard = () => {
           handleEditEventName={handleEditEventName}
           handleSaveEventName={handleSaveEventName}
           handleCancelEditEventName={handleCancelEditEventName}
+          onRefreshCards={fetchCards}
         />
 
         {/* Main Content - Mobile Responsive */}

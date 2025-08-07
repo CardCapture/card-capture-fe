@@ -14,6 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { CompactProcessingStatus } from "@/components/CompactProcessingStatus";
+import { ProcessingService } from "@/services/processingService";
 
 interface EventHeaderProps {
   selectedEvent: { id: string; name: string; school_id?: string } | null;
@@ -30,6 +31,7 @@ interface EventHeaderProps {
   handleEditEventName: () => void;
   handleSaveEventName: () => void;
   handleCancelEditEventName: () => void;
+  onRefreshCards?: () => void;
 }
 
 const EventHeader: React.FC<EventHeaderProps> = ({
@@ -47,6 +49,7 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   handleEditEventName,
   handleSaveEventName,
   handleCancelEditEventName,
+  onRefreshCards,
 }) => {
   // Memoize tab click handlers to prevent unnecessary re-renders
   const handleNeedsReviewClick = useCallback(() => {
@@ -66,6 +69,34 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   const handleArchivedClick = useCallback(() => {
     setSelectedTab("archived");
   }, [setSelectedTab]);
+
+  // Processing handlers
+  const handleRetryFailed = useCallback(async () => {
+    if (!selectedEvent?.id) return;
+    
+    await ProcessingService.retryFailedJobs(selectedEvent.id);
+    if (onRefreshCards) {
+      onRefreshCards();
+    }
+  }, [selectedEvent?.id, onRefreshCards]);
+
+  const handleStopProcessing = useCallback(async () => {
+    if (!selectedEvent?.id) return;
+    
+    await ProcessingService.stopActiveJobs(selectedEvent.id);
+    if (onRefreshCards) {
+      onRefreshCards();
+    }
+  }, [selectedEvent?.id, onRefreshCards]);
+
+  const handleDismissFailure = useCallback(async () => {
+    if (!selectedEvent?.id) return;
+    
+    await ProcessingService.clearFailedJobs(selectedEvent.id);
+    if (onRefreshCards) {
+      onRefreshCards();
+    }
+  }, [selectedEvent?.id, onRefreshCards]);
   return (
     <>
       {/* Breadcrumb Navigation */}
@@ -161,6 +192,9 @@ const EventHeader: React.FC<EventHeaderProps> = ({
                 <CompactProcessingStatus 
                   eventId={selectedEvent.id}
                   className="min-w-[240px]"
+                  onRetryFailed={handleRetryFailed}
+                  onStopProcessing={handleStopProcessing}
+                  onDismissFailure={handleDismissFailure}
                 />
               </div>
             )}
