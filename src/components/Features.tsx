@@ -78,35 +78,6 @@ const Features = () => {
 
 
 
-      {/* Testimonial Section */}
-      <section className="py-20 bg-secondary/30">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
-              {/* Grant's Photo - Left Side */}
-              <div className="flex justify-center lg:justify-start">
-                <img 
-                  src="https://assets.cardcapture.io/storage/v1/object/public/assets//grant.jpeg" 
-                  alt="Dr. Grant Greenwood"
-                  className="w-48 h-48 lg:w-56 lg:h-56 rounded-2xl object-cover shadow-lg"
-                />
-              </div>
-              
-              {/* Quote - Right Side */}
-              <div className="lg:col-span-2 text-center lg:text-left">
-                <blockquote className="text-xl md:text-2xl font-medium text-foreground mb-6 lg:mb-8 leading-relaxed">
-                  "CardCapture turned hours of data entry into minutes and now we’re following up with students the day after every event."
-                </blockquote>
-                <div className="flex flex-col lg:items-start items-center">
-                  <div className="font-semibold text-xl mb-1">Dr. Grant Greenwood</div>
-                  <div className="text-foreground/70 text-lg">VP of Enrollment Management</div>
-                  <div className="text-foreground/70 text-lg">McMurry University</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-20 bg-primary text-primary-foreground">

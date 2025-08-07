@@ -26,7 +26,7 @@ import { AIFailureBanner } from "@/components/cards/AIFailureBanner";
 import { CardService } from "@/services/CardService";
 import { useAIRetry } from "@/hooks/useAIRetry";
 import { SchoolService, type CardField } from "@/services/SchoolService";
-import { AddressGroupWithStatus } from "@/components/ui/address-group-with-status";
+import { AddressGroupSimple } from "@/components/ui/address-group-simple";
 
 const FIELD_LABELS: Record<string, string> = {
   name: "Name",
@@ -389,7 +389,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         
         {/* Address Fields - Natural Widths */}
         <div className="flex-1">
-          <AddressGroupWithStatus
+          <AddressGroupSimple
             address={formData.address || ""}
             city={formData.city || ""}
             state={formData.state || ""}
@@ -402,6 +402,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             cityFieldData={cityData}
             stateFieldData={stateData}
             zipCodeFieldData={zipCodeData}
+            reviewStatus={selectedCardForReview?.review_status}
           />
         </div>
       </div>
