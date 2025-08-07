@@ -162,8 +162,7 @@ export function AddressGroupSimple({
         debounceTimeout.current = setTimeout(() => {
           console.log("✅ Debounced validation triggered - have useful address info!");
           console.log("Stack trace:", new Error().stack);
-          validateUserInput();
-          lastValidatedValues.current = currentValues;
+          validateUserInput(currentValues);
         }, 800);
       } else {
         console.log("📝 Not enough address info for validation yet");
@@ -174,20 +173,24 @@ export function AddressGroupSimple({
     }
   }, [currentValues, isReadyForExport]);
 
-  const validateUserInput = async () => {
+  const validateUserInput = async (validatedValues: string) => {
     try {
       setCurrentValidationState("loading");
       
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const requestBody = {
+        address,
+        city,
+        state,
+        zip_code: zipCode
+      };
+      
+      console.log("🚀 Sending validation request:", requestBody);
+      
       const response = await fetch(`${apiBaseUrl}/address/validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address,
-          city,
-          state,
-          zip_code: zipCode
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -196,12 +199,14 @@ export function AddressGroupSimple({
 
       const data = await response.json();
       
+      console.log("✅ Full validation response:", data);
       console.log("✅ User input validation result:", {
         success: data.success,
         validationState: data.validation?.state,
         hasValidation: !!data.validation,
         suggestion: data.validation?.suggestion,
-        error: data.validation?.error
+        error: data.validation?.error,
+        originalQuery: data.validation?.original_query
       });
       
       if (data.success && data.validation) {
@@ -209,19 +214,28 @@ export function AddressGroupSimple({
         setCurrentValidationState(data.validation.state);
         setSuggestion(data.validation.suggestion);
         
+        // Update lastValidatedValues after successful validation
+        lastValidatedValues.current = validatedValues;
+        
         if (data.validation.state === "verified") {
           toast.success("✅ Address verified with Google Maps");
+        } else if (data.validation.state === "can_be_verified" && data.validation.suggestion) {
+          console.log("📍 Address has suggestions, showing validation button");
         }
       } else {
         console.log("❌ Validation failed, setting to not_verified");
         setCurrentValidationState("not_verified");
         setSuggestion(null);
+        // Still update lastValidatedValues even on failure
+        lastValidatedValues.current = validatedValues;
       }
       
     } catch (error) {
       console.error("❌ Validation error:", error);
       setCurrentValidationState("not_verified");
       setSuggestion(null);
+      // Update lastValidatedValues even on error
+      lastValidatedValues.current = validatedValues;
     }
   };
 
