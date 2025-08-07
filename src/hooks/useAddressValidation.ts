@@ -120,7 +120,13 @@ export function useAddressValidation(
         
         // Call the validation API
         const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-        const response = await fetch(`${apiBaseUrl}/address/validate`, {
+        const validationUrl = `${apiBaseUrl}/address/validate`;
+        
+        console.log("🔗 API Base URL:", apiBaseUrl);
+        console.log("🔗 Full validation URL:", validationUrl);
+        console.log("🔗 Environment variables:", import.meta.env);
+        
+        const response = await fetch(validationUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
