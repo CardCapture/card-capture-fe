@@ -403,6 +403,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             stateFieldData={stateData}
             zipCodeFieldData={zipCodeData}
             reviewStatus={selectedCardForReview?.review_status}
+            onFieldReview={(fieldKey) => handleFieldReview(fieldKey, { preventDefault: () => {}, stopPropagation: () => {} } as React.MouseEvent)}
           />
         </div>
       </div>

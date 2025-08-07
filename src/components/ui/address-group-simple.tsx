@@ -10,6 +10,12 @@ import {
   AlertTriangle, 
   MapPin
 } from "lucide-react";
+import { 
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 // Simple validation states
 type ValidationState = "verified" | "can_be_verified" | "no_house_number" | "not_verified" | "loading";
@@ -34,6 +40,7 @@ interface AddressGroupSimpleProps {
     validation_state?: ValidationState;
     validation_suggestion?: any;
     reviewed?: boolean;
+    requires_human_review?: boolean;
   };
   cityFieldData?: { value?: string; source?: string; reviewed?: boolean };
   stateFieldData?: { value?: string; source?: string; reviewed?: boolean };
@@ -41,6 +48,9 @@ interface AddressGroupSimpleProps {
   
   // Card status
   reviewStatus?: string;
+  
+  // Review handler
+  onFieldReview?: (fieldKey: string) => void;
   
   // Styling
   className?: string;
@@ -61,6 +71,7 @@ export function AddressGroupSimple({
   stateFieldData,
   zipCodeFieldData,
   reviewStatus,
+  onFieldReview,
   className = "",
   disabled = false,
 }: AddressGroupSimpleProps) {
@@ -344,6 +355,11 @@ export function AddressGroupSimple({
     }
   };
 
+  // Check if address field needs review and show checkbox
+  const addressNeedsReview = addressFieldData?.requires_human_review;
+  const addressIsReviewed = addressFieldData?.reviewed;
+  const showReviewCheckbox = addressNeedsReview && onFieldReview;
+
   return (
     <div className={`space-y-2 ${className}`}>
       {/* Street Address Input */}
@@ -384,8 +400,43 @@ export function AddressGroupSimple({
         />
       </div>
 
-      {/* Validation Status */}
-      {renderValidationStatus()}
+      {/* Validation Status and Review Checkbox Row */}
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          {renderValidationStatus()}
+        </div>
+        
+        {/* Mark as Reviewed Checkbox - Only show if address needs review */}
+        {showReviewCheckbox && (
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={`h-8 w-8 p-1 ml-2 ${
+                    addressIsReviewed
+                      ? "text-green-500"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                  onClick={() => onFieldReview?.('address')}
+                  disabled={disabled}
+                >
+                  <CheckCircle className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p>
+                  {addressIsReviewed
+                    ? "Mark as needing review"
+                    : "Mark as reviewed"}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
 
       {/* Suggestions Panel */}
       {suggestion && isSuggestionPanelOpen && (
