@@ -222,15 +222,45 @@ export function AddressGroupSimple({
       
       if (data.success && data.validation) {
         console.log(`🎯 Setting validation state to: ${data.validation.state}`);
-        setCurrentValidationState(data.validation.state);
+        
+        // Check if Google Maps provided additional fields that user didn't have
+        // If so, we should show it as "can_be_verified" so they can review and apply
+        let finalState = data.validation.state;
+        
+        if (data.validation.state === "verified" && data.validation.suggestion) {
+          const suggestion = data.validation.suggestion;
+          const currentCity = city?.trim();
+          const currentState = state?.trim();
+          
+          // If user is missing city or state but Google found them, show as "can_be_verified"
+          const googleHasCity = suggestion.city && suggestion.city.trim();
+          const googleHasState = suggestion.state && suggestion.state.trim();
+          
+          const needsCityFill = !currentCity && googleHasCity;
+          const needsStateFill = !currentState && googleHasState;
+          
+          if (needsCityFill || needsStateFill) {
+            finalState = "can_be_verified";
+            console.log("📍 Google provided missing fields, showing as can_be_verified:", {
+              needsCityFill,
+              needsStateFill,
+              currentCity,
+              currentState,
+              suggestedCity: suggestion.city,
+              suggestedState: suggestion.state
+            });
+          }
+        }
+        
+        setCurrentValidationState(finalState);
         setSuggestion(data.validation.suggestion);
         
         // Update lastValidatedValues after successful validation
         lastValidatedValues.current = validatedValues;
         
-        if (data.validation.state === "verified") {
+        if (finalState === "verified") {
           toast.success("✅ Address verified with Google Maps");
-        } else if (data.validation.state === "can_be_verified" && data.validation.suggestion) {
+        } else if (finalState === "can_be_verified" && data.validation.suggestion) {
           console.log("📍 Address has suggestions, showing validation button");
         }
       } else {
