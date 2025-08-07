@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCw, RotateCcw } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { getSignedImageUrl } from "@/lib/imageUtils";
 
@@ -23,6 +23,7 @@ const ReviewImagePanel = ({
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [rotation, setRotation] = useState(0); // degrees
 
   // Pan and interaction state
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -48,6 +49,28 @@ const ReviewImagePanel = ({
     },
     [pan]
   );
+
+  const rotateLeft = useCallback(() => setRotation((r) => (r - 90 + 360) % 360), []);
+  const rotateRight = useCallback(() => setRotation((r) => (r + 90) % 360), []);
+
+  // Persist rotation per card locally so it survives modal close
+  useEffect(() => {
+    if (!selectedCardId) return;
+    const key = `cardRotation:${selectedCardId}`;
+    const saved = localStorage.getItem(key);
+    if (saved !== null) {
+      const deg = parseInt(saved, 10);
+      if (!Number.isNaN(deg)) setRotation(((deg % 360) + 360) % 360);
+    } else {
+      setRotation(0);
+    }
+  }, [selectedCardId]);
+
+  useEffect(() => {
+    if (!selectedCardId) return;
+    const key = `cardRotation:${selectedCardId}`;
+    localStorage.setItem(key, String(rotation));
+  }, [rotation, selectedCardId]);
 
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     if (!draggingRef.current) return;
@@ -261,7 +284,7 @@ const ReviewImagePanel = ({
 
   return (
     <div className="relative flex-1 flex flex-col overflow-hidden bg-white rounded-lg h-full">
-      {/* Zoom controls - Touch-friendly sizing */}
+      {/* Zoom/Rotate controls - Touch-friendly sizing */}
       <div className="absolute top-4 right-4 flex gap-2 z-10">
         <Button 
           size="icon" 
@@ -278,6 +301,24 @@ const ReviewImagePanel = ({
           className="h-10 w-10 sm:h-8 sm:w-8 touch-manipulation"
         >
           <ZoomIn className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={rotateLeft}
+          className="h-10 w-10 sm:h-8 sm:w-8 touch-manipulation"
+          title="Rotate left"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={rotateRight}
+          className="h-10 w-10 sm:h-8 sm:w-8 touch-manipulation"
+          title="Rotate right"
+        >
+          <RotateCw className="h-4 w-4" />
         </Button>
       </div>
 
@@ -318,7 +359,7 @@ const ReviewImagePanel = ({
               alt={`Scanned card ${selectedCardId}`}
               draggable={false}
               style={{
-                transform: `scale(${internalZoom * externalZoom})`,
+                transform: `rotate(${rotation}deg) scale(${internalZoom * externalZoom})`,
                 transformOrigin: "center",
                 transition: (draggingRef.current || touchStartRef.current) ? "none" : "transform 0.2s",
                 maxWidth: "100%",
