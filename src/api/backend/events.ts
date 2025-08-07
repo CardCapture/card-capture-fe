@@ -67,7 +67,16 @@ export const backendEventsApi = {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to delete event (${response.status})`);
+      let msg = `Failed to delete event (${response.status})`;
+      try {
+        const data = await response.json();
+        const detail = (data && (data.detail ?? data.error)) as any;
+        if (typeof detail === "string") msg = detail;
+        else if (detail?.message) msg = detail.message;
+      } catch (_) {
+        // ignore parse errors, keep default message
+      }
+      throw new Error(msg);
     }
   },
 
