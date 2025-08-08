@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, RotateCw, RotateCcw } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCw, RotateCcw, Maximize2 } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { getSignedImageUrl } from "@/lib/imageUtils";
 
@@ -19,11 +19,12 @@ const ReviewImagePanel = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-  const [internalZoom, setInternalZoom] = useState(1.87);
+  const [internalZoom, setInternalZoom] = useState(1.5); // Good readable zoom that's centered
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [rotation, setRotation] = useState(0); // degrees
+  const [imageDimensions, setImageDimensions] = useState<{width: number; height: number} | null>(null);
 
   // Pan and interaction state
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -52,6 +53,34 @@ const ReviewImagePanel = ({
 
   const rotateLeft = useCallback(() => setRotation((r) => (r - 90 + 360) % 360), []);
   const rotateRight = useCallback(() => setRotation((r) => (r + 90) % 360), []);
+
+  // Auto-fit function to fit the entire card in view
+  const autoFit = useCallback(() => {
+    if (!containerRef.current || !imageDimensions) return;
+    
+    const container = containerRef.current;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    
+    // Account for rotation - swap dimensions if rotated 90 or 270 degrees
+    const isRotated = rotation === 90 || rotation === 270;
+    const imageWidth = isRotated ? imageDimensions.height : imageDimensions.width;
+    const imageHeight = isRotated ? imageDimensions.width : imageDimensions.height;
+    
+    // Calculate scale to fit with padding
+    const padding = 40;
+    const scaleX = (containerWidth - padding) / imageWidth;
+    const scaleY = (containerHeight - padding) / imageHeight;
+    
+    // Use the smaller scale to ensure entire image fits
+    const fitScale = Math.min(scaleX, scaleY);
+    
+    // Set zoom to fit the card nicely - at least 1.2x for readability
+    const optimalZoom = Math.max(fitScale, 1.2);
+    
+    setInternalZoom(optimalZoom);
+    setPan({ x: 0, y: 0 }); // Center the image
+  }, [imageDimensions, rotation]);
 
   // Persist rotation per card locally so it survives modal close
   useEffect(() => {
@@ -231,9 +260,11 @@ const ReviewImagePanel = ({
     accumulatedMovementRef.current = 0;
   }, []);
 
-  // Reset pan when image changes
+  // Reset pan when image changes, keep zoom at default
   useEffect(() => {
     setPan({ x: 0, y: 0 });
+    setImageDimensions(null); // Reset dimensions for new image
+    setInternalZoom(1.5); // Keep at readable zoom that's centered
   }, [selectedCardId]);
 
   // Add event listeners
@@ -282,10 +313,31 @@ const ReviewImagePanel = ({
     }
   }, [imagePath]);
 
+  // Just store the image dimensions when loaded, no auto-adjustments
+  // The user can use the auto-fit button if they want optimal view
+
+  // Handle image load to get natural dimensions
+  const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    setImageDimensions({
+      width: img.naturalWidth,
+      height: img.naturalHeight
+    });
+  }, []);
+
   return (
-    <div className="relative flex-1 flex flex-col overflow-hidden bg-white rounded-lg h-full">
+    <div className="relative w-full h-full flex flex-col overflow-hidden bg-white rounded-lg">
       {/* Zoom/Rotate controls - Touch-friendly sizing */}
       <div className="absolute top-4 right-4 flex gap-2 z-10">
+        <Button 
+          size="icon" 
+          variant="outline" 
+          onClick={autoFit} 
+          className="h-10 w-10 sm:h-8 sm:w-8 touch-manipulation"
+          title="Auto-fit"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </Button>
         <Button 
           size="icon" 
           variant="outline" 
@@ -325,7 +377,7 @@ const ReviewImagePanel = ({
       {/* Image container with pan and zoom - Enhanced touch support */}
       <div
         ref={containerRef}
-        className={`flex-1 overflow-hidden select-none flex items-center justify-center ${
+        className={`flex-1 overflow-hidden select-none ${
           draggingRef.current || touchStartRef.current ? "cursor-grabbing" : "cursor-grab"
         }`}
         onMouseDown={onMouseDown}
@@ -340,50 +392,55 @@ const ReviewImagePanel = ({
           minHeight: "300px",
           userSelect: "none", // Prevent text selection
           WebkitUserSelect: "none", // Safari
+          position: "relative",
         }}
       >
-        <div
-          className="flex items-center justify-center w-full h-full p-2 sm:p-4"
-          style={{
-            transform: `translate(${pan.x}px, ${pan.y}px)`,
-            transition: (draggingRef.current || touchStartRef.current)
-              ? "none"
-              : "transform 0.1s ease-out",
-          }}
-        >
-          {loading && <div className="text-sm text-gray-500">Loading image...</div>}
-          {!loading && signedUrl && !imgError && (
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-sm text-gray-500">Loading image...</div>
+          </div>
+        )}
+        {!loading && signedUrl && !imgError && (
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%", 
+              transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) rotate(${rotation}deg) scale(${internalZoom * externalZoom})`,
+              transformOrigin: "center",
+              transition: (draggingRef.current || touchStartRef.current) ? "none" : "transform 0.2s",
+            }}
+          >
             <img
               ref={imgRef}
               src={signedUrl}
               alt={`Scanned card ${selectedCardId}`}
               draggable={false}
               style={{
-                transform: `rotate(${rotation}deg) scale(${internalZoom * externalZoom})`,
-                transformOrigin: "center",
-                transition: (draggingRef.current || touchStartRef.current) ? "none" : "transform 0.2s",
-                maxWidth: "100%",
-                maxHeight: "100%",
-                objectFit: "contain",
-                margin: "auto",
+                display: "block",
                 userSelect: "none",
                 WebkitUserSelect: "none",
                 pointerEvents: "none", // Prevent image drag
               }}
               crossOrigin="anonymous"
+              onLoad={handleImageLoad}
               onError={() => {
                 setImgError(true);
                 toast.loadFailed("image");
               }}
             />
-          )}
-          {!loading && imgError && (
+          </div>
+        )}
+        {!loading && imgError && (
+          <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-red-500 text-sm text-center p-4">Failed to load image.</div>
-          )}
-          {!loading && !signedUrl && !imgError && (
+          </div>
+        )}
+        {!loading && !signedUrl && !imgError && (
+          <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-gray-500 text-sm text-center p-4">No image available.</div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
