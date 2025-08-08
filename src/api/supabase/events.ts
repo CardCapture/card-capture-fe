@@ -29,9 +29,10 @@ export const eventsApi = {
    * Get reviewed data (cards) - excluding deleted cards
    */
   async getReviewedData(schoolId?: string): Promise<ProspectCard[]> {
+    // Fetch only columns needed for stats to reduce payload size
     let query = supabase
       .from("reviewed_data")
-      .select("*")
+      .select("id, review_status, exported_at, event_id")
       .neq("review_status", "deleted");
 
     if (schoolId) {
