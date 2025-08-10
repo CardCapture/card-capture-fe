@@ -24,10 +24,13 @@ export function useEvents(schoolId?: string): UseEventsReturn {
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
-
+      
+      console.log("useEvents: fetchEvents called with schoolId:", schoolId);
       const eventsWithStats = await EventService.getEventsWithStats(schoolId);
+      console.log("useEvents: fetched events:", eventsWithStats.length, "events");
       setEvents(eventsWithStats);
     } catch (err) {
+      console.error("useEvents: fetchEvents error:", err);
       setError(err as Error);
       toast("Failed to fetch events");
     } finally {

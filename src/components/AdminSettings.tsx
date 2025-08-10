@@ -27,6 +27,7 @@ import {
   Users,
   Database,
   GraduationCap,
+  Calendar,
   Trash2,
   Plus,
   PencilLine,
@@ -64,6 +65,7 @@ import { useSchool } from "@/hooks/useSchool";
 import { UserManagementSection } from "./AdminSettings/UserManagementSection";
 import { IntegrationsSection } from "./AdminSettings/IntegrationsSection";
 import { MajorsSection } from "./AdminSettings/MajorsSection";
+import { CRMEventsSection } from "./AdminSettings/CRMEventsSection-basic";
 import { SubscriptionSection } from "./AdminSettings/SubscriptionSection";
 import { UserProfile } from "@/api/backend/users";
 
@@ -92,6 +94,11 @@ const NAV_ITEMS = [
     id: "majors",
     label: "Majors",
     icon: <GraduationCap className="w-5 h-5 mr-2" />,
+  },
+  {
+    id: "events",
+    label: "Events",
+    icon: <Calendar className="w-5 h-5 mr-2" />,
   },
   {
     id: "integrations",
@@ -623,6 +630,10 @@ const AdminSettings: React.FC = () => {
           handleStripeCheckout={handleStripeCheckout}
         />
       );
+      break;
+    case "events":
+      heading = "Events";
+      content = <CRMEventsSection />;
       break;
     case "integrations":
       heading = "Integrations";

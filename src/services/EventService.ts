@@ -19,6 +19,10 @@ export class EventService {
         eventsApi.getReviewedData(schoolId),
       ]);
 
+      console.log("EventService: Raw events data from Supabase:", eventsData);
+      console.log("EventService: schoolId used for query:", schoolId);
+      console.log("EventService: Number of events returned:", eventsData.length);
+
       // Process the data to include stats
       const eventsWithStats: EventWithStats[] = eventsData.map((event) => {
         const cards =
@@ -27,6 +31,7 @@ export class EventService {
         console.log("EventService: Processing event stats", {
           eventName: event.name,
           eventId: event.id,
+          school_id: event.school_id,
           cardCount: cards.length,
         });
 

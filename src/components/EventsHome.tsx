@@ -79,6 +79,7 @@ import {
 import { toast } from "@/lib/toast";
 import { useLoader, TableLoader } from "@/contexts/LoaderContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import { EventService } from "@/services/EventService";
 
 
@@ -89,12 +90,13 @@ const DashboardCopy = () => {
   // External Hooks
   const router = useNavigate();
   const { session } = useAuth();
+  const { schoolId } = useProfile();
   const {
     events,
     loading: eventsLoading,
     fetchEvents,
     archiveEvents,
-  } = useEvents();
+  } = useEvents(schoolId);
 
   // Global loader for table
   const { showTableLoader, hideTableLoader, isLoading } = useLoader();
@@ -141,10 +143,12 @@ const DashboardCopy = () => {
     );
   }, [events]);
 
-  // Fetch events on mount
+  // Fetch events on mount and when schoolId changes
   useEffect(() => {
+    console.log("EventsHome: useEffect triggered, schoolId:", schoolId);
+    console.log("EventsHome: fetchEvents function:", fetchEvents);
     fetchEvents();
-  }, []);
+  }, [fetchEvents, schoolId]);
 
   // Control global loader based on events loading state
   useEffect(() => {

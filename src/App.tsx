@@ -174,6 +174,14 @@ function App() {
                       }
                     />
                     <Route
+                      path="/settings/events"
+                      element={
+                        <RoleProtectedRoute requiredPermission="canAccessSettings">
+                          <AdminSettings />
+                        </RoleProtectedRoute>
+                      }
+                    />
+                    <Route
                       path="/settings/integrations"
                       element={
                         <RoleProtectedRoute requiredPermission="canAccessSettings">
