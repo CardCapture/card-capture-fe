@@ -45,6 +45,8 @@ const ContactPage = React.lazy(() => import("./pages/ContactPage"));
 const SuperAdminPage = React.lazy(() => import("./pages/SuperAdminPage"));
 const AuthCallback = React.lazy(() => import("./components/AuthCallback"));
 const MagicLinkPage = React.lazy(() => import("./pages/MagicLinkPage"));
+const StudentSignupPage = React.lazy(() => import("./pages/StudentSignupPage"));
+const StudentLookupPage = React.lazy(() => import("./pages/StudentLookupPage"));
 
 // --- CSS Import ---
 import "./App.css";
@@ -78,6 +80,8 @@ function App() {
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/magic-link" element={<MagicLinkPage />} />
+                  <Route path="/register" element={<StudentSignupPage />} />
+                  <Route path="/lookup" element={<StudentLookupPage />} />
                 </Route>
 
                 {/* SuperAdmin routes */}
