@@ -49,6 +49,8 @@ export interface RegistrationResult {
   student_id: string;
   verified: boolean;
   message: string;
+  token?: string;
+  qrDataUri?: string;
 }
 
 export interface EmailVerificationRequest {

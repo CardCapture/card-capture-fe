@@ -122,7 +122,9 @@ export default function RegistrationFormPage() {
       navigate('/register/success', { 
         state: { 
           verified: result.verified,
-          message: result.message 
+          message: result.message,
+          token: result.token,
+          qrDataUri: result.qrDataUri
         } 
       });
 
