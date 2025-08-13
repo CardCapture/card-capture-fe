@@ -52,6 +52,7 @@ const StudentLookupPage = React.lazy(() => import("./pages/StudentLookupPage"));
 const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
 const CheckEmailPage = React.lazy(() => import("./pages/CheckEmailPage"));
 const RegistrationFormPage = React.lazy(() => import("./pages/RegistrationFormPage"));
+const MultiStepRegistrationPage = React.lazy(() => import("./pages/MultiStepRegistrationPage"));
 const RegistrationSuccessPage = React.lazy(() => import("./pages/RegistrationSuccessPage"));
 const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage"));
 const MagicLinkVerifyPage = React.lazy(() => import("./pages/MagicLinkVerifyPage"));
@@ -93,12 +94,13 @@ function App() {
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/register/check-email" element={<CheckEmailPage />} />
                   <Route path="/register/verify" element={<MagicLinkVerifyPage />} />
-                  <Route path="/register/form" element={<RegistrationFormPage />} />
+                  <Route path="/register/form" element={<MultiStepRegistrationPage />} />
                   <Route path="/register/success" element={<RegistrationSuccessPage />} />
                   <Route path="/register/verify-email" element={<VerifyEmailPage />} />
                   
                   {/* Legacy student registration (keeping for backwards compatibility) */}
                   <Route path="/register-legacy" element={<StudentSignupPage />} />
+                  <Route path="/register/form-legacy" element={<RegistrationFormPage />} />
                   <Route path="/lookup" element={<StudentLookupPage />} />
                 </Route>
 
