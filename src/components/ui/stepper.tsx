@@ -8,7 +8,11 @@ interface StepperProps {
   className?: string;
 }
 
-export function Stepper({ steps, currentStep, className }: StepperProps) {
+export function Stepper({ steps, currentStep, className, ...otherProps }: StepperProps & Record<string, any>) {
+  // Filter out any data-lov-* props that might be injected by development tools
+  const cleanProps = Object.fromEntries(
+    Object.entries(otherProps).filter(([key]) => !key.startsWith('data-lov'))
+  );
   return (
     <div className={cn("w-full", className)}>
       {/* Mobile: Simple text indicator */}
@@ -25,7 +29,7 @@ export function Stepper({ steps, currentStep, className }: StepperProps) {
       <div className="hidden sm:block">
         <div className="flex items-center justify-center mb-8">
           {steps.map((step, index) => (
-            <React.Fragment key={step}>
+            <div key={`step-${index}`} className="contents">
               {/* Step circle */}
               <div className="flex flex-col items-center">
                 <div
@@ -63,7 +67,7 @@ export function Stepper({ steps, currentStep, className }: StepperProps) {
                   )}
                 />
               )}
-            </React.Fragment>
+            </div>
           ))}
         </div>
       </div>

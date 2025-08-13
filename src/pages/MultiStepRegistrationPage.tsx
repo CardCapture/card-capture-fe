@@ -6,6 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Stepper } from '@/components/ui/stepper';
 import { FormStep } from '@/components/ui/form-step';
 import { FormInput } from '@/components/ui/form-input';
+import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { SmartPhoneInput } from '@/components/ui/smart-phone-input';
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -87,7 +90,7 @@ const states = [
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
 ];
 
-const gradeLevels = ["9", "10", "11", "12", "College", "Other"];
+const gradeLevels = ["9", "10", "11", "12", "College Transfer"];
 const terms = ["Fall", "Spring", "Summer", "Winter"];
 const gpaScales = ["4.0", "5.0", "100"];
 
@@ -249,10 +252,7 @@ export default function MultiStepRegistrationPage() {
         
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-4">
-            <Sparkles className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-2">
             Join CardCapture
           </h1>
           <p className="text-gray-600 text-lg">
@@ -307,15 +307,12 @@ export default function MultiStepRegistrationPage() {
                   autoComplete="nickname"
                 />
                 
-                <FormInput
+                <SmartDateInput
                   label="Date of Birth"
-                  name="date_of_birth"
-                  type="date"
                   value={formData.date_of_birth}
-                  onChange={(e) => updateData({ date_of_birth: e.target.value })}
+                  onChange={(value) => updateData({ date_of_birth: value })}
                   onValidate={validators.required}
                   required
-                  autoComplete="bday"
                 />
               </FormStep>
 
@@ -339,26 +336,27 @@ export default function MultiStepRegistrationPage() {
                   helpText={isEmailLocked ? "Verified via magic link" : undefined}
                 />
                 
-                <FormInput
+                <SmartPhoneInput
                   label="Phone Number"
-                  name="cell"
-                  type="tel"
                   value={formData.cell}
-                  onChange={(e) => updateData({ cell: e.target.value })}
+                  onChange={(value) => updateData({ cell: value })}
                   onValidate={validators.phone}
-                  placeholder="(555) 123-4567"
-                  autoComplete="tel"
                   helpText="For important updates from schools"
                 />
                 
                 <div className="space-y-4">
-                  <FormInput
+                  <AddressAutocomplete
                     label="Street Address"
-                    name="address"
                     value={formData.address}
-                    onChange={(e) => updateData({ address: e.target.value })}
-                    placeholder="123 Main Street"
-                    autoComplete="address-line1"
+                    onChange={(value) => updateData({ address: value })}
+                    onAddressSelect={(address) => updateData({
+                      address: address.street,
+                      address_2: address.street2,
+                      city: address.city,
+                      state: address.state,
+                      zip_code: address.zipCode
+                    })}
+                    helpText="Start typing and select from suggestions to auto-fill all address fields"
                   />
                   
                   <FormInput
@@ -437,7 +435,9 @@ export default function MultiStepRegistrationPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {gradeLevels.map(grade => (
-                          <SelectItem key={grade} value={grade}>Grade {grade}</SelectItem>
+                          <SelectItem key={grade} value={grade}>
+                            {grade === "College Transfer" ? grade : `Grade ${grade}`}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -559,6 +559,7 @@ export default function MultiStepRegistrationPage() {
                   value={formData.major}
                   onChange={(e) => updateData({ major: e.target.value })}
                   placeholder="Computer Science, Biology, Undecided, etc."
+                  autoComplete="off"
                 />
                 
                 <div className="space-y-2">
@@ -646,7 +647,7 @@ export default function MultiStepRegistrationPage() {
               {currentStep < steps.length - 1 ? (
                 <Button
                   onClick={nextStep}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800"
                 >
                   Continue
                   <ChevronRight className="w-4 h-4" />
@@ -655,7 +656,7 @@ export default function MultiStepRegistrationPage() {
                 <Button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700"
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 >
                   {submitting ? (
                     <>

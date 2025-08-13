@@ -59,7 +59,7 @@ export default function RegistrationFormPage() {
     []
   );
 
-  const gradeLevels = ["9", "10", "11", "12", "College", "Other"];
+  const gradeLevels = ["9", "10", "11", "12", "College Transfer"];
   const terms = ["Fall", "Spring", "Summer", "Winter", "Unknown"]; 
   const currentYear = new Date().getFullYear();
   const startYears = Array.from({ length: 7 }).map((_, i) => String(currentYear + i));

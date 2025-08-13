@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SmartDateInput } from "@/components/ui/smart-date-input";
+import { SmartPhoneInput } from "@/components/ui/smart-phone-input";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { useToast } from "@/hooks/use-toast";
 
 export default function StudentSignupPage() {
@@ -30,7 +33,7 @@ export default function StudentSignupPage() {
     []
   );
 
-  const gradeLevels = ["9", "10", "11", "12", "College", "Other"];
+  const gradeLevels = ["9", "10", "11", "12", "College Transfer"];
   const terms = ["Fall", "Spring", "Summer", "Winter", "Unknown"]; 
   const currentYear = new Date().getFullYear();
   const startYears = Array.from({ length: 7 }).map((_, i) => String(currentYear + i));
@@ -126,19 +129,41 @@ export default function StudentSignupPage() {
               <Input id="email" name="email" type="email" value={form.email} onChange={handleChange} />
             </div>
             <div>
-              <Label htmlFor="mobile">Mobile</Label>
-              <Input id="mobile" name="mobile" value={form.mobile} onChange={handleChange} />
+              <SmartPhoneInput 
+                label="Mobile" 
+                value={form.mobile} 
+                onChange={(value) => setForm((f) => ({ ...f, mobile: value }))} 
+                helpText="Format: XXX-XXX-XXXX"
+              />
             </div>
 
             <div>
-              <Label htmlFor="dob">Date of birth (optional)</Label>
-              <Input id="dob" name="dob" placeholder="YYYY-MM-DD" value={(form as any).dob || ""} onChange={handleChange} />
+              <SmartDateInput 
+                label="Date of birth (optional)" 
+                value={(form as any).dob || ""} 
+                onChange={(value) => setForm((f) => ({ ...f, dob: value } as any))} 
+                helpText="Format: MM/DD/YYYY"
+              />
             </div>
 
             {/* Address */}
             <div className="col-span-1 md:col-span-2">
-              <Label htmlFor="address1">Address</Label>
-              <Input id="address1" name="address1" value={(form as any).address1 || ""} onChange={handleChange} />
+              <AddressAutocomplete 
+                label="Address" 
+                value={(form as any).address1 || ""} 
+                onChange={(value) => setForm((f) => ({ ...f, address1: value } as any))}
+                onAddressSelect={(address) => {
+                  setForm((f) => ({ 
+                    ...f, 
+                    address1: address.street,
+                    address2: address.street2,
+                    city: address.city,
+                    state: address.state,
+                    zip: address.zipCode
+                  } as any));
+                }}
+                helpText="Start typing your address for suggestions"
+              />
             </div>
             <div className="col-span-1 md:col-span-2">
               <Label htmlFor="address2">Address 2</Label>
