@@ -70,6 +70,13 @@ export function FormInput({
           )}
           onBlur={handleBlur}
           onChange={handleChange}
+          data-autocomplete="disabled"
+          data-autocompleted=""
+          onInput={(e) => {
+            // Reset any browser-applied autofill styles
+            e.currentTarget.style.backgroundColor = '';
+            e.currentTarget.style.color = '';
+          }}
         />
         
         {/* Success checkmark */}

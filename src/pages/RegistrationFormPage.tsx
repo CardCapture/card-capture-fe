@@ -9,6 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { RegistrationService } from '@/services/RegistrationService';
 
+// CSS to prevent autofill styling glitches
+const autofillStyles = `
+  input:-webkit-autofill {
+    -webkit-text-fill-color: inherit;
+    transition: background-color 100000s ease-in-out 0s;
+  }
+`;
+
 interface FormData {
   first_name: string;
   last_name: string;
@@ -38,6 +46,8 @@ interface FormData {
 }
 
 export default function RegistrationFormPage() {
+  console.log('🔍🔍🔍 RegistrationFormPage: Component is loading!');
+  
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -49,8 +59,58 @@ export default function RegistrationFormPage() {
     permission_to_text: false,
   });
 
+  // Add search states for typeahead
+  const [schoolSuggestions, setSchoolSuggestions] = useState<any[]>([]);
+  const [showSchoolSuggestions, setShowSchoolSuggestions] = useState(false);
+  const [majorSuggestions, setMajorSuggestions] = useState<any[]>([]);
+  const [showMajorSuggestions, setShowMajorSuggestions] = useState(false);
+
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Search function for schools
+  const searchSchools = async (query: string) => {
+    if (query.length < 2) {
+      setSchoolSuggestions([]);
+      setShowSchoolSuggestions(false);
+      return;
+    }
+
+    try {
+      console.log('🔍 Searching schools for:', query);
+      const response = await fetch(`http://localhost:8000/high-schools/search?q=${encodeURIComponent(query)}&limit=10`);
+      const data = await response.json();
+      console.log('🔍 School search results:', data);
+      setSchoolSuggestions(data.results || []);
+      setShowSchoolSuggestions(true);
+    } catch (error) {
+      console.error('🔍 School search error:', error);
+      setSchoolSuggestions([]);
+      setShowSchoolSuggestions(false);
+    }
+  };
+
+  // Search function for majors
+  const searchMajors = async (query: string) => {
+    if (query.length < 2) {
+      setMajorSuggestions([]);
+      setShowMajorSuggestions(false);
+      return;
+    }
+
+    try {
+      console.log('🔍 Searching majors for:', query);
+      const response = await fetch(`http://localhost:8000/majors/search?q=${encodeURIComponent(query)}&limit=10`);
+      const data = await response.json();
+      console.log('🔍 Major search results:', data);
+      setMajorSuggestions(data.results || []);
+      setShowMajorSuggestions(true);
+    } catch (error) {
+      console.error('🔍 Major search error:', error);
+      setMajorSuggestions([]);
+      setShowMajorSuggestions(false);
+    }
+  };
 
   const states = useMemo(
     () => [
@@ -156,6 +216,7 @@ export default function RegistrationFormPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8">
+      <style dangerouslySetInnerHTML={{ __html: autofillStyles }} />
       <div className="container mx-auto max-w-4xl px-6">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mb-4">
@@ -175,9 +236,13 @@ export default function RegistrationFormPage() {
           )}
         </div>
 
+        <div style={{backgroundColor: 'red', color: 'white', padding: '10px', fontSize: '20px', textAlign: 'center', margin: '10px'}}>
+          🔍 REGISTRATION FORM IS LOADING
+        </div>
+        
         <Card>
           <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4" autoComplete="off">
               {/* Contact Information */}
               <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -306,14 +371,61 @@ export default function RegistrationFormPage() {
               </div>
 
               {/* Academic Information */}
-              <div className="col-span-1 md:col-span-2">
-                <Label htmlFor="high_school">Current School</Label>
-                <Input 
-                  id="high_school" 
-                  name="high_school" 
-                  value={form.high_school || ''} 
-                  onChange={handleChange} 
+              <div className="col-span-1 md:col-span-2 relative">
+                <Label htmlFor="schoolSearchQuery_zz">Current School</Label>
+                {/* Decoy input to defeat aggressive autofill */}
+                <input 
+                  type="text" 
+                  name="dummyDontAutofill" 
+                  autoComplete="off" 
+                  tabIndex={-1} 
+                  aria-hidden="true" 
+                  style={{position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0}} 
                 />
+                <Input 
+                  id="schoolSearchQuery_zz" 
+                  name="schoolSearchQuery_zz" 
+                  value={form.high_school || ''} 
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    console.log('🔍 High school input changed:', value);
+                    setForm(prev => ({ ...prev, high_school: value }));
+                    searchSchools(value);
+                  }}
+                  placeholder="Search for your high school..."
+                  autoComplete="new-password"
+                  spellCheck={false}
+                  autoCorrect="off"
+                  autoCapitalize="words"
+                  inputMode="search"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls="school-typeahead-listbox"
+                  aria-expanded={showSchoolSuggestions}
+                  data-lpignore="true"
+                  data-form-type="other"
+                />
+                {showSchoolSuggestions && schoolSuggestions.length > 0 && (
+                  <ul id="school-typeahead-listbox" role="listbox" className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {schoolSuggestions.map((school: any) => (
+                      <li
+                        key={school.id}
+                        role="option"
+                        className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0 cursor-pointer"
+                        onClick={() => {
+                          console.log('🔍 Selected school:', school);
+                          setForm(prev => ({ ...prev, high_school: school.name }));
+                          setShowSchoolSuggestions(false);
+                        }}
+                      >
+                        <div className="font-medium text-gray-900">{school.name}</div>
+                        {school.city && school.state && (
+                          <div className="text-sm text-gray-500">{school.city}, {school.state}</div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div>
@@ -384,6 +496,63 @@ export default function RegistrationFormPage() {
                   value={form.act_score || ''} 
                   onChange={handleChange} 
                 />
+              </div>
+
+              <div className="md:col-span-2 relative">
+                <Label htmlFor="majorSearchQuery_zz">Intended Major</Label>
+                {/* Decoy input to defeat aggressive autofill */}
+                <input 
+                  type="text" 
+                  name="dummyDontAutofillMajor" 
+                  autoComplete="off" 
+                  tabIndex={-1} 
+                  aria-hidden="true" 
+                  style={{position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0}} 
+                />
+                <Input 
+                  id="majorSearchQuery_zz" 
+                  name="majorSearchQuery_zz" 
+                  value={form.major || ''} 
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    console.log('🔍 Major input changed:', value);
+                    setForm(prev => ({ ...prev, major: value }));
+                    searchMajors(value);
+                  }}
+                  placeholder="Search for your intended major..."
+                  autoComplete="new-password"
+                  spellCheck={false}
+                  autoCorrect="off"
+                  autoCapitalize="words"
+                  inputMode="search"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls="major-typeahead-listbox"
+                  aria-expanded={showMajorSuggestions}
+                  data-lpignore="true"
+                  data-form-type="other"
+                />
+                {showMajorSuggestions && majorSuggestions.length > 0 && (
+                  <ul id="major-typeahead-listbox" role="listbox" className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {majorSuggestions.map((major: any) => (
+                      <li
+                        key={major.id}
+                        role="option"
+                        className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0 cursor-pointer"
+                        onClick={() => {
+                          console.log('🔍 Selected major:', major);
+                          setForm(prev => ({ ...prev, major: major.cip_title }));
+                          setShowMajorSuggestions(false);
+                        }}
+                      >
+                        <div className="font-medium text-gray-900">{major.cip_title}</div>
+                        {major.cip_code && (
+                          <div className="text-sm text-gray-500">CIP Code: {major.cip_code}</div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="md:col-span-2">

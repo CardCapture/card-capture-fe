@@ -98,6 +98,56 @@ export default function MultiStepRegistrationPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Add search states for typeahead
+  const [schoolSuggestions, setSchoolSuggestions] = useState<any[]>([]);
+  const [showSchoolSuggestions, setShowSchoolSuggestions] = useState(false);
+  const [majorSuggestions, setMajorSuggestions] = useState<any[]>([]);
+  const [showMajorSuggestions, setShowMajorSuggestions] = useState(false);
+
+  // Search function for schools
+  const searchSchools = async (query: string) => {
+    if (query.length < 2) {
+      setSchoolSuggestions([]);
+      setShowSchoolSuggestions(false);
+      return;
+    }
+
+    try {
+      console.log('🔍 Searching schools for:', query);
+      const response = await fetch(`http://localhost:8000/high-schools/search?q=${encodeURIComponent(query)}&limit=10`);
+      const data = await response.json();
+      console.log('🔍 School search results:', data);
+      setSchoolSuggestions(data.results || []);
+      setShowSchoolSuggestions(true);
+    } catch (error) {
+      console.error('🔍 School search error:', error);
+      setSchoolSuggestions([]);
+      setShowSchoolSuggestions(false);
+    }
+  };
+
+  // Search function for majors
+  const searchMajors = async (query: string) => {
+    if (query.length < 2) {
+      setMajorSuggestions([]);
+      setShowMajorSuggestions(false);
+      return;
+    }
+
+    try {
+      console.log('🔍 Searching majors for:', query);
+      const response = await fetch(`http://localhost:8000/majors/search?q=${encodeURIComponent(query)}&limit=10`);
+      const data = await response.json();
+      console.log('🔍 Major search results:', data);
+      setMajorSuggestions(data.results || []);
+      setShowMajorSuggestions(true);
+    } catch (error) {
+      console.error('🔍 Major search error:', error);
+      setMajorSuggestions([]);
+      setShowMajorSuggestions(false);
+    }
+  };
   const [submitting, setSubmitting] = useState(false);
   const [stepErrors, setStepErrors] = useState<Record<number, string[]>>({});
   
@@ -266,6 +316,25 @@ export default function MultiStepRegistrationPage() {
         {/* Form Card */}
         <Card className="relative overflow-hidden shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardContent className="p-6 sm:p-8">
+            <style>{`
+              input:-webkit-autofill,
+              input:-webkit-autofill:hover,
+              input:-webkit-autofill:focus,
+              input:-webkit-autofill:active {
+                -webkit-box-shadow: 0 0 0 30px white inset !important;
+                -webkit-text-fill-color: inherit !important;
+                transition: background-color 5000s ease-in-out 0s !important;
+              }
+              input[data-autocompleted] {
+                background-color: transparent !important;
+              }
+              form[autocomplete="off"] input:not([type="submit"]):not([type="hidden"]) {
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                appearance: none;
+              }
+            `}</style>
+            <form autoComplete="off" data-lpignore="true" data-form-type="other">
             <div className="relative min-h-[500px]">
               
               {/* Step 1: Personal Info */}
@@ -414,14 +483,91 @@ export default function MultiStepRegistrationPage() {
                 subtitle="This helps us match you with the right programs"
                 isActive={currentStep === 2}
               >
-                <FormInput
-                  label="Current School"
-                  name="high_school"
-                  value={formData.high_school}
-                  onChange={(e) => updateData({ high_school: e.target.value })}
-                  placeholder="Austin High School"
-                  autoComplete="organization"
-                />
+                <div className="relative">
+                  {/* Multiple decoy inputs for maximum browser confusion */}
+                  <input 
+                    type="email" 
+                    name="fakeEmail_decoy_99" 
+                    autoComplete="new-password" 
+                    tabIndex={-1} 
+                    aria-hidden="true" 
+                    style={{position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0, visibility: 'hidden'}} 
+                  />
+                  <input 
+                    type="text" 
+                    name="dummySchoolDecoy_xz" 
+                    autoComplete="chrome-off" 
+                    tabIndex={-1} 
+                    aria-hidden="true" 
+                    style={{position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0, visibility: 'hidden'}} 
+                  />
+                  <input 
+                    type="search" 
+                    name="search_decoy_aa" 
+                    autoComplete="off" 
+                    tabIndex={-1} 
+                    aria-hidden="true" 
+                    style={{position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0, visibility: 'hidden'}} 
+                  />
+                  <FormInput
+                    label="Current School"
+                    name={`inst_query_${Math.random().toString(36).substr(2, 9)}`}
+                    id={`inst_query_${Math.random().toString(36).substr(2, 9)}`}
+                    value={formData.high_school}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      console.log('🔍 High school input changed:', value);
+                      updateData({ high_school: value });
+                      searchSchools(value);
+                    }}
+                    placeholder="Search for your high school..."
+                    autoComplete="one-time-code"
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    inputMode="search"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="institution-typeahead-listbox"
+                    aria-expanded={showSchoolSuggestions}
+                    data-lpignore="true"
+                    data-form-type="other"
+                    data-1p-ignore="true"
+                    data-bwignore="true"
+                    data-dashlane-ignore="true"
+                    data-keeper-ignore="true"
+                    data-bitwarden-ignore="true"
+                    data-lastpass-ignore="true"
+                    data-roboform-ignore="true"
+                    data-autocomplete="nope"
+                    autoFocus={false}
+                    readOnly={false}
+                    onFocus={(e) => {
+                      e.target.removeAttribute('readonly');
+                    }}
+                  />
+                  {showSchoolSuggestions && schoolSuggestions.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {schoolSuggestions.map((school: any) => (
+                        <button
+                          key={school.id}
+                          type="button"
+                          className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                          onClick={() => {
+                            console.log('🔍 Selected school:', school);
+                            updateData({ high_school: school.name });
+                            setShowSchoolSuggestions(false);
+                          }}
+                        >
+                          <div className="font-medium text-gray-900">{school.name}</div>
+                          {school.city && school.state && (
+                            <div className="text-sm text-gray-500">{school.city}, {school.state}</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -553,14 +699,88 @@ export default function MultiStepRegistrationPage() {
                   </div>
                 </div>
                 
-                <FormInput
-                  label="Intended Major"
-                  name="major"
-                  value={formData.major}
-                  onChange={(e) => updateData({ major: e.target.value })}
-                  placeholder="Computer Science, Biology, Undecided, etc."
-                  autoComplete="off"
-                />
+                <div className="relative">
+                  {/* Multiple decoy inputs for maximum browser confusion */}
+                  <input 
+                    type="email" 
+                    name="fakeMajorEmail_decoy_77" 
+                    autoComplete="new-password" 
+                    tabIndex={-1} 
+                    aria-hidden="true" 
+                    style={{position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0, visibility: 'hidden'}} 
+                  />
+                  <input 
+                    type="text" 
+                    name="dummyMajorDecoy_bb" 
+                    autoComplete="chrome-off" 
+                    tabIndex={-1} 
+                    aria-hidden="true" 
+                    style={{position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0, visibility: 'hidden'}} 
+                  />
+                  <input 
+                    type="search" 
+                    name="major_search_decoy_cc" 
+                    autoComplete="off" 
+                    tabIndex={-1} 
+                    aria-hidden="true" 
+                    style={{position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0, visibility: 'hidden'}} 
+                  />
+                  <FormInput
+                    label="Intended Major"
+                    name={`major_query_${Math.random().toString(36).substr(2, 9)}`}
+                    id={`major_query_${Math.random().toString(36).substr(2, 9)}`}
+                    value={formData.major}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      console.log('🔍 Major input changed:', value);
+                      updateData({ major: value });
+                      searchMajors(value);
+                    }}
+                    placeholder="Search for your intended major..."
+                    autoComplete="one-time-code"
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    inputMode="search"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="major-typeahead-listbox"
+                    aria-expanded={showMajorSuggestions}
+                    data-lpignore="true"
+                    data-form-type="other"
+                    data-1p-ignore="true"
+                    data-bwignore="true"
+                    data-dashlane-ignore="true"
+                    data-keeper-ignore="true"
+                    data-bitwarden-ignore="true"
+                    data-lastpass-ignore="true"
+                    data-roboform-ignore="true"
+                    data-autocomplete="nope"
+                    autoFocus={false}
+                    readOnly={false}
+                    onFocus={(e) => {
+                      e.target.removeAttribute('readonly');
+                    }}
+                  />
+                  {showMajorSuggestions && majorSuggestions.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {majorSuggestions.map((major: any) => (
+                        <button
+                          key={major.id}
+                          type="button"
+                          className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                          onClick={() => {
+                            console.log('🔍 Selected major:', major);
+                            updateData({ major: major.display_name || major.cip_title });
+                            setShowMajorSuggestions(false);
+                          }}
+                        >
+                          <div className="font-medium text-gray-900">{major.display_name || major.cip_title}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 
                 <div className="space-y-2">
                   <Label>Academic Interests</Label>
@@ -614,6 +834,7 @@ export default function MultiStepRegistrationPage() {
                 </div>
               </FormStep>
             </div>
+            </form>
 
             {/* Error Messages */}
             {stepErrors[currentStep]?.length > 0 && (
