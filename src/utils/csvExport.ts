@@ -103,6 +103,7 @@ export function downloadCSV(
     'zip_code': 'Zip Code',
     'zip': 'Zip Code',
     'high_school': 'High School',
+    'ceeb_code': 'CEEB Code',
     'class_rank': 'Class Rank',
     'students_in_class': 'Students in Class',
     'gpa': 'GPA',
@@ -143,6 +144,7 @@ export function downloadCSV(
     "State",
     "Zip Code",
     "High School",
+    "CEEB Code",
     "Class Rank",
     "Students in Class",
     "GPA",
@@ -155,7 +157,7 @@ export function downloadCSV(
   const csvHeaders = modifiedFieldOrder.length > 0 ? headers : fallbackHeaders;
   const csvFieldOrder = modifiedFieldOrder.length > 0 ? ["event_name", "slate_event_id", ...modifiedFieldOrder] : [
     "event_name", "slate_event_id", "first_name", "last_name", "email", "cell", "date_of_birth", "permission_to_text",
-    "address", "city", "state", "zip_code", "high_school", "class_rank",
+    "address", "city", "state", "zip_code", "high_school", "ceeb_code", "class_rank",
     "students_in_class", "gpa", "student_type", "entry_term", "major", "mapped_major"
   ];
 

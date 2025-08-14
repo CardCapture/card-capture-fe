@@ -12,7 +12,7 @@ import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { DateInput } from "@/components/ui/date-input";
 
 import { CheckCircle } from "lucide-react";
-import { formatPhoneNumber, formatBirthday, normalizeFieldValue, normalizeAddress } from "@/lib/utils";
+import { formatPhoneNumber, formatBirthday, normalizeFieldValue, normalizeAddress, cn } from "@/lib/utils";
 import type { ProspectCard, FieldData } from "@/types/card";
 import {
   Select,
@@ -27,6 +27,8 @@ import { CardService } from "@/services/CardService";
 import { useAIRetry } from "@/hooks/useAIRetry";
 import { SchoolService, type CardField } from "@/services/SchoolService";
 import { AddressGroupSimple } from "@/components/ui/address-group-simple";
+import { HighSchoolSearch } from "@/components/ui/high-school-search";
+import type { HighSchool } from "@/services/HighSchoolService";
 
 const FIELD_LABELS: Record<string, string> = {
   name: "Name",
@@ -40,6 +42,7 @@ const FIELD_LABELS: Record<string, string> = {
   state: "State",
   zip_code: "Zip Code",
   high_school: "High School",
+  ceeb_code: "CEEB Code",
   class_rank: "Class Rank",
   students_in_class: "Students in Class",
   gpa: "GPA",
@@ -234,6 +237,56 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           value={fieldValue}
           onChange={(value) => handleFormChange(actualFieldKey, value)}
           className={getInputClassName("h-10 sm:h-8 text-sm w-full")}
+        />
+      );
+    }
+
+    // Special handling for high school field with search and CEEB code
+    if (actualFieldKey === 'high_school') {
+      const fieldData = selectedCardForReview?.fields?.[actualFieldKey];
+      const ceebCode = formData['ceeb_code'] || selectedCardForReview?.fields?.ceeb_code?.value || '';
+      const state = formData['state'] || selectedCardForReview?.fields?.state?.value || '';
+      const suggestions = fieldData?.metadata?.suggestions || [];
+      
+      return (
+        <HighSchoolSearch
+          value={fieldValue}
+          ceebCode={ceebCode}
+          state={state}
+          onChange={(newValue, newCeebCode, schoolData) => {
+            handleFormChange(actualFieldKey, newValue);
+            // Also update CEEB code field if it exists
+            if ('ceeb_code' in formData || selectedCardForReview?.fields?.ceeb_code) {
+              handleFormChange('ceeb_code', newCeebCode || '');
+            }
+          }}
+          placeholder="Search for high school..."
+          className={getInputClassName("h-10 sm:h-8 text-sm w-full")}
+          needsReview={needsReview}
+          suggestions={suggestions}
+          onManualReview={() => {
+            // Mark field as reviewed manually
+            if (handleFieldReview) {
+              const mockEvent = new MouseEvent('click') as any;
+              handleFieldReview(actualFieldKey, mockEvent);
+            }
+          }}
+        />
+      );
+    }
+
+    // CEEB Code field - read-only, populated from high school selection
+    if (actualFieldKey === 'ceeb_code') {
+      return (
+        <Input
+          type="text"
+          value={fieldValue}
+          readOnly
+          placeholder="Auto-filled from school selection"
+          className={cn(
+            getInputClassName("h-10 sm:h-8 text-sm w-full"),
+            "bg-gray-50"
+          )}
         />
       );
     }
