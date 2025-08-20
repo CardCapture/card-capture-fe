@@ -15,9 +15,6 @@ import {
 } from "lucide-react";
 import { CompactProcessingStatus } from "@/components/CompactProcessingStatus";
 import { ProcessingService } from "@/services/processingService";
-import { StudentService } from "@/services";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface EventHeaderProps {
   selectedEvent: { id: string; name: string; school_id?: string } | null;
@@ -54,10 +51,6 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   handleCancelEditEventName,
   onRefreshCards,
 }) => {
-  const { session } = useAuth();
-  const { toast } = useToast();
-  const [scanToken, setScanToken] = React.useState("");
-  const [scanning, setScanning] = React.useState(false);
   // Memoize tab click handlers to prevent unnecessary re-renders
   const handleNeedsReviewClick = useCallback(() => {
     setSelectedTab("needs_human_review");
@@ -288,54 +281,6 @@ const EventHeader: React.FC<EventHeaderProps> = ({
                   <span>{getStatusCount("archived")}</span>
                 </Badge>
               </button>
-              {/* Minimal token input for MVP scanning */}
-              {selectedEvent?.id && (
-                <div className="flex items-center gap-2 ml-auto">
-                  <input
-                    placeholder="Paste student token"
-                    className="border rounded px-2 py-1 text-xs sm:text-sm"
-                    value={scanToken}
-                    onChange={(e) => setScanToken(e.target.value)}
-                    onPaste={(e) => {
-                      const text = e.clipboardData.getData("text") || "";
-                      if (text.startsWith("data:") || text.includes("base64,")) {
-                        e.preventDefault();
-                        toast({
-                          title: "Invalid code",
-                          description: "Please paste the short code (not the QR image).",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={async () => {
-                      if (!scanToken) return;
-                      setScanning(true);
-                      try {
-                        const resp = await StudentService.scanStudent(
-                          scanToken.trim(),
-                          selectedEvent.id,
-                          undefined,
-                          undefined,
-                          session?.access_token || undefined
-                        );
-                        toast({ title: "Scanned", description: "Student added to event." });
-                        onRefreshCards?.();
-                        setScanToken("");
-                      } catch (e: any) {
-                        toast({ title: "Scan failed", description: e?.message || "Invalid code", variant: "destructive" });
-                      } finally {
-                        setScanning(false);
-                      }
-                    }}
-                    disabled={!scanToken || scanning}
-                    className="text-xs sm:text-sm"
-                  >
-                    {scanning ? "Scanning..." : "Scan Token"}
-                  </Button>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

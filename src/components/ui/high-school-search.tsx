@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, X, AlertCircle, Check } from "lucide-react";
+import { Loader2, Search, X, AlertCircle, Check, AlertTriangle } from "lucide-react";
 import { HighSchoolService, type HighSchool } from "@/services/HighSchoolService";
 import { cn } from "@/lib/utils";
 import {
@@ -15,6 +15,7 @@ import {
 interface HighSchoolSearchProps {
   value: string;
   ceebCode?: string;
+  schoolData?: HighSchool; // Full school data for verified schools
   state?: string;
   onChange: (value: string, ceebCode?: string, schoolData?: HighSchool) => void;
   placeholder?: string;
@@ -23,11 +24,14 @@ interface HighSchoolSearchProps {
   suggestions?: HighSchool[];
   onManualReview?: () => void;
   disabled?: boolean;
+  validationStatus?: 'verified' | 'needs_validation' | 'no_matches' | 'unvalidated';
+  isEnhancedValidation?: boolean;
 }
 
 export function HighSchoolSearch({
   value,
   ceebCode,
+  schoolData,
   state,
   onChange,
   placeholder = "Search for high school...",
@@ -36,6 +40,8 @@ export function HighSchoolSearch({
   suggestions = [],
   onManualReview,
   disabled = false,
+  validationStatus = 'unvalidated',
+  isEnhancedValidation = false,
 }: HighSchoolSearchProps) {
   const [inputValue, setInputValue] = useState(value);
   const [searchResults, setSearchResults] = useState<HighSchool[]>(suggestions);
@@ -44,25 +50,124 @@ export function HighSchoolSearch({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isVerified, setIsVerified] = useState(false);
   const [currentCeebCode, setCurrentCeebCode] = useState(ceebCode);
+  const [currentSchoolData, setCurrentSchoolData] = useState<HighSchool | undefined>(schoolData);
   const [showSuggestionsPrompt, setShowSuggestionsPrompt] = useState(needsReview && suggestions.length > 0);
+  const [userHasTyped, setUserHasTyped] = useState(false);
+  const [lastSelectedSchool, setLastSelectedSchool] = useState<HighSchool | null>(null);
   
   const searchTimeout = useRef<NodeJS.Timeout>();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Check if current value is verified (has CEEB code)
+  // Determine current UI state for status display
+  const getCurrentState = () => {
+    // If searching, show loading state
+    if (isSearching) {
+      return { type: 'searching', message: 'Searching...', icon: 'loading' };
+    }
+    
+    // If verified (either from backend validation or user selected from dropdown)
+    if (isVerified && currentCeebCode && inputValue.trim() && currentSchoolData) {
+      // Ensure we have both city and state for proper formatting
+      const city = currentSchoolData.city?.trim();
+      const stateValue = currentSchoolData.state?.trim();
+      
+      if (city && stateValue) {
+        const location = `${city}, ${stateValue}`;
+        return { 
+          type: 'verified', 
+          message: `${location} • CEEB: ${currentCeebCode}`, 
+          icon: 'check' 
+        };
+      } else {
+        // Fallback if location data is missing
+        return { 
+          type: 'verified', 
+          message: `CEEB: ${currentCeebCode}`, 
+          icon: 'check' 
+        };
+      }
+    }
+    
+    // If user has typed and we have search results
+    if (userHasTyped && inputValue.trim().length >= 2) {
+      if (searchResults.length > 0) {
+        // Don't show status message - just open dropdown and let user select
+        return null;
+      } else {
+        return { type: 'not_validated', message: 'CEEB not validated', icon: 'warning' };
+      }
+    }
+    
+    // Enhanced validation states from backend
+    if (isEnhancedValidation) {
+      if (validationStatus === 'verified' && currentSchoolData && currentCeebCode) {
+        // Ensure we have both city and state for proper formatting
+        const city = currentSchoolData.city?.trim();
+        const stateValue = currentSchoolData.state?.trim();
+        
+        if (city && stateValue) {
+          const location = `${city}, ${stateValue}`;
+          return { 
+            type: 'verified', 
+            message: `${location} • CEEB: ${currentCeebCode}`, 
+            icon: 'check' 
+          };
+        } else {
+          // Fallback if location data is missing
+          return { 
+            type: 'verified', 
+            message: `CEEB: ${currentCeebCode}`, 
+            icon: 'check' 
+          };
+        }
+      } else if (validationStatus === 'needs_validation' && suggestions.length > 0) {
+        // Don't show status message - just open dropdown and let user select
+        return null;
+      } else if (validationStatus === 'no_matches') {
+        return { type: 'not_validated', message: 'CEEB not validated', icon: 'warning' };
+      }
+    }
+    
+    // Legacy needsReview state
+    if (needsReview && suggestions.length > 0 && !isVerified) {
+      // Don't show status message - just open dropdown and let user select
+      return null;
+    }
+    
+    // Default state - no status message
+    return null;
+  };
+
+  // Check if current value is verified (has CEEB code or enhanced verification)
   useEffect(() => {
-    setIsVerified(!!ceebCode);
+    const verified = !!ceebCode || (isEnhancedValidation && validationStatus === 'verified');
+    setIsVerified(verified);
     setCurrentCeebCode(ceebCode);
-  }, [ceebCode]);
+    setCurrentSchoolData(schoolData);
+    
+    // If we have a verified status from backend, reset user interaction flags
+    if (verified && !userHasTyped) {
+      setLastSelectedSchool(null);
+    }
+  }, [ceebCode, schoolData, isEnhancedValidation, validationStatus, userHasTyped]);
 
   // Initialize with suggestions if field needs review
   useEffect(() => {
     if (needsReview && suggestions.length > 0 && !isVerified) {
       setSearchResults(suggestions);
       setShowSuggestionsPrompt(true);
+      setShowResults(true); // Auto-open dropdown for backend suggestions
     }
   }, [needsReview, suggestions, isVerified]);
+  
+  // Auto-open dropdown for enhanced validation suggestions
+  useEffect(() => {
+    if (isEnhancedValidation && validationStatus === 'needs_validation' && suggestions.length > 0) {
+      setSearchResults(suggestions);
+      setShowResults(true);
+    }
+  }, [isEnhancedValidation, validationStatus, suggestions]);
 
   // Update input value when prop changes
   useEffect(() => {
@@ -107,6 +212,11 @@ export function HighSchoolSearch({
       });
       
       setSearchResults(combinedResults);
+      
+      // Auto-open dropdown if we have results (regardless of whether user is typing)
+      if (combinedResults.length > 0) {
+        setShowResults(true);
+      }
     } catch (error) {
       console.error("Search error:", error);
       setSearchResults(suggestions);
@@ -121,8 +231,17 @@ export function HighSchoolSearch({
     setInputValue(newValue);
     setShowResults(true);
     setSelectedIndex(-1);
-    setIsVerified(false);
-    setCurrentCeebCode(undefined);
+    setUserHasTyped(true);
+    
+    // Clear verification state when user types (unless they're typing the exact verified school name)
+    const isTypingVerifiedSchool = lastSelectedSchool && newValue === lastSelectedSchool.name;
+    if (!isTypingVerifiedSchool) {
+      setIsVerified(false);
+      setCurrentCeebCode(undefined);
+      setCurrentSchoolData(undefined);
+      setLastSelectedSchool(null);
+    }
+    
     setShowSuggestionsPrompt(false); // Hide the prompt once user starts typing
     
     // Clear previous timeout
@@ -130,8 +249,12 @@ export function HighSchoolSearch({
       clearTimeout(searchTimeout.current);
     }
     
-    // Notify parent of text change (clears CEEB if user is typing)
-    onChange(newValue, undefined);
+    // Notify parent of text change (clears CEEB unless typing verified school)
+    onChange(
+      newValue, 
+      isTypingVerifiedSchool ? currentCeebCode : undefined,
+      isTypingVerifiedSchool ? currentSchoolData : undefined
+    );
     
     // Set new timeout for search
     searchTimeout.current = setTimeout(() => {
@@ -143,8 +266,11 @@ export function HighSchoolSearch({
   const handleSelectSchool = (school: HighSchool) => {
     setInputValue(school.name);
     setCurrentCeebCode(school.ceeb_code);
+    setCurrentSchoolData(school);
     setIsVerified(true);
     setShowResults(false);
+    setUserHasTyped(false); // Reset typing flag when user selects from dropdown
+    setLastSelectedSchool(school); // Remember the selected school
     onChange(school.name, school.ceeb_code, school);
   };
 
@@ -152,10 +278,13 @@ export function HighSchoolSearch({
   const handleClear = () => {
     setInputValue("");
     setCurrentCeebCode(undefined);
+    setCurrentSchoolData(undefined);
     setIsVerified(false);
     setSearchResults([]);
     setShowResults(false);
-    onChange("", undefined);
+    setUserHasTyped(false);
+    setLastSelectedSchool(null);
+    onChange("", undefined, undefined);
     inputRef.current?.focus();
   };
 
@@ -199,18 +328,27 @@ export function HighSchoolSearch({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => {
+            // Auto-open dropdown if we have results to show
             if (searchResults.length > 0 || suggestions.length > 0) {
               setShowResults(true);
               setShowSuggestionsPrompt(false);
+            }
+            // Also show results if user has typed and we have suggestions
+            if (userHasTyped && searchResults.length > 0) {
+              setShowResults(true);
             }
           }}
           placeholder={placeholder}
           disabled={disabled}
           className={cn(
-            "pr-20",
+            "pr-12",
             className,
-            needsReview && !isVerified && "border-amber-500 focus-visible:ring-amber-400 bg-amber-50",
-            isVerified && "border-green-300 focus-visible:ring-green-400 bg-green-50"
+            // Enhanced validation styling - removed green background for verified state
+            isEnhancedValidation && validationStatus === 'needs_validation' && "border-amber-500 focus-visible:ring-amber-400 bg-amber-50",
+            isEnhancedValidation && validationStatus === 'no_matches' && "border-orange-500 focus-visible:ring-orange-400 bg-orange-50",
+            // Legacy styling for non-enhanced validation
+            !isEnhancedValidation && needsReview && !isVerified && "border-amber-500 focus-visible:ring-amber-400 bg-amber-50",
+            !isEnhancedValidation && isVerified && "border-green-300 focus-visible:ring-green-400 bg-green-50"
           )}
         />
         
@@ -220,26 +358,40 @@ export function HighSchoolSearch({
             <Loader2 className="h-4 w-4 text-gray-400 animate-spin" />
           )}
           
-          {isVerified && currentCeebCode && (
+          {/* Enhanced validation status indicators - removed check icon from inside field for verified state */}
+          
+          {isEnhancedValidation && validationStatus === 'needs_validation' && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                    {currentCeebCode}
-                  </Badge>
+                  <AlertCircle className="h-4 w-4 text-amber-500" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>CEEB Code</p>
+                  <p>Click to see matching schools</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
           
-          {isVerified && (
+          {isEnhancedValidation && validationStatus === 'no_matches' && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>No matches found - needs manual entry</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          
+          {/* Legacy status indicators */}
+          {!isEnhancedValidation && isVerified && (
             <Check className="h-4 w-4 text-green-600" />
           )}
           
-          {needsReview && !isVerified && (
+          {!isEnhancedValidation && needsReview && !isVerified && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -266,8 +418,48 @@ export function HighSchoolSearch({
         </div>
       </div>
 
-      {/* Suggestions prompt for fields needing review */}
-      {showSuggestionsPrompt && !showResults && needsReview && suggestions.length > 0 && (
+      {/* Dynamic Status Messages */}
+      {(() => {
+        const currentState = getCurrentState();
+        if (!currentState) return null;
+        
+        const { type, message, icon } = currentState;
+        
+        if (type === 'verified') {
+          return (
+            <div className="flex items-center gap-2 text-sm text-green-600 w-fit">
+              <div className="flex items-center justify-center w-4 h-4 bg-green-100 rounded-full">
+                <Check className="w-2.5 h-2.5 text-green-600" />
+              </div>
+              <span>{message}</span>
+            </div>
+          );
+        }
+        
+        if (type === 'searching') {
+          return (
+            <div className="flex items-center gap-2 text-sm text-gray-500 w-fit">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>{message}</span>
+            </div>
+          );
+        }
+        
+        
+        if (type === 'not_validated') {
+          return (
+            <div className="flex items-center gap-2 text-sm text-orange-600">
+              <AlertTriangle className="w-3 h-3" />
+              <span>{message}</span>
+            </div>
+          );
+        }
+        
+        return null;
+      })()}
+
+      {/* Legacy suggestions prompt */}
+      {!isEnhancedValidation && showSuggestionsPrompt && !showResults && needsReview && suggestions.length > 0 && (
         <div className="mt-1 p-2 bg-amber-50 border border-amber-200 rounded-md">
           <div className="flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
@@ -294,7 +486,7 @@ export function HighSchoolSearch({
       )}
 
       {/* Search results dropdown */}
-      {showResults && (searchResults.length > 0 || (needsReview && suggestions.length > 0)) && (
+      {(showResults || (userHasTyped && searchResults.length > 0)) && (searchResults.length > 0 || (needsReview && suggestions.length > 0)) && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
           {needsReview && suggestions.length > 0 && (
             <div className="px-3 py-2 border-b bg-amber-50">

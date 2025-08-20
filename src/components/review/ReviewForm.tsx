@@ -241,17 +241,54 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       );
     }
 
-    // Special handling for high school field with search and CEEB code
+    // Special handling for high school field with enhanced validation
     if (actualFieldKey === 'high_school') {
       const fieldData = selectedCardForReview?.fields?.[actualFieldKey];
       const ceebCode = formData['ceeb_code'] || selectedCardForReview?.fields?.ceeb_code?.value || '';
       const state = formData['state'] || selectedCardForReview?.fields?.state?.value || '';
-      const suggestions = fieldData?.metadata?.suggestions || [];
+      
+      // Get enhanced validation status from backend
+      const validationStatus = selectedCardForReview?.fields?.high_school_validation;
+      
+      // Legacy fallback for existing suggestions format
+      const legacySuggestions = fieldData?.metadata?.suggestions || [];
+      
+      // Convert enhanced validation suggestions to HighSchool format if available
+      const enhancedSuggestions = validationStatus?.suggestions?.map(suggestion => ({
+        id: suggestion.id,
+        name: suggestion.name,
+        ceeb_code: suggestion.ceeb_code,
+        city: suggestion.location.split(', ')[0] || '',
+        state: suggestion.location.split(', ')[1] || '',
+        match_score: suggestion.match_score,
+        district_name: suggestion.distance_info
+      })) || [];
+      
+      // Use enhanced suggestions if available, otherwise fall back to legacy
+      const suggestions = enhancedSuggestions.length > 0 ? enhancedSuggestions : legacySuggestions;
+      
+      // Extract school data for verified schools from metadata
+      let schoolData: HighSchool | undefined;
+      if (validationStatus?.status === 'verified' && fieldData?.metadata?.school_id) {
+        // Create school data from field metadata for verified schools
+        schoolData = {
+          id: fieldData.metadata.school_id,
+          name: fieldValue,
+          ceeb_code: ceebCode,
+          city: fieldData.metadata.school_city || '',
+          state: fieldData.metadata.school_state || '',
+        };
+      }
+      
+      // Determine review status based on enhanced validation
+      const enhancedNeedsReview = validationStatus?.status === 'needs_validation' || validationStatus?.status === 'no_matches';
+      const reviewStatus = enhancedNeedsReview || needsReview;
       
       return (
         <HighSchoolSearch
           value={fieldValue}
           ceebCode={ceebCode}
+          schoolData={schoolData}
           state={state}
           onChange={(newValue, newCeebCode, schoolData) => {
             handleFormChange(actualFieldKey, newValue);
@@ -262,8 +299,10 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           }}
           placeholder="Search for high school..."
           className={getInputClassName("h-10 sm:h-8 text-sm w-full")}
-          needsReview={needsReview}
+          needsReview={reviewStatus}
           suggestions={suggestions}
+          validationStatus={validationStatus?.status}
+          isEnhancedValidation={!!validationStatus}
           onManualReview={() => {
             // Mark field as reviewed manually
             if (handleFieldReview) {

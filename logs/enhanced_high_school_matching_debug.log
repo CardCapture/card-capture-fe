@@ -1,0 +1,761 @@
+
+[2025-08-19T20:58:46.139384+00:00] === ENHANCED HIGH SCHOOL MATCHING START ===
+
+[2025-08-19T20:58:46.139725+00:00] Searching for: Midland High School
+{
+  "student_location": {
+    "city": "Midland",
+    "state": "TX",
+    "full_address": "2704 Franklin Avenue, Midland, TX 79701",
+    "coordinates": null
+  },
+  "confidence_threshold": 0.75
+}
+
+[2025-08-19T20:58:46.860928+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.774,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T20:58:46.861257+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.642,
+  "final_score": 0.892,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T20:58:46.861418+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.861599+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.26666666666666666,
+  "final_score": 0.5166666666666666,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.861761+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.861919+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.862110+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.14634146341463414,
+  "final_score": 0.39634146341463417,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.862254+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.862394+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.6156,
+  "final_score": 0.8656,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T20:58:46.862534+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.862709+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.686,
+  "final_score": 0.936,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T20:58:46.862850+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.863006+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.774,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T20:58:46.863143+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.863275+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.774,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T20:58:46.863425+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.686,
+  "final_score": 0.936,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T20:58:46.863601+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.6666666666666666,
+  "final_score": 0.9166666666666666,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.863823+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.864009+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.864207+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.864364+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.864582+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.6156,
+  "final_score": 0.8656,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T20:58:46.864742+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.864901+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.865046+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.865110+00:00] Found confident match: Midland College
+{
+  "score": 1.0,
+  "ceeb_code": "006459",
+  "location": "Midland, TX"
+}
+
+[2025-08-19T20:58:46.865271+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.85,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T20:58:46.865429+00:00] Location boost applied: +0.25
+{
+  "base_score": 0.774,
+  "final_score": 1.0,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:01:01.148945+00:00] === ENHANCED HIGH SCHOOL MATCHING START ===
+
+[2025-08-19T21:01:01.149230+00:00] Searching for: Midland High School
+{
+  "student_location": {
+    "city": "Midland",
+    "state": "TX",
+    "full_address": "2704 Franklin Avenue, Midland, TX 79701",
+    "coordinates": null
+  },
+  "confidence_threshold": 0.75
+}
+
+[2025-08-19T21:01:01.911155+00:00] Filtered out college: Midland College
+
+[2025-08-19T21:01:01.911386+00:00] Filtered candidates: 28 -> 27
+
+[2025-08-19T21:01:01.912287+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.642,
+  "final_score": 0.742,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:01:01.912523+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.912730+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.26666666666666666,
+  "final_score": 0.3666666666666667,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.912908+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.913082+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.913293+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.14634146341463414,
+  "final_score": 0.24634146341463414,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.913457+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.913623+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.6156,
+  "final_score": 0.7156,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:01:01.913836+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.914022+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.686,
+  "final_score": 0.786,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:01:01.914167+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.914328+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.774,
+  "final_score": 0.874,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:01:01.914469+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.914608+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.774,
+  "final_score": 0.874,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:01:01.914770+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.686,
+  "final_score": 0.786,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:01:01.914907+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.6666666666666666,
+  "final_score": 0.7666666666666666,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.915090+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.915268+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.915414+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.915561+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.915713+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.6156,
+  "final_score": 0.7156,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:01:01.915922+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.916069+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.916207+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:01:01.916263+00:00] Found confident match: Premier High School Midland
+{
+  "score": 0.95,
+  "ceeb_code": "444736",
+  "location": "Midland, TX"
+}
+
+[2025-08-19T21:02:08.101052+00:00] === ENHANCED HIGH SCHOOL MATCHING START ===
+
+[2025-08-19T21:02:08.101464+00:00] Searching for: Midland High School
+{
+  "student_location": {
+    "city": "Midland",
+    "state": "TX",
+    "full_address": "2704 Franklin Avenue, Midland, TX 79701",
+    "coordinates": null
+  },
+  "confidence_threshold": 0.75
+}
+
+[2025-08-19T21:02:08.914687+00:00] Filtered out college: Midland College
+
+[2025-08-19T21:02:08.914930+00:00] Filtered candidates: 28 -> 27
+
+[2025-08-19T21:02:08.915840+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.642,
+  "final_score": 0.742,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:02:08.916085+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.916300+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.21333333333333335,
+  "final_score": 0.31333333333333335,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.916472+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.916643+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.916838+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.11707317073170731,
+  "final_score": 0.21707317073170732,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.916992+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.917147+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.6156,
+  "final_score": 0.7156,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:02:08.917293+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.917473+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.686,
+  "final_score": 0.786,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:02:08.917626+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.917789+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.774,
+  "final_score": 0.874,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:02:08.917935+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.918074+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.774,
+  "final_score": 0.874,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:02:08.918233+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.686,
+  "final_score": 0.786,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:02:08.918376+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.5333333333333333,
+  "final_score": 0.6333333333333333,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.918546+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.918713+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.918856+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.919001+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.919153+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.6156,
+  "final_score": 0.7156,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "midland"
+}
+
+[2025-08-19T21:02:08.919381+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.919527+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.919660+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.919710+00:00] Found confident match: Premier High School Midland
+{
+  "score": 0.95,
+  "ceeb_code": "444736",
+  "location": "Midland, TX"
+}
+
+[2025-08-19T21:02:08.919858+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
+
+[2025-08-19T21:02:08.919993+00:00] Location boost applied: +0.10
+{
+  "base_score": 0.85,
+  "final_score": 0.95,
+  "student_city": "Midland",
+  "school_city": "Midland",
+  "best_variant": "high school"
+}
