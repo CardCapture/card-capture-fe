@@ -97,10 +97,32 @@ export function useCardReviewModal(
   useEffect(() => {
     if (selectedCardForReview && reviewFieldOrder) {
       const initialFormData: Record<string, string> = {};
-      reviewFieldOrder.forEach((fieldKey) => {
+      
+      // Create enhanced field order with dynamic canonical fields
+      const enhancedFieldOrder = [...reviewFieldOrder];
+      
+      // Add canonical fields that exist in card data but not in base order
+      const canonicalFields = [
+        'first_name', 'last_name', 'preferred_first_name', 
+        'date_of_birth', 'email', 'cell', 'permission_to_text',
+        'address', 'city', 'state', 'zip_code',
+        'high_school', 'ceeb_code', 'class_rank', 'students_in_class', 'gpa',
+        'student_type', 'entry_term', 'major', 'mapped_major'
+      ];
+      
+      const cardDataFields = Object.keys(selectedCardForReview.fields);
+      canonicalFields.forEach(field => {
+        if (cardDataFields.includes(field) && !enhancedFieldOrder.includes(field)) {
+          enhancedFieldOrder.push(field);
+        }
+      });
+      
+      // Populate form data with enhanced field order
+      enhancedFieldOrder.forEach((fieldKey) => {
         initialFormData[fieldKey] =
           selectedCardForReview.fields?.[fieldKey]?.value ?? "";
       });
+      
       if (selectedCardForReview.fields?.mapped_major) {
         initialFormData["mapped_major"] = selectedCardForReview.fields.mapped_major.value ?? "";
       }
