@@ -871,8 +871,11 @@ const Dashboard = () => {
       'name_of_high_school', // Duplicate of high_school
       'name_of_high_school_college', // Duplicate of high_school
       'high_school_name', // Duplicate of high_school
+      'name_of_high_school_/_college', // Duplicate of high_school
       'city_state', // Duplicate when separate city/state exist
       'city/state', // Duplicate when separate city/state exist
+      'entry_term_year', // Redundant with entry_term
+      'major_academic_program_of_interest', // Redundant with major/mapped_major
     ]);
     
     const cardDataFields = Object.keys(selectedCardForReview.fields);
