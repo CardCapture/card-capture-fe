@@ -12,7 +12,7 @@ import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { DateInput } from "@/components/ui/date-input";
 
 import { CheckCircle } from "lucide-react";
-import { formatPhoneNumber, formatBirthday, normalizeFieldValue, normalizeAddress } from "@/lib/utils";
+import { formatPhoneNumber, formatBirthday, normalizeFieldValue, normalizeAddress, cn } from "@/lib/utils";
 import type { ProspectCard, FieldData } from "@/types/card";
 import {
   Select,
@@ -27,6 +27,8 @@ import { CardService } from "@/services/CardService";
 import { useAIRetry } from "@/hooks/useAIRetry";
 import { SchoolService, type CardField } from "@/services/SchoolService";
 import { AddressGroupSimple } from "@/components/ui/address-group-simple";
+import { HighSchoolSearch } from "@/components/ui/high-school-search";
+import type { HighSchool } from "@/services/HighSchoolService";
 
 const FIELD_LABELS: Record<string, string> = {
   name: "Name",
@@ -236,6 +238,189 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           className={getInputClassName("h-10 sm:h-8 text-sm w-full")}
         />
       );
+    }
+
+    // Special handling for high school field with enhanced validation
+    if (actualFieldKey === 'high_school') {
+      const fieldData = selectedCardForReview?.fields?.[actualFieldKey];
+      const ceebCode = formData['ceeb_code'] || selectedCardForReview?.fields?.ceeb_code?.value || '';
+      const state = formData['state'] || selectedCardForReview?.fields?.state?.value || '';
+      
+      // Get enhanced validation status from backend
+      const validationStatus = selectedCardForReview?.fields?.high_school_validation;
+      
+      // Legacy fallback for existing suggestions format
+      const legacySuggestions = fieldData?.metadata?.suggestions || [];
+      
+      // Convert enhanced validation suggestions to HighSchool format if available
+      const enhancedSuggestions = validationStatus?.suggestions?.map(suggestion => ({
+        id: suggestion.id,
+        name: suggestion.name,
+        ceeb_code: suggestion.ceeb_code,
+        city: suggestion.location.split(', ')[0] || '',
+        state: suggestion.location.split(', ')[1] || '',
+        match_score: suggestion.match_score,
+        district_name: suggestion.distance_info
+      })) || [];
+      
+      // Use enhanced suggestions if available, otherwise fall back to legacy
+      const suggestions = enhancedSuggestions.length > 0 ? enhancedSuggestions : legacySuggestions;
+      
+      // Extract school data for verified schools from metadata
+      let schoolData: HighSchool | undefined;
+      if (validationStatus?.value === 'verified' && fieldData?.metadata?.school_id) {
+        // Create school data from field metadata for verified schools
+        schoolData = {
+          id: fieldData.metadata.school_id,
+          name: fieldValue,
+          ceeb_code: ceebCode,
+          city: fieldData.metadata.school_city || '',
+          state: fieldData.metadata.school_state || '',
+        };
+      } else if (validationStatus?.value === 'verified' && ceebCode) {
+        // Fallback: if we have verification status and CEEB but no detailed metadata
+        // Still create school data so the UI can show verification
+        schoolData = {
+          id: 'backend-verified',
+          name: fieldValue,
+          ceeb_code: ceebCode,
+          city: '', // Will fallback to "High school verified" message
+          state: '',
+        };
+      }
+      
+      // AGGRESSIVE DEBUG LOGGING FOR HIGH SCHOOL FIELD
+      console.log('🚨🚨🚨 FULL CARD DEBUG 🚨🚨🚨');
+      console.log('selectedCardForReview:', selectedCardForReview);
+      console.log('selectedCardForReview.fields:', selectedCardForReview?.fields);
+      
+      if (selectedCardForReview?.fields) {
+        console.log('🔍 ALL FIELD KEYS:', Object.keys(selectedCardForReview.fields));
+        
+        // Check every field that contains key words
+        const relevantFields = {};
+        Object.entries(selectedCardForReview.fields).forEach(([key, value]) => {
+          if (key.includes('ceeb') || key.includes('validation') || key.includes('high_school') || key === 'high_school') {
+            relevantFields[key] = value;
+            console.log(`🎯 RELEVANT FIELD: ${key}:`, value);
+          }
+        });
+        
+        console.log('📋 ALL RELEVANT FIELDS:', relevantFields);
+        
+        // Specific field checks
+        console.log('🔍 Direct field access:');
+        console.log('  ceeb_code:', selectedCardForReview.fields.ceeb_code);
+        console.log('  high_school_validation:', selectedCardForReview.fields.high_school_validation);
+        console.log('  high_school:', selectedCardForReview.fields.high_school);
+        
+        // Check if these fields have the right structure
+        if (selectedCardForReview.fields.ceeb_code) {
+          console.log('🎯 CEEB CODE STRUCTURE:', {
+            value: selectedCardForReview.fields.ceeb_code.value,
+            source: selectedCardForReview.fields.ceeb_code.source,
+            fullField: selectedCardForReview.fields.ceeb_code
+          });
+        }
+        
+        if (selectedCardForReview.fields.high_school_validation) {
+          console.log('🎯 VALIDATION STRUCTURE:', {
+            value: selectedCardForReview.fields.high_school_validation.value,
+            source: selectedCardForReview.fields.high_school_validation.source,
+            fullField: selectedCardForReview.fields.high_school_validation
+          });
+        }
+        
+        if (selectedCardForReview.fields.high_school) {
+          console.log('🎯 HIGH SCHOOL STRUCTURE:', {
+            value: selectedCardForReview.fields.high_school.value,
+            source: selectedCardForReview.fields.high_school.source,
+            metadata: selectedCardForReview.fields.high_school.metadata,
+            fullField: selectedCardForReview.fields.high_school
+          });
+        }
+      }
+      
+      // CRITICAL DEBUG: Trace the variables that affect UI state
+      console.log('🚨 CRITICAL UI VARIABLES:');
+      console.log('  fieldValue:', fieldValue);
+      console.log('  ceebCode:', ceebCode);  
+      console.log('  validationStatus:', validationStatus);
+      console.log('  validationStatus?.value:', validationStatus?.value);
+      console.log('  validationStatus?.suggestions:', validationStatus?.suggestions);
+      console.log('  fieldData:', fieldData);
+      console.log('  fieldData?.metadata:', fieldData?.metadata);
+      console.log('  schoolData:', schoolData);
+      console.log('  legacySuggestions:', legacySuggestions);
+      console.log('  enhancedSuggestions:', enhancedSuggestions);
+      console.log('  suggestions (final):', suggestions);
+      
+      console.log('🏫 High School Field Debug:', {
+        fieldValue,
+        ceebCode,
+        validationStatus,
+        fieldData: fieldData?.metadata,
+        schoolData,
+        isEnhancedValidation: !!validationStatus,
+        hasMetadata: !!fieldData?.metadata,
+        hasSchoolId: !!fieldData?.metadata?.school_id,
+        suggestions: suggestions.length,
+        enhancedSuggestions: enhancedSuggestions.length,
+        legacySuggestions: legacySuggestions.length
+      });
+      
+      // ULTIMATE DEBUG: What gets passed to HighSchoolSearch component?
+      console.log('🎯 PROPS PASSED TO HighSchoolSearch:');
+      console.log('  value:', fieldValue);
+      console.log('  ceebCode:', ceebCode);
+      console.log('  validationStatus:', validationStatus);  
+      console.log('  suggestions:', suggestions);
+      console.log('  state:', state);
+      
+      // Determine review status based on enhanced validation
+      const enhancedNeedsReview = validationStatus?.value === 'needs_validation' || validationStatus?.value === 'no_matches';
+      const reviewStatus = enhancedNeedsReview || needsReview;
+      
+      return (
+        <HighSchoolSearch
+          value={fieldValue}
+          ceebCode={ceebCode}
+          schoolData={schoolData}
+          state={state}
+          onChange={(newValue, newCeebCode, newSchoolData) => {
+            console.log('🏫 ReviewForm onChange called:', {
+              newValue,
+              newCeebCode,
+              newSchoolData,
+              currentCeebCode: ceebCode
+            });
+            
+            handleFormChange(actualFieldKey, newValue);
+            // Also update CEEB code field if it exists
+            if ('ceeb_code' in formData || selectedCardForReview?.fields?.ceeb_code) {
+              handleFormChange('ceeb_code', newCeebCode || '');
+            }
+          }}
+          placeholder="Search for high school..."
+          className={getInputClassName("h-10 sm:h-8 text-sm w-full")}
+          needsReview={reviewStatus}
+          suggestions={suggestions}
+          validationStatus={validationStatus?.value}
+          isEnhancedValidation={!!validationStatus}
+          onManualReview={() => {
+            // Mark field as reviewed manually
+            if (handleFieldReview) {
+              const mockEvent = new MouseEvent('click') as any;
+              handleFieldReview(actualFieldKey, mockEvent);
+            }
+          }}
+        />
+      );
+    }
+
+    // CEEB Code field - hidden from UI but kept in data for CSV export
+    if (actualFieldKey === 'ceeb_code') {
+      return null; // Don't render CEEB code field in review modal
     }
 
     // Special handling for address field to prevent cursor jumping

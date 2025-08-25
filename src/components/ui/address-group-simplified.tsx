@@ -54,6 +54,7 @@ export function AddressGroupSimplified({
   disabled = false,
 }: AddressGroupSimplifiedProps) {
   const [isSuggestionPanelOpen, setIsSuggestionPanelOpen] = useState(false);
+  const [userHasInteracted, setUserHasInteracted] = useState(false);
   
   // Debug logging (can be removed later)
   console.log("🏗️ AddressGroupSimplified render:", {
@@ -175,15 +176,18 @@ export function AddressGroupSimplified({
       currentFields
     });
     
-    if (hasAddressData && !isCurrentlyVerified) {
-      // Only validate if we have data and we're not currently verified/approved
+    if (hasAddressData && !isCurrentlyVerified && userHasInteracted) {
+      // Only validate if we have data, we're not currently verified/approved, AND user has made changes
+      console.log("🔍 Triggering address validation due to user interaction");
       validateAddress(currentFields);
-    } else if (!hasAddressData) {
-      // Clear validation if no data
+    } else if (!hasAddressData && userHasInteracted) {
+      // Clear validation if no data (but only if user has interacted)
       clearValidation();
+    } else if (!userHasInteracted && !isCurrentlyVerified) {
+      console.log("🔍 Skipping validation - user has not interacted with address fields yet");
     }
     
-  }, [address, city, state, zipCode, addressIsApproved, matchesPipelineValues, validateAddress, clearValidation]);
+  }, [address, city, state, zipCode, addressIsApproved, matchesPipelineValues, validateAddress, clearValidation, userHasInteracted]);
 
   // Handle applying suggestion from panel
   const handleApplySuggestion = (sug: any) => {
@@ -316,7 +320,10 @@ export function AddressGroupSimplified({
       <Input
         type="text"
         value={address}
-        onChange={(e) => onAddressChange(e.target.value)}
+        onChange={(e) => {
+          setUserHasInteracted(true);
+          onAddressChange(e.target.value);
+        }}
         placeholder="Street Address"
         className={cn(getFieldClassName(addressFieldData), "w-full max-w-sm")}
         disabled={disabled}
@@ -327,7 +334,10 @@ export function AddressGroupSimplified({
         <Input
           type="text"
           value={city}
-          onChange={(e) => onCityChange(e.target.value)}
+          onChange={(e) => {
+            setUserHasInteracted(true);
+            onCityChange(e.target.value);
+          }}
           placeholder="City"
           className={cn(getFieldClassName(cityFieldData), "w-32")}
           disabled={disabled}
@@ -335,7 +345,10 @@ export function AddressGroupSimplified({
         <Input
           type="text"
           value={state}
-          onChange={(e) => onStateChange(e.target.value)}
+          onChange={(e) => {
+            setUserHasInteracted(true);
+            onStateChange(e.target.value);
+          }}
           placeholder="State"
           className={cn(getFieldClassName(stateFieldData), "w-16")}
           disabled={disabled}
@@ -343,7 +356,10 @@ export function AddressGroupSimplified({
         <Input
           type="text"
           value={zipCode}
-          onChange={(e) => onZipCodeChange(e.target.value)}
+          onChange={(e) => {
+            setUserHasInteracted(true);
+            onZipCodeChange(e.target.value);
+          }}
           placeholder="Zip"
           className={cn(getFieldClassName(zipCodeFieldData), "w-20")}
           disabled={disabled}

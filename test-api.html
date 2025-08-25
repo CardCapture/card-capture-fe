@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API Connection</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <button onclick="testHighSchools()">Test High Schools Search</button>
+    <button onclick="testMajors()">Test Majors Search</button>
+    <div id="results"></div>
+
+    <script>
+        const API_BASE_URL = "http://localhost:8000";
+
+        async function testHighSchools() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = "Testing high schools...";
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/high-schools/search?q=Albert`);
+                const data = await response.json();
+                resultsDiv.innerHTML = `<h3>High Schools Result:</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                resultsDiv.innerHTML = `<h3>High Schools Error:</h3><pre>${error.message}</pre>`;
+            }
+        }
+
+        async function testMajors() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = "Testing majors...";
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/majors/search?q=Computer`);
+                const data = await response.json();
+                resultsDiv.innerHTML = `<h3>Majors Result:</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                resultsDiv.innerHTML = `<h3>Majors Error:</h3><pre>${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>

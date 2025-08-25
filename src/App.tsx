@@ -45,6 +45,17 @@ const ContactPage = React.lazy(() => import("./pages/ContactPage"));
 const SuperAdminPage = React.lazy(() => import("./pages/SuperAdminPage"));
 const AuthCallback = React.lazy(() => import("./components/AuthCallback"));
 const MagicLinkPage = React.lazy(() => import("./pages/MagicLinkPage"));
+const StudentSignupPage = React.lazy(() => import("./pages/StudentSignupPage"));
+const StudentLookupPage = React.lazy(() => import("./pages/StudentLookupPage"));
+
+// New registration system pages
+const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
+const CheckEmailPage = React.lazy(() => import("./pages/CheckEmailPage"));
+const RegistrationFormPage = React.lazy(() => import("./pages/RegistrationFormPage"));
+const MultiStepRegistrationPage = React.lazy(() => import("./pages/MultiStepRegistrationPage"));
+const RegistrationSuccessPage = React.lazy(() => import("./pages/RegistrationSuccessPage"));
+const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage"));
+const MagicLinkVerifyPage = React.lazy(() => import("./pages/MagicLinkVerifyPage"));
 
 // --- CSS Import ---
 import "./App.css";
@@ -78,6 +89,19 @@ function App() {
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/magic-link" element={<MagicLinkPage />} />
+                  
+                  {/* New secure registration system */}
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/register/check-email" element={<CheckEmailPage />} />
+                  <Route path="/register/verify" element={<MagicLinkVerifyPage />} />
+                  <Route path="/register/form" element={<MultiStepRegistrationPage />} />
+                  <Route path="/register/success" element={<RegistrationSuccessPage />} />
+                  <Route path="/register/verify-email" element={<VerifyEmailPage />} />
+                  
+                  {/* Legacy student registration (keeping for backwards compatibility) */}
+                  <Route path="/register-legacy" element={<StudentSignupPage />} />
+                  <Route path="/register/form-legacy" element={<RegistrationFormPage />} />
+                  <Route path="/lookup" element={<StudentLookupPage />} />
                 </Route>
 
                 {/* SuperAdmin routes */}

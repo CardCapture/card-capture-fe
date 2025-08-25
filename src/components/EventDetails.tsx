@@ -170,21 +170,95 @@ const Dashboard = () => {
     return SchoolService.transformCardFieldsForUI(school.card_fields);
   }, [school?.card_fields]);
 
-  // Dynamic field order based on school configuration (same logic as review modal)
-  const reviewFieldOrder: string[] = useMemo(() => {
-    return cardFields
+  // Base field order from school configuration (without dynamic card data)
+  const baseReviewFieldOrder: string[] = useMemo(() => {
+    // Get fields from school configuration
+    const configuredFields = cardFields
       .filter((field) => field.visible)
       .map((field) => field.key);
+    
+    // Define canonical field order (priority fields that should always appear first)
+    const canonicalFields = [
+      'first_name', 'last_name', 'preferred_first_name', 
+      'date_of_birth', 'email', 'cell', 'permission_to_text',
+      'address', 'city', 'state', 'zip_code',
+      'high_school', 'class_rank', 'students_in_class', 'gpa',
+      'student_type', 'entry_term', 'major', 'mapped_major'
+    ];
+    
+    // Fields to exclude (duplicates or legacy fields)
+    const fieldsToExclude = new Set([
+      'name', // Hide combined name when split fields are available
+      'name_of_high_school', // Duplicate of high_school
+      'name_of_high_school_college', // Duplicate of high_school
+      'high_school_name', // Duplicate of high_school
+      'city_state', // Duplicate when separate city/state exist
+      'city/state', // Duplicate when separate city/state exist
+    ]);
+    
+    // Build final field order
+    const finalFields = new Set<string>();
+    
+    // 1. Add canonical fields that are configured
+    canonicalFields.forEach(field => {
+      if (configuredFields.includes(field)) {
+        finalFields.add(field);
+      }
+    });
+    
+    // 2. Add other configured fields that aren't excluded
+    configuredFields.forEach(field => {
+      if (!fieldsToExclude.has(field) && !canonicalFields.includes(field)) {
+        finalFields.add(field);
+      }
+    });
+    
+    return Array.from(finalFields);
   }, [cardFields]);
+  
+  // Use base field order for hook initialization (dynamic enhancement happens in the hook)
+  const reviewFieldOrder: string[] = baseReviewFieldOrder;
 
-  // Dynamic field mapping using labels from school configuration
+  // Dynamic field mapping using labels from school configuration + canonical field labels
   const dataFieldsMap = useMemo(() => {
     const map = new Map<string, string>();
+    
+    // Add labels from school configuration
     cardFields.forEach((field) => {
-      // Use label from school config, fallback to generated label if not present
       const label = (field as any).label || field.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       map.set(field.key, label);
     });
+    
+    // Add canonical field labels for fields that might not be in school config
+    const canonicalLabels = {
+      'first_name': 'First Name',
+      'last_name': 'Last Name', 
+      'preferred_first_name': 'Preferred Name',
+      'date_of_birth': 'Birthday',
+      'email': 'Email',
+      'cell': 'Phone Number',
+      'permission_to_text': 'Permission to Text',
+      'address': 'Address',
+      'city': 'City',
+      'state': 'State', 
+      'zip_code': 'Zip Code',
+      'high_school': 'High School',
+      'class_rank': 'Class Rank',
+      'students_in_class': 'Students in Class',
+      'gpa': 'GPA',
+      'student_type': 'Student Type',
+      'entry_term': 'Entry Term',
+      'major': 'Major',
+      'mapped_major': 'Mapped Major'
+    };
+    
+    // Add canonical labels if not already present
+    Object.entries(canonicalLabels).forEach(([key, label]) => {
+      if (!map.has(key)) {
+        map.set(key, label);
+      }
+    });
+    
     return map;
   }, [cardFields]);
 
@@ -226,7 +300,7 @@ const Dashboard = () => {
     fieldsWithToastRef,
     isSaving,
     setIsSaving,
-  } = useCardReviewModal(cards, reviewFieldOrder, fetchCards, dataFieldsMap);
+  } = useCardReviewModal(cards, baseReviewFieldOrder, fetchCards, dataFieldsMap);
 
   const {
     isManualEntryModalOpen,
@@ -773,15 +847,55 @@ const Dashboard = () => {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // Fields to show in the review panel
+  // Fields to show in the review panel with dynamic canonical field support
   const fieldsToShow = useMemo(() => {
     if (!selectedCardForReview) return [];
     
-    // Only show fields that are explicitly visible in the school's configuration
-    // This prevents fields from one tenant's cards from appearing in another tenant's review modal
-    return cardFields
+    // Start with configured fields
+    const configuredFields = cardFields
       .filter((f) => f.visible)
       .map((f) => f.key);
+    
+    // Add canonical fields that exist in card data
+    const canonicalFields = [
+      'first_name', 'last_name', 'preferred_first_name', 
+      'date_of_birth', 'email', 'cell', 'permission_to_text',
+      'address', 'city', 'state', 'zip_code',
+      'high_school', 'class_rank', 'students_in_class', 'gpa',
+      'student_type', 'entry_term', 'major', 'mapped_major'
+    ];
+    
+    // Fields to exclude (duplicates or legacy fields)
+    const fieldsToExclude = new Set([
+      'name', // Hide combined name when split fields are available
+      'name_of_high_school', // Duplicate of high_school
+      'name_of_high_school_college', // Duplicate of high_school
+      'high_school_name', // Duplicate of high_school
+      'name_of_high_school_/_college', // Duplicate of high_school
+      'city_state', // Duplicate when separate city/state exist
+      'city/state', // Duplicate when separate city/state exist
+      'entry_term_year', // Redundant with entry_term
+      'major_academic_program_of_interest', // Redundant with major/mapped_major
+    ]);
+    
+    const cardDataFields = Object.keys(selectedCardForReview.fields);
+    const finalFields = new Set<string>();
+    
+    // 1. Add canonical fields in order (if they exist in card data or are configured)
+    canonicalFields.forEach(field => {
+      if ((configuredFields.includes(field) || cardDataFields.includes(field)) && !fieldsToExclude.has(field)) {
+        finalFields.add(field);
+      }
+    });
+    
+    // 2. Add other configured fields that aren't excluded or already added
+    configuredFields.forEach(field => {
+      if (!fieldsToExclude.has(field) && !finalFields.has(field)) {
+        finalFields.add(field);
+      }
+    });
+    
+    return Array.from(finalFields);
   }, [selectedCardForReview, cardFields]);
 
   // --- Row Selection and Card Actions ---

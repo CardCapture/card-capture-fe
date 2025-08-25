@@ -22,7 +22,9 @@ export interface ProspectCard {
   id: string;
   document_id: string;
   review_status: string;
-  fields: Record<string, FieldData>;
+  fields: Record<string, FieldData> & {
+    high_school_validation?: HighSchoolValidationStatus;
+  };
   created_at: string;
   reviewed_at?: string;
   exported_at?: string;
@@ -43,6 +45,23 @@ export interface ScannerResult {
   data?: Partial<Record<keyof ProspectCard["fields"], string>>;
   missingFields?: string[];
   errorMessage?: string;
+}
+
+export interface HighSchoolSuggestion {
+  id: string;
+  name: string;
+  ceeb_code: string;
+  location: string;
+  display_name: string;
+  match_score: number;
+  distance_info?: string;
+}
+
+export interface HighSchoolValidationStatus {
+  status: 'verified' | 'needs_validation' | 'no_matches' | 'unvalidated';
+  match_type: 'auto' | 'suggestions' | 'manual';
+  suggestions: HighSchoolSuggestion[];
+  confidence: number;
 }
 
 export interface FieldData {

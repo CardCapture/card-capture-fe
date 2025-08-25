@@ -26,5 +26,9 @@ export async function authFetch(
     headers.set("Authorization", `Bearer ${authToken}`);
   }
 
-  return fetch(input, { ...init, headers });
+  return fetch(input, { 
+    ...init, 
+    headers,
+    credentials: 'include'  // Include cookies in cross-origin requests
+  });
 }
