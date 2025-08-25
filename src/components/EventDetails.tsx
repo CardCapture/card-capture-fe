@@ -191,9 +191,13 @@ const Dashboard = () => {
       'name', // Hide combined name when split fields are available
       'name_of_high_school', // Duplicate of high_school
       'name_of_high_school_college', // Duplicate of high_school
+      'name_of_high_school_/college', // Duplicate of high_school (variant with slash)
       'high_school_name', // Duplicate of high_school
+      'name_of_high_school_/_college', // Duplicate of high_school
       'city_state', // Duplicate when separate city/state exist
       'city/state', // Duplicate when separate city/state exist
+      'entry_term_year', // Redundant with entry_term
+      'major_academic_program_of_interest', // Redundant with major/mapped_major
     ]);
     
     // Build final field order
@@ -870,6 +874,7 @@ const Dashboard = () => {
       'name', // Hide combined name when split fields are available
       'name_of_high_school', // Duplicate of high_school
       'name_of_high_school_college', // Duplicate of high_school
+      'name_of_high_school_/college', // Duplicate of high_school (variant with slash)
       'high_school_name', // Duplicate of high_school
       'name_of_high_school_/_college', // Duplicate of high_school
       'city_state', // Duplicate when separate city/state exist
@@ -879,6 +884,12 @@ const Dashboard = () => {
     ]);
     
     const cardDataFields = Object.keys(selectedCardForReview.fields);
+    
+    // DEBUG: Log actual field names to console
+    console.log('🔍 ALL FIELD NAMES FROM BACKEND:', cardDataFields);
+    console.log('🔍 EXCLUDED FIELDS:', Array.from(fieldsToExclude));
+    console.log('🔍 FIELDS THAT MATCH "high school":', cardDataFields.filter(f => f.toLowerCase().includes('high') && f.toLowerCase().includes('school')));
+    
     const finalFields = new Set<string>();
     
     // 1. Add canonical fields in order (if they exist in card data or are configured)
