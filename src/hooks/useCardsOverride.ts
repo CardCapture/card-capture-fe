@@ -88,31 +88,34 @@ export function useCardsOverride(eventId?: string) {
       const mappedCards = data.map((card: RawCardData) => {
         // Debug log the raw card data
         console.log("Raw card data:", card);
+        console.log("🔍 Raw card fields from API:", card.fields ? Object.keys(card.fields) : 'NO_FIELDS');
+        if (card.fields?.ceeb_code) console.log("🎯 CEEB CODE FOUND:", card.fields.ceeb_code);
+        if (card.fields?.high_school_validation) console.log("🎯 VALIDATION FOUND:", card.fields.high_school_validation);
 
-        // Ensure all expected fields are present
+        // Preserve all fields from backend and only add defaults for core missing ones
         const fields = card.fields || {};
-        const expectedFields = [
+        const coreRequiredFields = [
           "name",
-          "preferred_first_name",
+          "preferred_first_name", 
           "date_of_birth",
           "email",
           "cell",
           "permission_to_text",
           "address",
-          "city",
+          "city", 
           "state",
           "zip_code",
           "high_school",
           "class_rank",
-          "students_in_class",
+          "students_in_class", 
           "gpa",
           "student_type",
           "entry_term",
           "major",
         ];
 
-        // Add missing fields with default values
-        expectedFields.forEach((field) => {
+        // Only add missing core fields with default values (preserve all backend fields)
+        coreRequiredFields.forEach((field) => {
           if (!fields[field]) {
             fields[field] = {
               value: "",

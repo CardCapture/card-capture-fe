@@ -106,7 +106,7 @@ export function useCardReviewModal(
         'first_name', 'last_name', 'preferred_first_name', 
         'date_of_birth', 'email', 'cell', 'permission_to_text',
         'address', 'city', 'state', 'zip_code',
-        'high_school', 'ceeb_code', 'class_rank', 'students_in_class', 'gpa',
+        'high_school', 'class_rank', 'students_in_class', 'gpa',
         'student_type', 'entry_term', 'major', 'mapped_major'
       ];
       

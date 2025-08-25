@@ -58,6 +58,7 @@ export function AddressGroupWithStatus({
 }: AddressGroupWithStatusProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [appliedSuggestion, setAppliedSuggestion] = useState<AddressSuggestion | null>(null);
+  const [userHasInteracted, setUserHasInteracted] = useState(false);
   
   const { suggestions, isLoading, validateAddress, clearSuggestions, hasValidationOccurred } = useAddressSuggestions({
     debounceMs: 800,
@@ -183,7 +184,8 @@ export function AddressGroupWithStatus({
       setAppliedSuggestion(null);
     }
     
-    if (hasAddressData) {
+    if (hasAddressData && userHasInteracted) {
+      console.log("🔍 Triggering address validation due to user interaction (address-group-with-status)");
       const request = {
         address: address || "",
         city: city || "",
@@ -191,8 +193,10 @@ export function AddressGroupWithStatus({
         zip_code: zipCode || "",
       };
       validateAddress(request);
+    } else if (hasAddressData && !userHasInteracted) {
+      console.log("🔍 Skipping validation - user has not interacted with address fields yet (address-group-with-status)");
     }
-  }, [address, city, state, zipCode, validateAddress, originalValues, valuesMatchOriginal, appliedSuggestion]);
+  }, [address, city, state, zipCode, validateAddress, originalValues, valuesMatchOriginal, appliedSuggestion, userHasInteracted]);
 
   // Handle applying a suggestion
   const handleApplySuggestion = (suggestion: AddressSuggestion) => {
@@ -356,7 +360,10 @@ export function AddressGroupWithStatus({
       <Input
         type="text"
         value={address}
-        onChange={(e) => onAddressChange(e.target.value)}
+        onChange={(e) => {
+          setUserHasInteracted(true);
+          onAddressChange(e.target.value);
+        }}
         placeholder="Street Address"
         className={cn(getFieldClassName(addressFieldData), "w-full max-w-sm")}
         disabled={disabled}
@@ -367,7 +374,10 @@ export function AddressGroupWithStatus({
         <Input
           type="text"
           value={city}
-          onChange={(e) => onCityChange(e.target.value)}
+          onChange={(e) => {
+            setUserHasInteracted(true);
+            onCityChange(e.target.value);
+          }}
           placeholder="City"
           className={cn(getFieldClassName(cityFieldData), "w-32")}
           disabled={disabled}
@@ -375,7 +385,10 @@ export function AddressGroupWithStatus({
         <Input
           type="text"
           value={state}
-          onChange={(e) => onStateChange(e.target.value)}
+          onChange={(e) => {
+            setUserHasInteracted(true);
+            onStateChange(e.target.value);
+          }}
           placeholder="State"
           className={cn(getFieldClassName(stateFieldData), "w-16")}
           disabled={disabled}
@@ -383,7 +396,10 @@ export function AddressGroupWithStatus({
         <Input
           type="text"
           value={zipCode}
-          onChange={(e) => onZipCodeChange(e.target.value)}
+          onChange={(e) => {
+            setUserHasInteracted(true);
+            onZipCodeChange(e.target.value);
+          }}
           placeholder="Zip"
           className={cn(getFieldClassName(zipCodeFieldData), "w-20")}
           disabled={disabled}

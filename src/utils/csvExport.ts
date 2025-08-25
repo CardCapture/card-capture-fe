@@ -52,9 +52,11 @@ export function downloadCSV(
 
   // Create a modified field order that ensures first_name and last_name are always included
   // and replaces any 'name' field with separate first/last fields
+  // Also ensure ceeb_code is always included for exports even if hidden from UI
   const modifiedFieldOrder = [];
   let hasFirstName = false;
   let hasLastName = false;
+  let hasCeebCode = false;
   
   // Process field order and replace 'name' with first_name/last_name
   fieldOrder.forEach(fieldKey => {
@@ -68,6 +70,9 @@ export function downloadCSV(
     } else if (fieldKey === 'last_name') {
       modifiedFieldOrder.push('last_name');
       hasLastName = true;
+    } else if (fieldKey === 'ceeb_code') {
+      modifiedFieldOrder.push('ceeb_code');
+      hasCeebCode = true;
     } else {
       modifiedFieldOrder.push(fieldKey);
     }
@@ -81,6 +86,18 @@ export function downloadCSV(
     modifiedFieldOrder.unshift(...nameFields);
   }
 
+  // Always ensure ceeb_code is included for exports (after high_school if it exists)
+  if (!hasCeebCode) {
+    const highSchoolIndex = modifiedFieldOrder.indexOf('high_school');
+    if (highSchoolIndex !== -1) {
+      // Insert ceeb_code right after high_school
+      modifiedFieldOrder.splice(highSchoolIndex + 1, 0, 'ceeb_code');
+    } else {
+      // If no high_school field, add ceeb_code after basic fields
+      modifiedFieldOrder.push('ceeb_code');
+    }
+  }
+
   // Create a modified field labels map that includes first_name and last_name
   const modifiedFieldLabelsMap = new Map(fieldLabelsMap);
   
@@ -88,6 +105,9 @@ export function downloadCSV(
   modifiedFieldLabelsMap.set('first_name', 'First Name');
   modifiedFieldLabelsMap.set('last_name', 'Last Name');
   modifiedFieldLabelsMap.delete('name'); // Remove the original name field
+  
+  // Always ensure ceeb_code label is set for exports
+  modifiedFieldLabelsMap.set('ceeb_code', 'CEEB Code');
   
   // Add standard field labels if not already present
   const standardLabels = {

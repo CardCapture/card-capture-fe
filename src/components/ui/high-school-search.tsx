@@ -61,12 +61,39 @@ export function HighSchoolSearch({
 
   // Determine current UI state for status display
   const getCurrentState = () => {
+    // AGGRESSIVE DEBUG LOGGING  
+    console.log('🚨🚨 HighSchoolSearch getCurrentState FULL DEBUG 🚨🚨');
+    console.log('🔍 Raw Props Received:');
+    console.log('  value:', value);
+    console.log('  ceebCode (prop):', ceebCode);
+    console.log('  validationStatus (prop):', validationStatus);
+    console.log('  suggestions (prop):', suggestions);
+    console.log('  needsReview (prop):', needsReview);
+    console.log('  schoolData (prop):', schoolData);
+    
+    console.log('🔍 Computed State Variables:');
+    console.log('  isSearching:', isSearching);
+    console.log('  userHasTyped:', userHasTyped);
+    console.log('  inputValue:', inputValue);
+    console.log('  inputValue.trim():', inputValue.trim());
+    console.log('  searchResults.length:', searchResults.length);
+    console.log('  isEnhancedValidation:', isEnhancedValidation);
+    console.log('  currentSchoolData:', currentSchoolData);
+    console.log('  currentCeebCode:', currentCeebCode);
+    console.log('  isVerified:', isVerified);
+    
+    console.log('🔍 Key UI Decision Variables:');
+    console.log('  isEnhancedValidation && isVerified:', isEnhancedValidation && isVerified);
+    console.log('  isEnhancedValidation && !isVerified && suggestions.length > 0:', isEnhancedValidation && !isVerified && suggestions.length > 0);
+    console.log('  isEnhancedValidation && !isVerified && suggestions.length === 0:', isEnhancedValidation && !isVerified && suggestions.length === 0);
+    
     // If searching, show loading state
     if (isSearching) {
       return { type: 'searching', message: 'Searching...', icon: 'loading' };
     }
     
     // If verified (either from backend validation or user selected from dropdown)
+    // Check for verification BEFORE checking userHasTyped to prioritize verified state
     if (isVerified && currentCeebCode && inputValue.trim() && currentSchoolData) {
       // Ensure we have both city and state for proper formatting
       const city = currentSchoolData.city?.trim();
@@ -80,17 +107,17 @@ export function HighSchoolSearch({
           icon: 'check' 
         };
       } else {
-        // Fallback if location data is missing
+        // Fallback if location data is missing - still show verified with CEEB
         return { 
           type: 'verified', 
-          message: `CEEB: ${currentCeebCode}`, 
+          message: `High school verified • CEEB: ${currentCeebCode}`, 
           icon: 'check' 
         };
       }
     }
     
-    // If user has typed and we have search results
-    if (userHasTyped && inputValue.trim().length >= 2) {
+    // If user has typed and we have search results (but not verified)
+    if (userHasTyped && inputValue.trim().length >= 2 && !isVerified) {
       if (searchResults.length > 0) {
         // Don't show status message - just open dropdown and let user select
         return null;
@@ -142,15 +169,28 @@ export function HighSchoolSearch({
   // Check if current value is verified (has CEEB code or enhanced verification)
   useEffect(() => {
     const verified = !!ceebCode || (isEnhancedValidation && validationStatus === 'verified');
-    setIsVerified(verified);
-    setCurrentCeebCode(ceebCode);
-    setCurrentSchoolData(schoolData);
     
-    // If we have a verified status from backend, reset user interaction flags
-    if (verified && !userHasTyped) {
-      setLastSelectedSchool(null);
+    console.log('🔄 HighSchoolSearch useEffect triggered:', {
+      ceebCode,
+      currentCeebCode,
+      lastSelectedSchool: lastSelectedSchool?.name,
+      shouldUpdate: !lastSelectedSchool || (ceebCode && ceebCode !== currentCeebCode),
+      verified
+    });
+    
+    // Only update internal state if we don't have a manually selected school
+    // or if the new ceebCode is non-empty and different from our current one
+    if (!lastSelectedSchool || (ceebCode && ceebCode !== currentCeebCode)) {
+      setIsVerified(verified);
+      setCurrentCeebCode(ceebCode);
+      setCurrentSchoolData(schoolData);
+      
+      // If we have a verified status from backend, reset user interaction flags
+      if (verified && !userHasTyped) {
+        setLastSelectedSchool(null);
+      }
     }
-  }, [ceebCode, schoolData, isEnhancedValidation, validationStatus, userHasTyped]);
+  }, [ceebCode, schoolData, isEnhancedValidation, validationStatus, userHasTyped, lastSelectedSchool, currentCeebCode]);
 
   // Initialize with suggestions if field needs review
   useEffect(() => {
@@ -271,6 +311,17 @@ export function HighSchoolSearch({
     setShowResults(false);
     setUserHasTyped(false); // Reset typing flag when user selects from dropdown
     setLastSelectedSchool(school); // Remember the selected school
+    
+    console.log('🏫 School selected from dropdown:', {
+      schoolName: school.name,
+      ceebCode: school.ceeb_code,
+      city: school.city,
+      state: school.state,
+      isVerified: true,
+      currentCeebCodeBefore: currentCeebCode,
+      currentCeebCodeAfter: school.ceeb_code
+    });
+    
     onChange(school.name, school.ceeb_code, school);
   };
 
