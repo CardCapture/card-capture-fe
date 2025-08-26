@@ -564,7 +564,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   };
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3 sm:p-4 overflow-y-auto">
+    <div className="bg-gray-50 rounded-lg p-3 sm:p-4 overflow-visible">
       {/* AI Failure Banner */}
       {hasAIFailure && (
         <div className="mb-4">

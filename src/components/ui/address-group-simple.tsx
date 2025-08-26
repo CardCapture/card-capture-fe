@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AddressSuggestionsPanel } from "@/components/ui/address-suggestions-panel";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { 
@@ -379,19 +380,69 @@ export function AddressGroupSimple({
   // Check if address field needs review and show checkbox
   const addressNeedsReview = addressFieldData?.requires_human_review;
   const addressIsReviewed = addressFieldData?.reviewed;
-  const showReviewCheckbox = addressNeedsReview && onFieldReview;
+  const validationFailed = currentValidationState === 'not_verified' || currentValidationState === 'no_house_number';
+  const showReviewCheckbox = (addressNeedsReview || validationFailed) && onFieldReview;
+
+  const handleAddressAutocomplete = (addressData: {
+    street: string;
+    street2: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  }) => {
+    // Auto-fill all address fields
+    onAddressChange(addressData.street);
+    onCityChange(addressData.city);
+    onStateChange(addressData.state);
+    onZipCodeChange(addressData.zipCode);
+    
+    // Set as verified since it comes from Google Maps
+    setCurrentValidationState("verified");
+    setSuggestion(null);
+    lastValidatedValues.current = JSON.stringify({
+      address: addressData.street,
+      city: addressData.city,
+      state: addressData.state,
+      zipCode: addressData.zipCode
+    });
+    
+    toast.success("✅ Address verified with Google Maps");
+  };
 
   return (
     <div className={`space-y-2 ${className}`}>
-      {/* Street Address Input */}
-      <Input
-        type="text"
-        value={address}
-        onChange={(e) => onAddressChange(e.target.value)}
-        placeholder="Street Address"
-        className="w-full max-w-sm h-10 sm:h-8 text-sm"
-        disabled={disabled}
-      />
+      {/* Street Address with Google Maps Autocomplete */}
+      <div className="w-full max-w-sm">
+        {!disabled ? (
+          <AddressAutocomplete
+            label=""
+            value={address}
+            onChange={(value) => {
+              onAddressChange(value);
+              // Clear verified status when user manually types
+              if (currentValidationState === "verified") {
+                setCurrentValidationState("not_verified");
+              }
+            }}
+            onAddressSelect={handleAddressAutocomplete}
+            className="h-10 sm:h-8 text-sm"
+            locationContext={{
+              zipCode: zipCode,
+              city: city,
+              state: state
+            }}
+          />
+        ) : (
+          <Input
+            type="text"
+            value={address}
+            onChange={(e) => onAddressChange(e.target.value)}
+            placeholder="Street Address"
+            className="w-full h-10 sm:h-8 text-sm"
+            disabled={disabled}
+          />
+        )}
+      </div>
       
       {/* City, State, Zip Row */}
       <div className="flex gap-2">
