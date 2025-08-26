@@ -38,16 +38,25 @@ export function useCardReviewModal(
         formData[fieldKey] ??
         selectedCardForReview.fields[fieldKey]?.value ??
         "";
-      if (updatedCard.fields[fieldKey]) {
-        const currentReviewed = updatedCard.fields[fieldKey].reviewed;
+      
+      // Ensure the field exists in the card fields
+      if (!updatedCard.fields[fieldKey]) {
         updatedCard.fields[fieldKey] = {
-          ...updatedCard.fields[fieldKey],
+          ...defaultField,
           value: currentValue,
-          reviewed: !currentReviewed,
-          requires_human_review: currentReviewed,
-          review_notes: currentReviewed ? "Marked as needing review" : "Manually reviewed",
+          requires_human_review: true,
         };
       }
+      
+      const currentReviewed = updatedCard.fields[fieldKey].reviewed;
+      updatedCard.fields[fieldKey] = {
+        ...updatedCard.fields[fieldKey],
+        value: currentValue,
+        reviewed: !currentReviewed,
+        requires_human_review: currentReviewed,
+        review_notes: currentReviewed ? "Marked as needing review" : "Manually reviewed",
+      };
+      
       setSelectedCardForReview(updatedCard);
       localCardRef.current = updatedCard;
       setFormData((prev) => ({

@@ -886,9 +886,7 @@ const Dashboard = () => {
     const cardDataFields = Object.keys(selectedCardForReview.fields);
     
     // DEBUG: Log actual field names to console
-    console.log('🔍 ALL FIELD NAMES FROM BACKEND:', cardDataFields);
-    console.log('🔍 EXCLUDED FIELDS:', Array.from(fieldsToExclude));
-    console.log('🔍 FIELDS THAT MATCH "high school":', cardDataFields.filter(f => f.toLowerCase().includes('high') && f.toLowerCase().includes('school')));
+    // Debug logs removed for performance
     
     const finalFields = new Set<string>();
     

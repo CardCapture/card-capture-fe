@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,33 +59,24 @@ export function HighSchoolSearch({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Determine current UI state for status display
-  const getCurrentState = () => {
-    // AGGRESSIVE DEBUG LOGGING  
-    console.log('🚨🚨 HighSchoolSearch getCurrentState FULL DEBUG 🚨🚨');
-    console.log('🔍 Raw Props Received:');
-    console.log('  value:', value);
-    console.log('  ceebCode (prop):', ceebCode);
-    console.log('  validationStatus (prop):', validationStatus);
-    console.log('  suggestions (prop):', suggestions);
-    console.log('  needsReview (prop):', needsReview);
-    console.log('  schoolData (prop):', schoolData);
-    
-    console.log('🔍 Computed State Variables:');
-    console.log('  isSearching:', isSearching);
-    console.log('  userHasTyped:', userHasTyped);
-    console.log('  inputValue:', inputValue);
-    console.log('  inputValue.trim():', inputValue.trim());
-    console.log('  searchResults.length:', searchResults.length);
-    console.log('  isEnhancedValidation:', isEnhancedValidation);
-    console.log('  currentSchoolData:', currentSchoolData);
-    console.log('  currentCeebCode:', currentCeebCode);
-    console.log('  isVerified:', isVerified);
-    
-    console.log('🔍 Key UI Decision Variables:');
-    console.log('  isEnhancedValidation && isVerified:', isEnhancedValidation && isVerified);
-    console.log('  isEnhancedValidation && !isVerified && suggestions.length > 0:', isEnhancedValidation && !isVerified && suggestions.length > 0);
-    console.log('  isEnhancedValidation && !isVerified && suggestions.length === 0:', isEnhancedValidation && !isVerified && suggestions.length === 0);
+  // Memoize the current state to avoid unnecessary recalculations
+  const getCurrentState = useMemo(() => {
+    // Debug output for getCurrentState (reduced frequency)
+    console.log('🔍 HighSchoolSearch getCurrentState debug:', {
+      isSearching,
+      userHasTyped,
+      inputValue,
+      searchResultsLength: searchResults.length,
+      isEnhancedValidation,
+      validationStatus,
+      needsReview,
+      isVerified,
+      ceebCode: ceebCode || '',
+      currentCeebCode: currentCeebCode || '',
+      schoolData: schoolData,
+      currentSchoolData: currentSchoolData,
+      suggestionsLength: suggestions.length
+    });
     
     // If searching, show loading state
     if (isSearching) {
@@ -122,6 +113,7 @@ export function HighSchoolSearch({
         // Don't show status message - just open dropdown and let user select
         return null;
       } else {
+        // Show no matches state - this triggers the manual review circle
         return { type: 'no_matches', message: 'No matches found, search for school', icon: 'warning' };
       }
     }
@@ -177,19 +169,21 @@ export function HighSchoolSearch({
     
     // Default state - no status message
     return null;
-  };
+  }, [isSearching, userHasTyped, inputValue, searchResults.length, isVerified, 
+      currentCeebCode, currentSchoolData, isEnhancedValidation, validationStatus, 
+      needsReview, suggestions.length]);
 
   // Check if current value is verified (has CEEB code or enhanced verification)
   useEffect(() => {
-    const verified = !!ceebCode || (isEnhancedValidation && validationStatus === 'verified');
-    
     console.log('🔄 HighSchoolSearch useEffect triggered:', {
-      ceebCode,
-      currentCeebCode,
-      lastSelectedSchool: lastSelectedSchool?.name,
+      ceebCode: ceebCode || '',
+      currentCeebCode: currentCeebCode || '',
+      lastSelectedSchool: lastSelectedSchool,
       shouldUpdate: !lastSelectedSchool || (ceebCode && ceebCode !== currentCeebCode),
-      verified
+      verified: !!ceebCode || (isEnhancedValidation && validationStatus === 'verified')
     });
+    
+    const verified = !!ceebCode || (isEnhancedValidation && validationStatus === 'verified');
     
     // Only update internal state if we don't have a manually selected school
     // or if the new ceebCode is non-empty and different from our current one
@@ -222,10 +216,12 @@ export function HighSchoolSearch({
     }
   }, [isEnhancedValidation, validationStatus, suggestions]);
 
-  // Update input value when prop changes
+  // Update input value when prop changes (but only if user hasn't typed)
   useEffect(() => {
-    setInputValue(value);
-  }, [value]);
+    if (!userHasTyped) {
+      setInputValue(value);
+    }
+  }, [value, userHasTyped]);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -309,7 +305,7 @@ export function HighSchoolSearch({
       isTypingVerifiedSchool ? currentSchoolData : undefined
     );
     
-    // Set new timeout for search
+    // Set new timeout for search with slightly longer debounce to reduce jumpiness
     searchTimeout.current = setTimeout(() => {
       performSearch(newValue);
     }, 300);
@@ -405,7 +401,8 @@ export function HighSchoolSearch({
   };
 
   return (
-    <div ref={wrapperRef} className="relative w-full">
+    <div className="flex items-start gap-2 w-full">
+      <div ref={wrapperRef} className="relative flex-1">
       <div className="relative">
         <Input
           ref={inputRef}
@@ -440,9 +437,9 @@ export function HighSchoolSearch({
             <Loader2 className="h-4 w-4 text-gray-400 animate-spin" />
           )}
           
-          {/* Enhanced validation status indicators - removed check icon from inside field for verified state */}
+          {/* Enhanced validation status indicators - no checkmark inside field */}
           
-          {/* No warning icons in default state - disabled for now */}
+
           
           {/* Legacy status indicators */}
           {!isEnhancedValidation && isVerified && (
@@ -476,10 +473,12 @@ export function HighSchoolSearch({
         </div>
       </div>
 
+
+
       {/* Dynamic Status Messages */}
       <div className="mt-1">
         {(() => {
-          const currentState = getCurrentState();
+          const currentState = getCurrentState;
           if (!currentState) return null;
           
           const { type, message, icon } = currentState;
@@ -514,9 +513,25 @@ export function HighSchoolSearch({
         
         if (type === 'no_matches') {
           return (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Search className="w-3 h-3" />
-              <span>{message}</span>
+            <div className="text-sm text-gray-500">
+              <div className="flex items-center gap-2 mb-1">
+                <Search className="w-3 h-3" />
+                <span>{userHasTyped && inputValue.trim() ? `No schools found matching "${inputValue.trim()}"` : message}</span>
+              </div>
+              {onManualReview && (
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onManualReview();
+                    setShowResults(false);  // Close dropdown after marking as reviewed
+                  }}
+                  className="text-blue-600 hover:text-blue-800 underline cursor-pointer text-sm"
+                >
+                  Mark as reviewed
+                </button>
+              )}
             </div>
           );
         }
@@ -631,7 +646,7 @@ export function HighSchoolSearch({
             >
               <div className="flex items-center text-sm text-gray-600">
                 <Search className="h-4 w-4 mr-2" />
-                Can't find the school? Mark for manual review
+                Can't find the school? Mark as reviewed
               </div>
             </button>
           )}
@@ -650,11 +665,14 @@ export function HighSchoolSearch({
               className="mt-1 p-0 h-auto"
               onClick={onManualReview}
             >
-              Mark for manual review
+              Mark as reviewed
             </Button>
           )}
         </div>
       )}
+      </div>
+
+      {/* Manual review circle removed - handled by parent ReviewForm component */}
     </div>
   );
 }

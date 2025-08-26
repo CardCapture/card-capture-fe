@@ -108,7 +108,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
     // Build conditional styling for reviewed/needs review states
     const getInputClassName = (baseClasses: string = "") => {
       return `${baseClasses} ${
-        isReviewed && selectedTab === "needs_human_review"
+        isReviewed
           ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
           : needsReview
           ? "border-red-300 focus-visible:ring-red-400"
@@ -289,97 +289,72 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         };
       }
       
-      // AGGRESSIVE DEBUG LOGGING FOR HIGH SCHOOL FIELD
-      console.log('🚨🚨🚨 FULL CARD DEBUG 🚨🚨🚨');
-      console.log('selectedCardForReview:', selectedCardForReview);
-      console.log('selectedCardForReview.fields:', selectedCardForReview?.fields);
+      // Removed excessive debug logging for performance
+      // console.log('selectedCardForReview:', selectedCardForReview);
+      // console.log('selectedCardForReview.fields:', selectedCardForReview?.fields);
       
       if (selectedCardForReview?.fields) {
-        console.log('🔍 ALL FIELD KEYS:', Object.keys(selectedCardForReview.fields));
+        // console.log('🔍 ALL FIELD KEYS:', Object.keys(selectedCardForReview.fields));
         
         // Check every field that contains key words
         const relevantFields = {};
         Object.entries(selectedCardForReview.fields).forEach(([key, value]) => {
           if (key.includes('ceeb') || key.includes('validation') || key.includes('high_school') || key === 'high_school') {
             relevantFields[key] = value;
-            console.log(`🎯 RELEVANT FIELD: ${key}:`, value);
+            // console.log(`🎯 RELEVANT FIELD: ${key}:`, value);
           }
         });
         
-        console.log('📋 ALL RELEVANT FIELDS:', relevantFields);
+        // console.log('📋 ALL RELEVANT FIELDS:', relevantFields);
         
         // Specific field checks
-        console.log('🔍 Direct field access:');
-        console.log('  ceeb_code:', selectedCardForReview.fields.ceeb_code);
-        console.log('  high_school_validation:', selectedCardForReview.fields.high_school_validation);
-        console.log('  high_school:', selectedCardForReview.fields.high_school);
+        // console.log('🔍 Direct field access:');
+        // console.log('  ceeb_code:', selectedCardForReview.fields.ceeb_code);
+        // console.log('  high_school_validation:', selectedCardForReview.fields.high_school_validation);
+        // console.log('  high_school:', selectedCardForReview.fields.high_school);
         
         // Check if these fields have the right structure
         if (selectedCardForReview.fields.ceeb_code) {
-          console.log('🎯 CEEB CODE STRUCTURE:', {
-            value: selectedCardForReview.fields.ceeb_code.value,
-            source: selectedCardForReview.fields.ceeb_code.source,
-            fullField: selectedCardForReview.fields.ceeb_code
-          });
+          // console.log('🎯 CEEB CODE STRUCTURE:', {
+          //   value: selectedCardForReview.fields.ceeb_code.value,
+          //   source: selectedCardForReview.fields.ceeb_code.source,
+          //   fullField: selectedCardForReview.fields.ceeb_code
+          // });
         }
         
         if (selectedCardForReview.fields.high_school_validation) {
-          console.log('🎯 VALIDATION STRUCTURE:', {
-            value: selectedCardForReview.fields.high_school_validation.value,
-            source: selectedCardForReview.fields.high_school_validation.source,
-            fullField: selectedCardForReview.fields.high_school_validation
-          });
+          // console.log('🎯 VALIDATION STRUCTURE:', {
+          //   value: selectedCardForReview.fields.high_school_validation.value,
+          //   source: selectedCardForReview.fields.high_school_validation.source,
+          //   fullField: selectedCardForReview.fields.high_school_validation
+          // });
         }
         
         if (selectedCardForReview.fields.high_school) {
-          console.log('🎯 HIGH SCHOOL STRUCTURE:', {
-            value: selectedCardForReview.fields.high_school.value,
-            source: selectedCardForReview.fields.high_school.source,
-            metadata: selectedCardForReview.fields.high_school.metadata,
-            fullField: selectedCardForReview.fields.high_school
-          });
+          // console.log('🎯 HIGH SCHOOL STRUCTURE:', {
+          //   value: selectedCardForReview.fields.high_school.value,
+          //   source: selectedCardForReview.fields.high_school.source,
+          //   metadata: selectedCardForReview.fields.high_school.metadata,
+          //   fullField: selectedCardForReview.fields.high_school
+          // });
         }
       }
       
-      // CRITICAL DEBUG: Trace the variables that affect UI state
-      console.log('🚨 CRITICAL UI VARIABLES:');
-      console.log('  fieldValue:', fieldValue);
-      console.log('  ceebCode:', ceebCode);  
-      console.log('  validationStatus:', validationStatus);
-      console.log('  validationStatus?.value:', validationStatus?.value);
-      console.log('  validationStatus?.suggestions:', validationStatus?.suggestions);
-      console.log('  fieldData:', fieldData);
-      console.log('  fieldData?.metadata:', fieldData?.metadata);
-      console.log('  schoolData:', schoolData);
-      console.log('  legacySuggestions:', legacySuggestions);
-      console.log('  enhancedSuggestions:', enhancedSuggestions);
-      console.log('  suggestions (final):', suggestions);
-      
-      console.log('🏫 High School Field Debug:', {
-        fieldValue,
-        ceebCode,
-        validationStatus,
-        fieldData: fieldData?.metadata,
-        schoolData,
-        isEnhancedValidation: !!validationStatus,
-        hasMetadata: !!fieldData?.metadata,
-        hasSchoolId: !!fieldData?.metadata?.school_id,
-        suggestions: suggestions.length,
-        enhancedSuggestions: enhancedSuggestions.length,
-        legacySuggestions: legacySuggestions.length
-      });
-      
-      // ULTIMATE DEBUG: What gets passed to HighSchoolSearch component?
-      console.log('🎯 PROPS PASSED TO HighSchoolSearch:');
-      console.log('  value:', fieldValue);
-      console.log('  ceebCode:', ceebCode);
-      console.log('  validationStatus:', validationStatus);  
-      console.log('  suggestions:', suggestions);
-      console.log('  state:', state);
+      // Removed excessive debug logging for performance
       
       // Determine review status based on enhanced validation
-      const enhancedNeedsReview = validationStatus?.value === 'needs_validation' || validationStatus?.value === 'no_matches';
-      const reviewStatus = enhancedNeedsReview || needsReview;
+      // For high school fields, if the user has typed something that doesn't match a verified school,
+      // it should need review regardless of the backend validation status
+      const isCurrentlyVerified = !!ceebCode || (validationStatus?.value === 'verified' && schoolData?.id);
+      
+      // Check if field needs review based on multiple conditions:
+      // 1. Backend says it needs review (needsReview)
+      // 2. Has enhanced validation but not verified
+      // 3. Has validation status that's not 'verified'
+      // 4. Has suggestions but no CEEB code
+      const enhancedNeedsReview = validationStatus && validationStatus.value !== 'verified';
+      const hasSuggestionsButNotVerified = suggestions.length > 0 && !isCurrentlyVerified;
+      const reviewStatus = needsReview || enhancedNeedsReview || hasSuggestionsButNotVerified;
       
       return (
         <HighSchoolSearch
@@ -388,13 +363,6 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           schoolData={schoolData}
           state={state}
           onChange={(newValue, newCeebCode, newSchoolData) => {
-            console.log('🏫 ReviewForm onChange called:', {
-              newValue,
-              newCeebCode,
-              newSchoolData,
-              currentCeebCode: ceebCode
-            });
-            
             handleFormChange(actualFieldKey, newValue);
             // Also update CEEB code field if it exists
             if ('ceeb_code' in formData || selectedCardForReview?.fields?.ceeb_code) {
@@ -644,12 +612,32 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
               const fieldData: FieldData | undefined =
                 selectedCardForReview.fields?.[actualFieldKey];
               const label = getFieldLabel(fieldKey);
-              const needsReview = !!fieldData?.requires_human_review;
-              const isReviewed = !!fieldData?.reviewed;
+              // Special handling for high_school field review status
+              let needsReview = !!fieldData?.requires_human_review;
+              let isReviewed = !!fieldData?.reviewed;
+              
+              // For high school field, check additional conditions
+              if (actualFieldKey === 'high_school') {
+                const ceebCode = formData['ceeb_code'] || selectedCardForReview?.fields?.ceeb_code?.value || '';
+                const validationStatus = selectedCardForReview?.fields?.high_school_validation;
+                const hasVerifiedCeeb = !!ceebCode;
+                const isValidated = validationStatus?.value === 'verified' && hasVerifiedCeeb; // Only validated if has CEEB
+                
+                // Field needs review if it's not fully validated (no CEEB = needs review)
+                // BUT respect the reviewed state if user has manually reviewed it
+                if (!isValidated && !isReviewed) {
+                  needsReview = true;
+                }
+              }
+              
               const reviewNotes = fieldData?.review_notes || undefined;
               const isSignupSheet = selectedCardForReview?.upload_type === "signup_sheet";
               const showRedIcon = needsReview && !isReviewed && !isSignupSheet; // Hide red icons for signup sheets
-              const showReviewCircle = needsReview; // Always show review circles when review is needed
+              const showReviewCircle = needsReview || (actualFieldKey === 'high_school' && !isReviewed && !formData['ceeb_code']); // Show circle for high school when needs review
+              
+              if (actualFieldKey === 'high_school') {
+                // Debug logging removed for production
+              }
               const tooltipContent =
                 typeof reviewNotes === "string" && reviewNotes.length > 0
                   ? reviewNotes
@@ -685,7 +673,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                   
                   {/* Field - Natural Width Based on Content Type */}
                   <div className={`${getFieldWidth(actualFieldKey)}`}>
-                    {renderFieldInput(fieldKey, actualFieldKey, isReviewed, needsReview)}
+                    {renderFieldInput(fieldKey, actualFieldKey, isReviewed, needsReview && !isReviewed)}
                   </div>
                   
                   {/* Status Zone - Next to Field */}

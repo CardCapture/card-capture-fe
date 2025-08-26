@@ -92,16 +92,7 @@ export function AddressGroupSimple({
   const pipelineValidationState = addressFieldData?.validation_state;
   const pipelineSuggestion = addressFieldData?.validation_suggestion;
   
-  console.log("🏗️ AddressGroupSimple:", {
-    reviewStatus,
-    isReadyForExport,
-    pipelineValidationState,
-    currentValidationState,
-    address,
-    city,
-    state,
-    zipCode
-  });
+  // Debug logging removed for performance
 
   // Simple approach: validate whenever values change from what we last validated
   const currentValues = JSON.stringify({ address, city, state, zipCode });
