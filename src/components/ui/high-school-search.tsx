@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, X, AlertCircle, Check, AlertTriangle } from "lucide-react";
+import { Loader2, Search, X, AlertCircle, Check, AlertTriangle, CheckCircle } from "lucide-react";
 import { HighSchoolService, type HighSchool } from "@/services/HighSchoolService";
 import { cn } from "@/lib/utils";
 import {
@@ -122,7 +122,7 @@ export function HighSchoolSearch({
         // Don't show status message - just open dropdown and let user select
         return null;
       } else {
-        return { type: 'not_validated', message: 'CEEB not validated', icon: 'warning' };
+        return { type: 'no_matches', message: 'No matches found, search for school', icon: 'warning' };
       }
     }
     
@@ -148,11 +148,15 @@ export function HighSchoolSearch({
             icon: 'check' 
           };
         }
-      } else if (validationStatus === 'needs_validation' && suggestions.length > 0) {
-        // Don't show status message - just open dropdown and let user select
-        return null;
+      } else if (validationStatus === 'needs_validation') {
+        // For needs_validation, show suggestions count with clickable link
+        if (suggestions.length > 0) {
+          return { type: 'suggestions_available', message: 'No matches', suggestionCount: suggestions.length, icon: 'search' };
+        } else {
+          return { type: 'no_matches', message: 'No matches found, search for school', icon: 'search' };
+        }
       } else if (validationStatus === 'no_matches') {
-        return { type: 'not_validated', message: 'CEEB not validated', icon: 'warning' };
+        return { type: 'no_matches', message: 'No matches found, search for school', icon: 'search' };
       }
     }
     
@@ -160,6 +164,15 @@ export function HighSchoolSearch({
     if (needsReview && suggestions.length > 0 && !isVerified) {
       // Don't show status message - just open dropdown and let user select
       return null;
+    }
+    
+    // Default state for unverified fields - show suggestions count if available
+    if (!isVerified) {
+      if (suggestions.length > 0) {
+        return { type: 'suggestions_available', message: 'No matches', suggestionCount: suggestions.length, icon: 'search' };
+      } else {
+        return { type: 'no_matches', message: 'No matches found, search for school', icon: 'search' };
+      }
     }
     
     // Default state - no status message
@@ -197,15 +210,15 @@ export function HighSchoolSearch({
     if (needsReview && suggestions.length > 0 && !isVerified) {
       setSearchResults(suggestions);
       setShowSuggestionsPrompt(true);
-      setShowResults(true); // Auto-open dropdown for backend suggestions
+      // Don't auto-open dropdown - let user click to see suggestions
     }
   }, [needsReview, suggestions, isVerified]);
   
-  // Auto-open dropdown for enhanced validation suggestions
+  // Initialize suggestions for enhanced validation but don't auto-open
   useEffect(() => {
     if (isEnhancedValidation && validationStatus === 'needs_validation' && suggestions.length > 0) {
       setSearchResults(suggestions);
-      setShowResults(true);
+      // Don't auto-open dropdown - let user focus/type to see suggestions
     }
   }, [isEnhancedValidation, validationStatus, suggestions]);
 
@@ -339,6 +352,28 @@ export function HighSchoolSearch({
     inputRef.current?.focus();
   };
 
+  // Handle showing suggestions with text highlighting
+  const handleShowSuggestions = () => {
+    // Highlight/select all text in input field
+    if (inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+    // Show dropdown with suggestions
+    setSearchResults(suggestions);
+    setShowResults(true);
+    
+    // Scroll to center the field with some context after a brief delay to ensure dropdown is rendered
+    setTimeout(() => {
+      if (wrapperRef.current) {
+        wrapperRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    }, 100);
+  };
+
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!showResults || searchResults.length === 0) return;
@@ -394,12 +429,8 @@ export function HighSchoolSearch({
           className={cn(
             "pr-12",
             className,
-            // Enhanced validation styling - removed green background for verified state
-            isEnhancedValidation && validationStatus === 'needs_validation' && "border-amber-500 focus-visible:ring-amber-400 bg-amber-50",
-            isEnhancedValidation && validationStatus === 'no_matches' && "border-orange-500 focus-visible:ring-orange-400 bg-orange-50",
-            // Legacy styling for non-enhanced validation
-            !isEnhancedValidation && needsReview && !isVerified && "border-amber-500 focus-visible:ring-amber-400 bg-amber-50",
-            !isEnhancedValidation && isVerified && "border-green-300 focus-visible:ring-green-400 bg-green-50"
+            // No warning styles - keep input field clean
+            false && "border-amber-500 focus-visible:ring-amber-400 bg-amber-50"
           )}
         />
         
@@ -411,31 +442,7 @@ export function HighSchoolSearch({
           
           {/* Enhanced validation status indicators - removed check icon from inside field for verified state */}
           
-          {isEnhancedValidation && validationStatus === 'needs_validation' && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <AlertCircle className="h-4 w-4 text-amber-500" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Click to see matching schools</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          
-          {isEnhancedValidation && validationStatus === 'no_matches' && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>No matches found - needs manual entry</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+          {/* No warning icons in default state - disabled for now */}
           
           {/* Legacy status indicators */}
           {!isEnhancedValidation && isVerified && (
@@ -470,18 +477,17 @@ export function HighSchoolSearch({
       </div>
 
       {/* Dynamic Status Messages */}
-      {(() => {
-        const currentState = getCurrentState();
-        if (!currentState) return null;
-        
-        const { type, message, icon } = currentState;
+      <div className="mt-1">
+        {(() => {
+          const currentState = getCurrentState();
+          if (!currentState) return null;
+          
+          const { type, message, icon } = currentState;
         
         if (type === 'verified') {
           return (
             <div className="flex items-center gap-2 text-sm text-green-600 w-fit">
-              <div className="flex items-center justify-center w-4 h-4 bg-green-100 rounded-full">
-                <Check className="w-2.5 h-2.5 text-green-600" />
-              </div>
+              <CheckCircle className="w-3 h-3" />
               <span>{message}</span>
             </div>
           );
@@ -506,24 +512,50 @@ export function HighSchoolSearch({
           );
         }
         
+        if (type === 'no_matches') {
+          return (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Search className="w-3 h-3" />
+              <span>{message}</span>
+            </div>
+          );
+        }
+        
+        if (type === 'suggestions_available') {
+          return (
+            <div className="flex items-center gap-1 text-sm text-orange-600 whitespace-nowrap">
+              <AlertTriangle className="w-4 h-4" />
+              <span>No matches, </span>
+              <button 
+                type="button"
+                onClick={handleShowSuggestions}
+                className="text-orange-600 hover:text-orange-800 underline cursor-pointer font-medium"
+              >
+                see {currentState.suggestionCount} suggestion{currentState.suggestionCount !== 1 ? 's' : ''}
+              </button>
+            </div>
+          );
+        }
+        
         return null;
-      })()}
+        })()}
+      </div>
 
       {/* Legacy suggestions prompt */}
       {!isEnhancedValidation && showSuggestionsPrompt && !showResults && needsReview && suggestions.length > 0 && (
-        <div className="mt-1 p-2 bg-amber-50 border border-amber-200 rounded-md">
+        <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded-md">
           <div className="flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <p className="text-sm text-amber-800 font-medium">
+              <p className="text-sm text-gray-800 font-medium">
                 School verification needed
               </p>
-              <p className="text-xs text-amber-700 mt-1">
+              <p className="text-xs text-gray-700 mt-1">
                 Click to see {suggestions.length} suggested {suggestions.length === 1 ? 'match' : 'matches'} or search for the correct school.
               </p>
               <button
                 type="button"
-                className="text-xs text-amber-800 underline mt-1 hover:text-amber-900"
+                className="text-xs text-gray-800 underline mt-1 hover:text-gray-900"
                 onClick={() => {
                   setShowResults(true);
                   inputRef.current?.focus();
@@ -540,8 +572,8 @@ export function HighSchoolSearch({
       {(showResults || (userHasTyped && searchResults.length > 0)) && (searchResults.length > 0 || (needsReview && suggestions.length > 0)) && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
           {needsReview && suggestions.length > 0 && (
-            <div className="px-3 py-2 border-b bg-amber-50">
-              <p className="text-xs text-amber-700 font-medium">
+            <div className="px-3 py-2 border-b bg-gray-50">
+              <p className="text-xs text-gray-600 font-medium">
                 Suggested matches:
               </p>
             </div>
@@ -556,7 +588,7 @@ export function HighSchoolSearch({
                 className={cn(
                   "w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none",
                   selectedIndex === index && "bg-gray-100",
-                  isSuggestion && "bg-amber-50 hover:bg-amber-100"
+                  isSuggestion && "bg-blue-50 hover:bg-blue-100"
                 )}
                 onClick={() => handleSelectSchool(school)}
               >
