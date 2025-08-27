@@ -49,7 +49,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useCardsOverride } from "@/hooks/useCardsOverride";
 import { useSchool } from "@/hooks/useSchool";
-import { useEvents } from "@/hooks/useEvents";
+import { useEvent } from "@/hooks/useEvent";
 import { useAuth } from "@/contexts/AuthContext";
 // Utilities and Types
 import {
@@ -98,12 +98,11 @@ const Dashboard = () => {
   const { eventId } = useParams<{ eventId?: string }>();
   const { profile, session } = useAuth();
   const {
-    events,
-    loading: eventsLoading,
-    fetchEvents,
-  } = useEvents(profile?.school_id);
+    event: selectedEvent,
+    loading: eventLoading,
+    refetch: refetchEvent,
+  } = useEvent(eventId);
   const { school, loading: schoolLoading } = useSchool(profile?.school_id);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const {
     cards,
     fetchCards,
@@ -122,7 +121,7 @@ const Dashboard = () => {
   );
 
   // Event Name
-  const eventName = useEventName(selectedEvent, fetchEvents);
+  const eventName = useEventName(selectedEvent, refetchEvent);
 
   // --- State Declarations (consolidated here) ---
   // Table state
@@ -269,7 +268,6 @@ const Dashboard = () => {
   // --- Refs ---
   const imageUrlRef = useRef<string>("");
   const debounceTimerRef = useRef<NodeJS.Timeout>();
-  const eventsRef = useRef<{ fetchEvents: () => Promise<void> } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevHideExported = useRef(hideExported);
 
@@ -490,44 +488,23 @@ const Dashboard = () => {
     };
   }, [selectedCardForReview]);
 
-  // Effect to fetch events when component mounts
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
 
-  // Effect to control full page loader for events loading
+  // Effect to control full page loader for event loading
   useEffect(() => {
-    if (eventsLoading) {
-      showFullPageLoader("Loading events...");
+    if (eventLoading) {
+      showFullPageLoader("Loading event...");
     } else {
       hideFullPageLoader();
     }
-  }, [eventsLoading, showFullPageLoader, hideFullPageLoader]);
+  }, [eventLoading, showFullPageLoader, hideFullPageLoader]);
 
-  // Effect to handle event selection based on URL params
+  // Effect to handle missing eventId in URL
   useEffect(() => {
-    if (events.length > 0) {
-      if (eventId) {
-        // Find event matching URL param
-        const event = events.find((e) => e.id === eventId);
-        if (event) {
-          setSelectedEvent(event);
-        } else {
-          // If event not found, redirect to first event
-          const firstEvent = events[0];
-          navigate(`/events/${firstEvent.id}`);
-          toast.error(
-            "The requested event could not be found. Redirected to the first available event.",
-            "Event Not Found"
-          );
-        }
-      } else {
-        // No eventId in URL, redirect to first event
-        const firstEvent = events[0];
-        navigate(`/events/${firstEvent.id}`);
-      }
+    if (!eventId) {
+      // No eventId in URL, redirect to home or show error
+      navigate('/events');
     }
-  }, [eventId, events, navigate]);
+  }, [eventId, navigate]);
 
   // ✅ REMOVED: useCardsOverride already handles event changes
   // useEffect(() => {
@@ -961,10 +938,7 @@ const Dashboard = () => {
       );
       toast.updated("Event name");
       setIsEditingEventName(false);
-      setSelectedEvent((ev) =>
-        ev ? { ...ev, name: eventNameInput.trim() } : ev
-      );
-      fetchEvents();
+      refetchEvent();
     } catch (error) {
       setEventNameError(
         error instanceof Error ? error.message : "Failed to update event name"

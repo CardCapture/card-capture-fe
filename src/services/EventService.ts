@@ -51,6 +51,38 @@ export class EventService {
   }
 
   /**
+   * Get a single event with statistics by ID
+   */
+  static async getEventWithStats(eventId: string): Promise<EventWithStats | null> {
+    try {
+      console.log("EventService: Fetching single event with stats", { eventId });
+
+      // Fetch event and reviewed data for this specific event
+      const [eventData, reviewedData] = await Promise.all([
+        eventsApi.getEventById(eventId),
+        eventsApi.getReviewedDataForEvent(eventId),
+      ]);
+
+      if (!eventData) {
+        return null;
+      }
+
+      console.log("EventService: Single event data:", eventData);
+      console.log("EventService: Cards for event:", reviewedData?.length || 0);
+
+      const stats = getEventCardStats(reviewedData || []);
+
+      return {
+        ...eventData,
+        stats,
+      };
+    } catch (error) {
+      console.error("EventService: Failed to get event with stats", error);
+      throw error;
+    }
+  }
+
+  /**
    * Create a new event
    */
   static async createEvent(eventData: {

@@ -26,6 +26,43 @@ export const eventsApi = {
   },
 
   /**
+   * Get a single event by ID
+   */
+  async getEventById(eventId: string): Promise<Event | null> {
+    const { data, error } = await supabase
+      .from("events")
+      .select("*, school_id")
+      .eq("id", eventId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        return null; // Event not found
+      }
+      throw new Error(`Failed to fetch event: ${error.message}`);
+    }
+
+    return data;
+  },
+
+  /**
+   * Get reviewed data for a specific event
+   */
+  async getReviewedDataForEvent(eventId: string): Promise<ProspectCard[]> {
+    const { data, error } = await supabase
+      .from("reviewed_data")
+      .select("id, review_status, exported_at, event_id")
+      .eq("event_id", eventId)
+      .neq("review_status", "deleted");
+
+    if (error) {
+      throw new Error(`Failed to fetch reviewed data for event: ${error.message}`);
+    }
+
+    return data || [];
+  },
+
+  /**
    * Get reviewed data (cards) - excluding deleted cards
    */
   async getReviewedData(schoolId?: string): Promise<ProspectCard[]> {
