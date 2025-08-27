@@ -365,15 +365,24 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           city={formData.city || selectedCardForReview?.fields?.city?.value || ''}
           onChange={(newValue, newCeebCode, newSchoolData) => {
             handleFormChange(actualFieldKey, newValue);
-            // Always update CEEB code when school is selected
+            
             if (newCeebCode) {
+              // School selected - update CEEB and validation status
               console.log('🏫 Updating CEEB code and validation status:', newCeebCode);
               handleFormChange('ceeb_code', newCeebCode);
               
-              // Also update the validation status to 'verified' since user selected from verified results
               if (selectedCardForReview?.fields?.high_school_validation) {
                 selectedCardForReview.fields.high_school_validation.value = 'verified';
                 console.log('🟢 Updated high_school_validation to verified');
+              }
+            } else if (newValue.trim() === '') {
+              // Field cleared - reset CEEB and validation status
+              console.log('🧹 Clearing CEEB code and validation status');
+              handleFormChange('ceeb_code', '');
+              
+              if (selectedCardForReview?.fields?.high_school_validation) {
+                selectedCardForReview.fields.high_school_validation.value = 'needs_validation';
+                console.log('🔴 Reset high_school_validation to needs_validation');
               }
             }
           }}
