@@ -362,11 +362,19 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           ceebCode={ceebCode}
           schoolData={schoolData}
           state={state}
+          city={formData.city || selectedCardForReview?.fields?.city?.value || ''}
           onChange={(newValue, newCeebCode, newSchoolData) => {
             handleFormChange(actualFieldKey, newValue);
-            // Also update CEEB code field if it exists
-            if ('ceeb_code' in formData || selectedCardForReview?.fields?.ceeb_code) {
-              handleFormChange('ceeb_code', newCeebCode || '');
+            // Always update CEEB code when school is selected
+            if (newCeebCode) {
+              console.log('🏫 Updating CEEB code and validation status:', newCeebCode);
+              handleFormChange('ceeb_code', newCeebCode);
+              
+              // Also update the validation status to 'verified' since user selected from verified results
+              if (selectedCardForReview?.fields?.high_school_validation) {
+                selectedCardForReview.fields.high_school_validation.value = 'verified';
+                console.log('🟢 Updated high_school_validation to verified');
+              }
             }
           }}
           placeholder="Search for high school..."
@@ -623,11 +631,32 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                 const hasVerifiedCeeb = !!ceebCode;
                 const isValidated = validationStatus?.value === 'verified' && hasVerifiedCeeb; // Only validated if has CEEB
                 
-                // Field needs review if it's not fully validated (no CEEB = needs review)
-                // BUT respect the reviewed state if user has manually reviewed it
-                if (!isValidated && !isReviewed) {
+                console.log('🏫 High School Debug:', {
+                  selectedTab,
+                  ceebCode,
+                  validationStatus: validationStatus?.value,
+                  hasVerifiedCeeb,
+                  isValidated,
+                  isReviewedBefore: isReviewed,
+                  needsReviewBefore: needsReview
+                });
+                
+                // For "ready for export" tab: if school is verified, treat as reviewed automatically
+                if (selectedTab === 'ready_for_export' && isValidated) {
+                  isReviewed = true;
+                  needsReview = false;
+                  console.log('🟢 Setting high school as reviewed (ready for export + validated)');
+                } else if (!isValidated && !isReviewed) {
+                  // Field needs review if it's not fully validated (no CEEB = needs review)
+                  // BUT respect the reviewed state if user has manually reviewed it
                   needsReview = true;
+                  console.log('🔴 Setting high school as needs review');
                 }
+                
+                console.log('🏫 High School Final State:', {
+                  isReviewed,
+                  needsReview
+                });
               }
               
               const reviewNotes = fieldData?.review_notes || undefined;

@@ -17,6 +17,7 @@ interface HighSchoolSearchProps {
   ceebCode?: string;
   schoolData?: HighSchool; // Full school data for verified schools
   state?: string;
+  city?: string;
   onChange: (value: string, ceebCode?: string, schoolData?: HighSchool) => void;
   placeholder?: string;
   className?: string;
@@ -33,6 +34,7 @@ export function HighSchoolSearch({
   ceebCode,
   schoolData,
   state,
+  city,
   onChange,
   placeholder = "Search for high school...",
   className,
@@ -46,6 +48,7 @@ export function HighSchoolSearch({
   const [inputValue, setInputValue] = useState(value);
   const [searchResults, setSearchResults] = useState<HighSchool[]>(suggestions);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSearchPending, setIsSearchPending] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isVerified, setIsVerified] = useState(false);
@@ -61,22 +64,6 @@ export function HighSchoolSearch({
 
   // Memoize the current state to avoid unnecessary recalculations
   const getCurrentState = useMemo(() => {
-    // Debug output for getCurrentState (reduced frequency)
-    console.log('🔍 HighSchoolSearch getCurrentState debug:', {
-      isSearching,
-      userHasTyped,
-      inputValue,
-      searchResultsLength: searchResults.length,
-      isEnhancedValidation,
-      validationStatus,
-      needsReview,
-      isVerified,
-      ceebCode: ceebCode || '',
-      currentCeebCode: currentCeebCode || '',
-      schoolData: schoolData,
-      currentSchoolData: currentSchoolData,
-      suggestionsLength: suggestions.length
-    });
     
     // If searching, show loading state
     if (isSearching) {
@@ -112,10 +99,12 @@ export function HighSchoolSearch({
       if (searchResults.length > 0) {
         // Don't show status message - just open dropdown and let user select
         return null;
-      } else {
-        // Show no matches state - this triggers the manual review circle
+      } else if (!isSearching && !isSearchPending) {
+        // Only show no matches if we're not currently searching or waiting to search (prevents premature "no matches" during debounce)
         return { type: 'no_matches', message: 'No matches found, search for school', icon: 'warning' };
       }
+      // If searching or search pending, don't show any status (let loading state handle it)
+      return null;
     }
     
     // Enhanced validation states from backend
@@ -169,19 +158,12 @@ export function HighSchoolSearch({
     
     // Default state - no status message
     return null;
-  }, [isSearching, userHasTyped, inputValue, searchResults.length, isVerified, 
+  }, [isSearching, isSearchPending, userHasTyped, inputValue, searchResults.length, isVerified, 
       currentCeebCode, currentSchoolData, isEnhancedValidation, validationStatus, 
       needsReview, suggestions.length]);
 
   // Check if current value is verified (has CEEB code or enhanced verification)
   useEffect(() => {
-    console.log('🔄 HighSchoolSearch useEffect triggered:', {
-      ceebCode: ceebCode || '',
-      currentCeebCode: currentCeebCode || '',
-      lastSelectedSchool: lastSelectedSchool,
-      shouldUpdate: !lastSelectedSchool || (ceebCode && ceebCode !== currentCeebCode),
-      verified: !!ceebCode || (isEnhancedValidation && validationStatus === 'verified')
-    });
     
     const verified = !!ceebCode || (isEnhancedValidation && validationStatus === 'verified');
     
@@ -199,22 +181,18 @@ export function HighSchoolSearch({
     }
   }, [ceebCode, schoolData, isEnhancedValidation, validationStatus, userHasTyped, lastSelectedSchool, currentCeebCode]);
 
-  // Initialize with suggestions if field needs review
+  // Initialize with suggestions (consolidated to avoid race conditions)
   useEffect(() => {
-    if (needsReview && suggestions.length > 0 && !isVerified) {
-      setSearchResults(suggestions);
-      setShowSuggestionsPrompt(true);
-      // Don't auto-open dropdown - let user click to see suggestions
+    // Only set suggestions if user hasn't started typing to avoid interfering with search
+    if (!userHasTyped && suggestions.length > 0) {
+      if ((needsReview && !isVerified) || (isEnhancedValidation && validationStatus === 'needs_validation')) {
+        setSearchResults(suggestions);
+        if (needsReview && !isVerified) {
+          setShowSuggestionsPrompt(true);
+        }
+      }
     }
-  }, [needsReview, suggestions, isVerified]);
-  
-  // Initialize suggestions for enhanced validation but don't auto-open
-  useEffect(() => {
-    if (isEnhancedValidation && validationStatus === 'needs_validation' && suggestions.length > 0) {
-      setSearchResults(suggestions);
-      // Don't auto-open dropdown - let user focus/type to see suggestions
-    }
-  }, [isEnhancedValidation, validationStatus, suggestions]);
+  }, [needsReview, suggestions, isVerified, isEnhancedValidation, validationStatus, userHasTyped]);
 
   // Update input value when prop changes (but only if user hasn't typed)
   useEffect(() => {
@@ -260,6 +238,18 @@ export function HighSchoolSearch({
         }
       });
       
+      // Sort results to prioritize schools in the same city as the student
+      if (city) {
+        combinedResults.sort((a, b) => {
+          const aMatchesCity = a.city?.toLowerCase() === city.toLowerCase();
+          const bMatchesCity = b.city?.toLowerCase() === city.toLowerCase();
+          
+          if (aMatchesCity && !bMatchesCity) return -1;
+          if (!aMatchesCity && bMatchesCity) return 1;
+          return 0;
+        });
+      }
+      
       setSearchResults(combinedResults);
       
       // Auto-open dropdown if we have results (regardless of whether user is typing)
@@ -271,6 +261,7 @@ export function HighSchoolSearch({
       setSearchResults(suggestions);
     } finally {
       setIsSearching(false);
+      setIsSearchPending(false);
     }
   }, [state, suggestions]);
 
@@ -305,8 +296,16 @@ export function HighSchoolSearch({
       isTypingVerifiedSchool ? currentSchoolData : undefined
     );
     
+    // Set search pending flag to prevent premature "no matches" state
+    if (newValue.trim().length >= 2) {
+      setIsSearchPending(true);
+    } else {
+      setIsSearchPending(false);
+    }
+    
     // Set new timeout for search with slightly longer debounce to reduce jumpiness
     searchTimeout.current = setTimeout(() => {
+      setIsSearchPending(false); // Clear pending flag when search starts
       performSearch(newValue);
     }, 300);
   };
@@ -654,7 +653,7 @@ export function HighSchoolSearch({
       )}
       
       {/* No results message */}
-      {showResults && inputValue.length >= 2 && searchResults.length === 0 && !isSearching && (
+      {showResults && inputValue.length >= 2 && searchResults.length === 0 && !isSearching && !isSearchPending && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-3">
           <p className="text-sm text-gray-500">No schools found matching "{inputValue}"</p>
           {onManualReview && (
