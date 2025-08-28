@@ -1,6 +1,6 @@
 // src/pages/LoginPage.tsx
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom"; // Import Link if needed
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDefaultRedirectPath } from "@/utils/roleRedirect";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useLoader, ButtonLoader } from "@/contexts/LoaderContext";
+import MFALoginFlow from "@/components/MFALoginFlow";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { signInWithPassword, profile, user } = useAuth(); // Get function from context
+  const [showMFAFlow, setShowMFAFlow] = useState(false);
+  const { signInWithPassword, profile, user } = useAuth();
   const navigate = useNavigate();
 
   // Use global loader instead of local loading state
@@ -39,24 +41,44 @@ const LoginPage = () => {
     e.preventDefault();
     showButtonLoader(LOADER_ID);
     setError(null);
-    console.log("Signing in with email:", email, "and password:", password);
+    
+    console.log('=== LOGIN DEBUG ===');
+    console.log('Email:', email);
+    console.log('About to show MFA flow');
+    
+    // Instead of directly signing in, show MFA flow which will handle everything
+    setShowMFAFlow(true);
+    hideButtonLoader(LOADER_ID);
+  };
 
-    const { error: signInError } = await signInWithPassword({
-      email,
-      password,
-    });
+  const handleMFASuccess = () => {
+    // MFA completed successfully, the useEffect will handle redirect
+    setShowMFAFlow(false);
+  };
 
-    if (signInError) {
-      setError(signInError.message); // Show Supabase error message
-      hideButtonLoader(LOADER_ID);
-    } else {
-      // Login successful! The useEffect above will handle the redirect
-      // once the profile is loaded
-      hideButtonLoader(LOADER_ID);
-    }
+  const handleMFAError = (errorMessage: string) => {
+    setError(errorMessage);
+    setShowMFAFlow(false);
+    hideButtonLoader(LOADER_ID);
   };
 
   const loading = isLoading(LOADER_ID);
+
+  // If MFA flow is active, show it instead of login form
+  if (showMFAFlow) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted p-4">
+        <div className="w-full max-w-md">
+          <MFALoginFlow
+            email={email}
+            password={password}
+            onError={handleMFAError}
+            onSuccess={handleMFASuccess}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted p-4">
