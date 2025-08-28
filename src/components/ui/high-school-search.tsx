@@ -194,12 +194,28 @@ export function HighSchoolSearch({
     }
   }, [needsReview, suggestions, isVerified, isEnhancedValidation, validationStatus, userHasTyped]);
 
-  // Update input value when prop changes (but only if user hasn't typed)
+  // Update input value when prop changes (but preserve school selections)
   useEffect(() => {
-    if (!userHasTyped) {
+    console.log('🔄 useEffect triggered - value sync check:', {
+      value,
+      inputValue,
+      userHasTyped,
+      lastSelectedSchool: lastSelectedSchool?.name,
+      isVerified
+    });
+    
+    if (!userHasTyped && !lastSelectedSchool) {
+      console.log('🔄 Setting inputValue from prop (initial):', value);
       setInputValue(value);
     }
-  }, [value, userHasTyped]);
+    // Only update if we have a verified school and the value is actually different and longer
+    else if (isVerified && value && value !== inputValue && value.length > inputValue.length) {
+      console.log('🔄 Setting inputValue from prop (verified school, longer):', value);
+      setInputValue(value);
+    } else {
+      console.log('🔄 Not updating inputValue, preserving current value:', inputValue);
+    }
+  }, [value, userHasTyped, isVerified, inputValue, lastSelectedSchool]);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -312,7 +328,9 @@ export function HighSchoolSearch({
 
   // Handle school selection
   const handleSelectSchool = (school: HighSchool) => {
-    setInputValue(school.name);
+    const fullSchoolName = school.name;
+    console.log('🏫 Setting input value to full school name:', fullSchoolName);
+    setInputValue(fullSchoolName);
     setCurrentCeebCode(school.ceeb_code);
     setCurrentSchoolData(school);
     setIsVerified(true);
@@ -321,16 +339,17 @@ export function HighSchoolSearch({
     setLastSelectedSchool(school); // Remember the selected school
     
     console.log('🏫 School selected from dropdown:', {
-      schoolName: school.name,
+      schoolName: fullSchoolName,
       ceebCode: school.ceeb_code,
       city: school.city,
       state: school.state,
       isVerified: true,
-      currentCeebCodeBefore: currentCeebCode,
-      currentCeebCodeAfter: school.ceeb_code
+      inputValueBefore: inputValue,
+      inputValueAfter: fullSchoolName
     });
     
-    onChange(school.name, school.ceeb_code, school);
+    // Immediately call onChange to update parent form data
+    onChange(fullSchoolName, school.ceeb_code, school);
   };
 
   // Handle clear

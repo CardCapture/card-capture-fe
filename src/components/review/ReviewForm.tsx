@@ -375,14 +375,57 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                 selectedCardForReview.fields.high_school_validation.value = 'verified';
                 console.log('🟢 Updated high_school_validation to verified');
               }
+              
+              // Automatically mark field as reviewed when a school is selected
+              // This removes the need for the extra click on the review checkbox
+              console.log('🟢 Auto-marking high school field as reviewed due to school selection', {
+                actualFieldKey,
+                currentFieldState: selectedCardForReview?.fields?.[actualFieldKey],
+                formDataValue: formData[actualFieldKey]
+              });
+              
+              // Explicitly set the field as reviewed (don't toggle)
+              if (selectedCardForReview?.fields?.[actualFieldKey]) {
+                selectedCardForReview.fields[actualFieldKey].reviewed = true;
+                selectedCardForReview.fields[actualFieldKey].requires_human_review = false;
+                selectedCardForReview.fields[actualFieldKey].review_notes = "Automatically reviewed (school selected)";
+                console.log('🟢 Explicitly set high school field as reviewed');
+              } else {
+                // Create the field if it doesn't exist
+                selectedCardForReview.fields[actualFieldKey] = {
+                  value: newValue,
+                  required: false,
+                  enabled: true,
+                  review_confidence: 0.9,
+                  requires_human_review: false,
+                  reviewed: true,
+                  review_notes: "Automatically reviewed (school selected)",
+                  confidence: 0.9,
+                  bounding_box: []
+                };
+                console.log('🟢 Created and marked high school field as reviewed');
+              }
             } else if (newValue.trim() === '') {
-              // Field cleared - reset CEEB and validation status
+              // Field cleared - reset CEEB and validation status AND mark as needs review
               console.log('🧹 Clearing CEEB code and validation status');
               handleFormChange('ceeb_code', '');
               
               if (selectedCardForReview?.fields?.high_school_validation) {
                 selectedCardForReview.fields.high_school_validation.value = 'needs_validation';
                 console.log('🔴 Reset high_school_validation to needs_validation');
+              }
+              
+              // Reset the review status when field is cleared
+              if (selectedCardForReview?.fields?.[actualFieldKey]) {
+                selectedCardForReview.fields[actualFieldKey].reviewed = false;
+                selectedCardForReview.fields[actualFieldKey].requires_human_review = true;
+                console.log('🔴 Reset high school field review status (field cleared)');
+              }
+              
+              // Also clear CEEB from the card fields to prevent validation override
+              if (selectedCardForReview?.fields?.ceeb_code) {
+                selectedCardForReview.fields.ceeb_code.value = '';
+                console.log('🔴 Cleared CEEB code from card fields');
               }
             }
           }}
@@ -639,6 +682,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                 const validationStatus = selectedCardForReview?.fields?.high_school_validation;
                 const hasVerifiedCeeb = !!ceebCode;
                 const isValidated = validationStatus?.value === 'verified' && hasVerifiedCeeb; // Only validated if has CEEB
+                const fieldValue = formData[actualFieldKey] || selectedCardForReview?.fields?.[actualFieldKey]?.value || '';
                 
                 console.log('🏫 High School Debug:', {
                   selectedTab,
@@ -646,12 +690,19 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                   validationStatus: validationStatus?.value,
                   hasVerifiedCeeb,
                   isValidated,
+                  fieldValue,
                   isReviewedBefore: isReviewed,
                   needsReviewBefore: needsReview
                 });
                 
+                // If field is empty, always needs review regardless of other state
+                if (!fieldValue.trim()) {
+                  isReviewed = false;
+                  needsReview = true;
+                  console.log('🔴 High school field is empty - needs review');
+                }
                 // For "ready for export" tab: if school is verified, treat as reviewed automatically
-                if (selectedTab === 'ready_for_export' && isValidated) {
+                else if (selectedTab === 'ready_for_export' && isValidated) {
                   isReviewed = true;
                   needsReview = false;
                   console.log('🟢 Setting high school as reviewed (ready for export + validated)');

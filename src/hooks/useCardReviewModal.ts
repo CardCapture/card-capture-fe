@@ -135,7 +135,27 @@ export function useCardReviewModal(
       if (selectedCardForReview.fields?.mapped_major) {
         initialFormData["mapped_major"] = selectedCardForReview.fields.mapped_major.value ?? "";
       }
-      setFormData(initialFormData);
+      
+      // Always include CEEB code if it exists in the card
+      if (selectedCardForReview.fields?.ceeb_code) {
+        initialFormData["ceeb_code"] = selectedCardForReview.fields.ceeb_code.value ?? "";
+      }
+      
+      // Preserve existing form data for fields that are already set to avoid losing user input
+      setFormData(prevFormData => {
+        const mergedFormData = { ...initialFormData };
+        // Preserve CEEB code if it was already set (e.g., from school selection)
+        if (prevFormData.ceeb_code && !mergedFormData.ceeb_code) {
+          mergedFormData.ceeb_code = prevFormData.ceeb_code;
+        }
+        // Preserve other user-modified fields
+        Object.keys(prevFormData).forEach(key => {
+          if (prevFormData[key] && !mergedFormData[key]) {
+            mergedFormData[key] = prevFormData[key];
+          }
+        });
+        return mergedFormData;
+      });
     } else {
       setFormData({});
     }
