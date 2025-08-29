@@ -213,13 +213,23 @@ const DashboardCopy = () => {
     [router, rowSelection]
   );
 
-  // Helper to get UTC date (year, month, day only)
-  function getUTCDateOnly(date) {
-    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  // Helper to get local date (year, month, day only) for more consistent comparison
+  function getDateOnly(dateStr) {
+    // If it's a date string like "2025-08-29", parse it as local date, not UTC
+    if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day, 12, 0, 0); // month is 0-indexed
+    }
+    
+    // For other date formats, parse normally
+    const d = new Date(dateStr);
+    // Set time to noon to avoid any timezone edge cases
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
   }
 
   const now = new Date();
-  const todayUTC = getUTCDateOnly(now);
+  const today = getDateOnly(now);
+  console.log("📅 TODAY for comparison:", today.toISOString(), "Local:", today.toString());
 
   // Split and filter events based on tab selection
   const { upcomingEvents, completedEvents, archivedEvents, filteredEvents } =
@@ -257,17 +267,23 @@ const DashboardCopy = () => {
       // Split events into categories
       const upcoming = filtered
         .filter((event) => {
-          const eventDate = new Date(event.date);
-          const eventDateUTC = getUTCDateOnly(eventDate);
-          return eventDateUTC >= todayUTC && event.status !== "archived";
+          const eventDate = getDateOnly(event.date);
+          const isUpcoming = eventDate >= today && event.status !== "archived";
+          console.log(`📅 Event "${event.name}" date check:`, {
+            eventDate: event.date,
+            eventDateParsed: eventDate.toISOString(),
+            today: today.toISOString(),
+            comparison: eventDate >= today ? "UPCOMING" : "COMPLETED",
+            isUpcoming
+          });
+          return isUpcoming;
         })
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       const completed = filtered
         .filter((event) => {
-          const eventDate = new Date(event.date);
-          const eventDateUTC = getUTCDateOnly(eventDate);
-          return eventDateUTC < todayUTC && event.status !== "archived";
+          const eventDate = getDateOnly(event.date);
+          return eventDate < today && event.status !== "archived";
         })
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
