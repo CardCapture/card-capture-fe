@@ -30,27 +30,7 @@ import { AddressGroupSimple } from "@/components/ui/address-group-simple";
 import { HighSchoolSearch } from "@/components/ui/high-school-search";
 import type { HighSchool } from "@/services/HighSchoolService";
 
-const FIELD_LABELS: Record<string, string> = {
-  name: "Name",
-  preferred_first_name: "Preferred Name",
-  date_of_birth: "Birthdate",
-  email: "Email",
-  cell: "Cell Phone",
-  permission_to_text: "Permission to Text",
-  address: "Address",
-  city: "City",
-  state: "State",
-  zip_code: "Zip Code",
-  high_school: "High School",
-  class_rank: "Class Rank",
-  students_in_class: "Students in Class",
-  gpa: "GPA",
-  student_type: "Student Type",
-  entry_term: "Entry Term",
-  major: "Major",
-  city_state: "City, State",
-  // Add more as needed - only for fields commonly detected by DocAI
-};
+// Removed hardcoded FIELD_LABELS - now using backend configuration via getFieldLabel function
 
 interface ReviewFormProps {
   selectedCardForReview: ProspectCard | null;
@@ -64,6 +44,7 @@ interface ReviewFormProps {
   loadingMajors?: boolean;
   onCardUpdated?: () => void;
   cardFields?: CardField[]; // Add cardFields prop for field types
+  isModalOpen?: boolean; // Add modal open state
 }
 
 const ReviewForm: React.FC<ReviewFormProps> = ({
@@ -78,6 +59,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   loadingMajors = false,
   onCardUpdated,
   cardFields = [],
+  isModalOpen = true,
 }) => {
   const { retryCard, isRetrying } = useAIRetry(onCardUpdated);
 
@@ -617,6 +599,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             zipCodeFieldData={zipCodeData}
             reviewStatus={selectedCardForReview?.review_status}
             onFieldReview={(fieldKey) => handleFieldReview(fieldKey, { preventDefault: () => {}, stopPropagation: () => {} } as React.MouseEvent)}
+            disabled={!selectedCardForReview || !isModalOpen}
           />
         </div>
       </div>

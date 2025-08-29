@@ -107,34 +107,27 @@ export function useCardReviewModal(
     if (selectedCardForReview && reviewFieldOrder) {
       const initialFormData: Record<string, string> = {};
       
-      // Create enhanced field order with dynamic canonical fields
+      // Only use fields that are in reviewFieldOrder or in the card's fields
+      // This ensures we only show fields configured for the school
+      const cardDataFields = Object.keys(selectedCardForReview.fields);
+      
+      // Start with the review field order from the school configuration
       const enhancedFieldOrder = [...reviewFieldOrder];
       
-      // Add canonical fields that exist in card data but not in base order
-      const canonicalFields = [
-        'first_name', 'last_name', 'preferred_first_name', 
-        'date_of_birth', 'email', 'cell', 'permission_to_text',
-        'address', 'city', 'state', 'zip_code',
-        'high_school', 'class_rank', 'students_in_class', 'gpa',
-        'student_type', 'entry_term', 'major', 'mapped_major'
-      ];
-      
-      const cardDataFields = Object.keys(selectedCardForReview.fields);
-      canonicalFields.forEach(field => {
-        if (cardDataFields.includes(field) && !enhancedFieldOrder.includes(field)) {
+      // Add any fields from the card data that aren't already in the order
+      // But only if they actually exist in the card (not hardcoded canonical fields)
+      cardDataFields.forEach(field => {
+        if (!enhancedFieldOrder.includes(field)) {
           enhancedFieldOrder.push(field);
         }
       });
       
-      // Populate form data with enhanced field order
+      // Populate form data with the fields we actually have
       enhancedFieldOrder.forEach((fieldKey) => {
-        initialFormData[fieldKey] =
-          selectedCardForReview.fields?.[fieldKey]?.value ?? "";
+        if (selectedCardForReview.fields?.[fieldKey]) {
+          initialFormData[fieldKey] = selectedCardForReview.fields[fieldKey]?.value ?? "";
+        }
       });
-      
-      if (selectedCardForReview.fields?.mapped_major) {
-        initialFormData["mapped_major"] = selectedCardForReview.fields.mapped_major.value ?? "";
-      }
       
       // Always include CEEB code if it exists in the card
       if (selectedCardForReview.fields?.ceeb_code) {
@@ -148,9 +141,9 @@ export function useCardReviewModal(
         if (prevFormData.ceeb_code && !mergedFormData.ceeb_code) {
           mergedFormData.ceeb_code = prevFormData.ceeb_code;
         }
-        // Preserve other user-modified fields
+        // Preserve other user-modified fields that exist in the card
         Object.keys(prevFormData).forEach(key => {
-          if (prevFormData[key] && !mergedFormData[key]) {
+          if (prevFormData[key] && !mergedFormData[key] && selectedCardForReview.fields?.[key]) {
             mergedFormData[key] = prevFormData[key];
           }
         });

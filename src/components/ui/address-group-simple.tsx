@@ -55,6 +55,8 @@ interface AddressGroupSimpleProps {
   
   // Styling
   className?: string;
+  
+  // Disable validation when modal is closing
   disabled?: boolean;
 }
 
@@ -122,6 +124,23 @@ export function AddressGroupSimple({
 
   // Debounced validation when values change
   useEffect(() => {
+    // Clear any existing timeout when disabled changes
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    
+    // Skip validation if component is disabled (e.g., modal is closing)
+    if (disabled) {
+      console.log("🛑 Validation skipped - component is disabled");
+      return;
+    }
+    
+    // Additional safety check: skip if no meaningful address data
+    if (!address && !city && !state && !zipCode) {
+      console.log("🛑 Validation skipped - no address data");
+      return;
+    }
+    
     console.log("🚀 Validation useEffect running:", {
       isReadyForExport,
       lastValidatedValuesBefore: lastValidatedValues.current,
@@ -174,9 +193,15 @@ export function AddressGroupSimple({
         lastValidatedValues.current = currentValues;
       }
     }
-  }, [currentValues, isReadyForExport]);
+  }, [currentValues, isReadyForExport, disabled]);
 
   const validateUserInput = async (validatedValues: string) => {
+    // Skip validation if component is disabled
+    if (disabled) {
+      console.log("🛑 Validation aborted - component is disabled");
+      return;
+    }
+    
     try {
       setCurrentValidationState("loading");
       

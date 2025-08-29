@@ -164,17 +164,16 @@ export class SchoolService {
   static generateDefaultLabel(fieldKey: string): string {
     // Handle special cases with better labels
     const specialLabels: Record<string, string> = {
-      'cell': 'Phone Number',
+      'cell': 'Cell',  // Changed from 'Phone Number' to canonical 'Cell'
       'date_of_birth': 'Birthday',
       'permission_to_text': 'Permission to Text',
       'zip_code': 'Zip Code',
-      'high_school': 'High School/College',
+      'high_school': 'High School',  // Simplified from 'High School/College'
       'gpa': 'GPA',
-      'class_rank': 'Class Rank',
-      'students_in_class': 'Students in Class',
       'student_type': 'Student Type',
       'entry_term': 'Entry Term',
-      'preferred_first_name': 'Preferred Name',
+      'preferred_first_name': 'Preferred First Name',  // More specific than 'Preferred Name'
+      'home_phone': 'Home Phone',  // Added for ACU's custom field
     };
 
     return specialLabels[fieldKey] || fieldKey
@@ -201,17 +200,16 @@ export class SchoolService {
   static generateDefaultPlaceholder(fieldKey: string): string {
     const placeholders: Record<string, string> = {
       'name': 'Full Name',
-      'preferred_first_name': 'Preferred Name',
+      'preferred_first_name': 'Preferred First Name',
       'date_of_birth': 'MM/DD/YYYY',
       'email': 'Email Address',
       'cell': '(123) 456-7890',
+      'home_phone': '(123) 456-7890',  // Added for ACU's custom field
       'address': '123 Main St',
       'city': 'City',
       'state': 'State',
       'zip_code': 'Zip Code',
-      'high_school': 'High School / College',
-      'class_rank': 'Class Rank',
-      'students_in_class': 'Total Students',
+      'high_school': 'High School',
       'gpa': 'GPA',
       'student_type': 'Student Type',
       'entry_term': 'Fall 2025',

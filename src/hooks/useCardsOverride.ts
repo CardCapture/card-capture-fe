@@ -94,41 +94,8 @@ export function useCardsOverride(eventId?: string) {
 
         // Preserve all fields from backend and only add defaults for core missing ones
         const fields = card.fields || {};
-        const coreRequiredFields = [
-          "name",
-          "preferred_first_name", 
-          "date_of_birth",
-          "email",
-          "cell",
-          "permission_to_text",
-          "address",
-          "city", 
-          "state",
-          "zip_code",
-          "high_school",
-          "class_rank",
-          "students_in_class", 
-          "gpa",
-          "student_type",
-          "entry_term",
-          "major",
-        ];
-
-        // Only add missing core fields with default values (preserve all backend fields)
-        coreRequiredFields.forEach((field) => {
-          if (!fields[field]) {
-            fields[field] = {
-              value: "",
-              required: false,
-              enabled: true,
-              review_confidence: 0.0,
-              requires_human_review: false,
-              review_notes: "",
-              confidence: 0.0,
-              bounding_box: [],
-            };
-          }
-        });
+        // No need to add missing fields - the backend handles all field configuration
+        // via the school's card_fields setting. Frontend should only display what the backend provides.
 
         const mappedCard: ProspectCard = {
           id:

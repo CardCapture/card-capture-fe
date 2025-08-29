@@ -103,6 +103,17 @@ const Dashboard = () => {
     refetch: refetchEvent,
   } = useEvent(eventId);
   const { school, loading: schoolLoading } = useSchool(profile?.school_id);
+  
+  // Debug school loading
+  useEffect(() => {
+    console.log('🔍 School loading debug:', {
+      schoolLoading,
+      hasSchool: !!school,
+      schoolId: profile?.school_id,
+      schoolName: school?.name,
+      cardFieldsLength: school?.card_fields?.length
+    });
+  }, [school, schoolLoading, profile?.school_id]);
   const {
     cards,
     fetchCards,
@@ -163,10 +174,21 @@ const Dashboard = () => {
 
   // Extract cardFields from school data first (moved up for dependency)
   const cardFields = useMemo(() => {
-    if (!school?.card_fields) return [];
+    console.log('🔍 Debug cardFields:', {
+      hasSchool: !!school,
+      cardFieldsRaw: school?.card_fields,
+      cardFieldsLength: school?.card_fields?.length || 0
+    });
+    
+    if (!school?.card_fields) {
+      console.log('🚨 No school or card_fields found');
+      return [];
+    }
 
     // Use the SchoolService transformation to apply proper field type inference
-    return SchoolService.transformCardFieldsForUI(school.card_fields);
+    const transformed = SchoolService.transformCardFieldsForUI(school.card_fields);
+    console.log('🔍 Transformed cardFields:', transformed);
+    return transformed;
   }, [school?.card_fields]);
 
   // Base field order from school configuration (without dynamic card data)
@@ -176,16 +198,7 @@ const Dashboard = () => {
       .filter((field) => field.visible)
       .map((field) => field.key);
     
-    // Define canonical field order (priority fields that should always appear first)
-    const canonicalFields = [
-      'first_name', 'last_name', 'preferred_first_name', 
-      'date_of_birth', 'email', 'cell', 'permission_to_text',
-      'address', 'city', 'state', 'zip_code',
-      'high_school', 'class_rank', 'students_in_class', 'gpa',
-      'student_type', 'entry_term', 'major', 'mapped_major'
-    ];
-    
-    // Fields to exclude (duplicates or legacy fields)
+    // Fields to exclude (duplicates or legacy fields that should never show)
     const fieldsToExclude = new Set([
       'name', // Hide combined name when split fields are available
       'name_of_high_school', // Duplicate of high_school
@@ -198,25 +211,10 @@ const Dashboard = () => {
       'entry_term_year', // Redundant with entry_term
       'major_academic_program_of_interest', // Redundant with major/mapped_major
     ]);
-    
-    // Build final field order
-    const finalFields = new Set<string>();
-    
-    // 1. Add canonical fields that are configured
-    canonicalFields.forEach(field => {
-      if (configuredFields.includes(field)) {
-        finalFields.add(field);
-      }
-    });
-    
-    // 2. Add other configured fields that aren't excluded
-    configuredFields.forEach(field => {
-      if (!fieldsToExclude.has(field) && !canonicalFields.includes(field)) {
-        finalFields.add(field);
-      }
-    });
-    
-    return Array.from(finalFields);
+
+    // Use only the configured fields from the school's card_fields configuration
+    // No hardcoded canonical fields - just use what the school has configured
+    return configuredFields.filter(field => !fieldsToExclude.has(field));
   }, [cardFields]);
   
   // Use base field order for hook initialization (dynamic enhancement happens in the hook)
@@ -832,19 +830,13 @@ const Dashboard = () => {
   const fieldsToShow = useMemo(() => {
     if (!selectedCardForReview) return [];
     
-    // Start with configured fields
-    const configuredFields = cardFields
-      .filter((f) => f.visible)
-      .map((f) => f.key);
-    
-    // Add canonical fields that exist in card data
-    const canonicalFields = [
-      'first_name', 'last_name', 'preferred_first_name', 
-      'date_of_birth', 'email', 'cell', 'permission_to_text',
-      'address', 'city', 'state', 'zip_code',
-      'high_school', 'class_rank', 'students_in_class', 'gpa',
-      'student_type', 'entry_term', 'major', 'mapped_major'
-    ];
+    console.log('🔍 Debug fieldsToShow:', {
+      hasSelectedCard: !!selectedCardForReview,
+      cardFields: cardFields,
+      cardFieldsCount: cardFields.length,
+      schoolData: school,
+      hasSchoolCardFields: !!school?.card_fields
+    });
     
     // Fields to exclude (duplicates or legacy fields)
     const fieldsToExclude = new Set([
@@ -860,29 +852,15 @@ const Dashboard = () => {
       'major_academic_program_of_interest', // Redundant with major/mapped_major
     ]);
     
-    const cardDataFields = Object.keys(selectedCardForReview.fields);
+    // Use only the configured fields from the school's card_fields configuration
+    // Don't add any fields just because they exist in card data
+    const result = cardFields
+      .filter((f) => f.visible && !fieldsToExclude.has(f.key))
+      .map((f) => f.key);
     
-    // DEBUG: Log actual field names to console
-    // Debug logs removed for performance
-    
-    const finalFields = new Set<string>();
-    
-    // 1. Add canonical fields in order (if they exist in card data or are configured)
-    canonicalFields.forEach(field => {
-      if ((configuredFields.includes(field) || cardDataFields.includes(field)) && !fieldsToExclude.has(field)) {
-        finalFields.add(field);
-      }
-    });
-    
-    // 2. Add other configured fields that aren't excluded or already added
-    configuredFields.forEach(field => {
-      if (!fieldsToExclude.has(field) && !finalFields.has(field)) {
-        finalFields.add(field);
-      }
-    });
-    
-    return Array.from(finalFields);
-  }, [selectedCardForReview, cardFields]);
+    console.log('🔍 fieldsToShow result:', result);
+    return result;
+  }, [cardFields, selectedCardForReview, school]);
 
   // --- Row Selection and Card Actions ---
   const handleArchiveCard = () => {
@@ -1312,6 +1290,7 @@ const Dashboard = () => {
                   loadingMajors={loadingMajors}
                   onCardUpdated={fetchCards}
                   cardFields={cardFields}
+                  isModalOpen={isReviewModalOpen}
                 />
               </div>
             </div>

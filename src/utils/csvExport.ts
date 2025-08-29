@@ -112,7 +112,7 @@ export function downloadCSV(
   // Add standard field labels if not already present
   const standardLabels = {
     'email': 'Email',
-    'cell': 'Cell Phone',
+    'cell': 'Cell',  // Use canonical field name
     'phone': 'Phone Number',
     'date_of_birth': 'Birthday',
     'birthday': 'Birthday',
@@ -124,15 +124,15 @@ export function downloadCSV(
     'zip': 'Zip Code',
     'high_school': 'High School',
     'ceeb_code': 'CEEB Code',
-    'class_rank': 'Class Rank',
-    'students_in_class': 'Students in Class',
+    // Removed class_rank and students_in_class - these are not canonical fields
     'gpa': 'GPA',
     'student_type': 'Student Type',
     'entry_term': 'Entry Term',
     'major': 'Major',
     'mapped_major': 'Mapped Major',
     'middle_initial': 'Middle Initial',
-    'preferred_name': 'Preferred Name'
+    'preferred_first_name': 'Preferred First Name',  // Changed from preferred_name to canonical field
+    'home_phone': 'Home Phone'  // Added for ACU custom field
   };
   
   for (const [key, label] of Object.entries(standardLabels)) {
@@ -177,8 +177,8 @@ export function downloadCSV(
   const csvHeaders = modifiedFieldOrder.length > 0 ? headers : fallbackHeaders;
   const csvFieldOrder = modifiedFieldOrder.length > 0 ? ["event_name", "slate_event_id", ...modifiedFieldOrder] : [
     "event_name", "slate_event_id", "first_name", "last_name", "email", "cell", "date_of_birth", "permission_to_text",
-    "address", "city", "state", "zip_code", "high_school", "ceeb_code", "class_rank",
-    "students_in_class", "gpa", "student_type", "entry_term", "major", "mapped_major"
+    "address", "city", "state", "zip_code", "high_school", "ceeb_code", "gpa", "student_type", "entry_term", "major", "mapped_major"
+    // Removed class_rank and students_in_class from fallback order - these are not canonical fields
   ];
 
   // Helper function to safely extract field value

@@ -45,8 +45,7 @@ const FIELD_LABELS: Record<string, string> = {
   state: "State",
   zip_code: "Zip Code",
   high_school: "High School",
-  class_rank: "Class Rank",
-  students_in_class: "Students in Class",
+  // Removed class_rank and students_in_class - these are not canonical fields for all schools
   gpa: "GPA",
   student_type: "Student Type",
   entry_term: "Entry Term",
