@@ -6,6 +6,8 @@ import OTPInput from './OTPInput';
 import MFAEnrollmentModal from './MFAEnrollmentModal';
 import { supabase } from '@/lib/supabase';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
 interface MFALoginFlowProps {
   email: string;
   password: string;
@@ -47,24 +49,24 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
     try {
       // Step 1: Attempt password login
       console.log('Attempting signInWithPassword...');
-      const { error: signInError } = await signInWithPassword({
+      const authResponse = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      console.log('Auth response error:', signInError);
+      console.log('Auth response:', authResponse);
 
-      if (signInError) {
-        console.log('Sign in error:', signInError);
-        onError(signInError.message);
+      if (authResponse.error) {
+        console.log('Sign in error:', authResponse.error);
+        onError(authResponse.error.message);
         return;
       }
 
-      // Get the session after successful login
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Use the session from the auth response directly
+      const session = authResponse.data.session;
       
-      if (sessionError || !session?.user) {
-        console.log('No session data after login:', sessionError);
+      if (!session?.user) {
+        console.log('No session data in auth response:', authResponse.data);
         onError('Login failed - no session');
         return;
       }
@@ -95,7 +97,8 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       // Step 3: Check if device is trusted
       const deviceToken = localStorage.getItem('device_token');
       if (deviceToken) {
-        const response = await fetch('/api/mfa/check-device', {
+        console.log('Checking device trust with token:', deviceToken.substring(0, 8) + '...');
+        const response = await fetch(`${API_BASE_URL}/mfa/check-device`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -105,33 +108,40 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         });
 
         const deviceData = await response.json();
+        console.log('Device trust check result:', deviceData);
         if (deviceData.trusted) {
           // Device is trusted - skip MFA
+          console.log('Device is trusted, skipping MFA');
           onSuccess();
           return;
         }
       }
 
       // Step 4: Create MFA challenge
-      const challengeResponse = await fetch('/api/mfa/challenge', {
+      console.log('Creating MFA challenge...');
+      const challengeResponse = await fetch(`${API_BASE_URL}/mfa/challenge`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ user_id: session.user.id })
+        body: JSON.stringify({})
       });
 
+      console.log('Challenge response status:', challengeResponse.status);
       const challengeData = await challengeResponse.json();
+      console.log('Challenge response data:', challengeData);
 
       if (!challengeData.mfa_required) {
         onSuccess();
         return;
       }
 
-      setFactorId(challengeData.factor_id);
-      setChallengeId(challengeData.challenge_id);
-      setPhoneLastFour(challengeData.phone_masked);
+      console.log('Challenge data received:', challengeData);
+      console.log('Setting factorId to:', challengeData.factor_id);
+      setFactorId(challengeData.factor_id || '');
+      setChallengeId(challengeData.challenge_id || '');
+      setPhoneLastFour(challengeData.phone_masked || '');
       setStep('mfa-challenge');
 
     } catch (err) {
@@ -145,8 +155,11 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
     setIsLoading(true);
     setError(null);
 
+    console.log('MFA Verify called with factorId:', factorId);
+    console.log('Code:', code);
+
     try {
-      const response = await fetch('/api/mfa/verify', {
+      const response = await fetch(`${API_BASE_URL}/mfa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,13 +197,13 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
     setError(null);
     
     try {
-      const response = await fetch('/api/mfa/challenge', {
+      const response = await fetch(`${API_BASE_URL}/mfa/challenge`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
-        body: JSON.stringify({ user_id: userId })
+        body: JSON.stringify({})
       });
 
       const data = await response.json();
@@ -206,9 +219,9 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   };
 
   const handleEnrollmentComplete = () => {
-    setStep('mfa-challenge');
-    // Trigger MFA challenge for the newly enrolled phone
-    handleMFAResend();
+    // User just completed MFA enrollment and verified their phone
+    // No need for additional verification - complete login
+    onSuccess();
   };
 
   const handleEnrollmentSkip = () => {

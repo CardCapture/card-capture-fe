@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { useLoader, ButtonLoader } from "@/contexts/LoaderContext";
 import MFALoginFlow from "@/components/MFALoginFlow";
+import { supabase } from "@/lib/supabaseClient";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -51,8 +52,22 @@ const LoginPage = () => {
     hideButtonLoader(LOADER_ID);
   };
 
-  const handleMFASuccess = () => {
-    // MFA completed successfully, the useEffect will handle redirect
+  const handleMFASuccess = async () => {
+    console.log('=== MFA SUCCESS ===');
+    
+    // MFA enrollment completed successfully
+    // Since the user was authenticated with password initially, just redirect them
+    console.log('MFA enrollment completed, redirecting to main app');
+    
+    // Navigate directly to the main app
+    if (profile) {
+      const redirectPath = getDefaultRedirectPath(profile);
+      navigate(redirectPath, { replace: true });
+    } else {
+      // If no profile yet, redirect to root and let the app figure it out
+      navigate('/', { replace: true });
+    }
+    
     setShowMFAFlow(false);
   };
 

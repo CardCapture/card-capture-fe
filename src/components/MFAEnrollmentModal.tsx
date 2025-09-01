@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import OTPInput from './OTPInput';
 import { supabase } from '../lib/supabase';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
 interface MFAEnrollmentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,10 +23,12 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('+1');
   const [factorId, setFactorId] = useState<string>('');
+  const [challengeId, setChallengeId] = useState<string>('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedBackupCodes, setCopiedBackupCodes] = useState(false);
+  const [consentToSMS, setConsentToSMS] = useState(true);
 
   if (!isOpen) return null;
 
@@ -49,6 +53,12 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!consentToSMS) {
+      setError('You must consent to receive SMS messages to enable 2FA');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -56,7 +66,7 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
       const cleanPhone = phoneNumber.replace(/\D/g, '');
       const fullPhone = `${countryCode}${cleanPhone}`;
 
-      const response = await fetch('/api/mfa/enroll', {
+      const response = await fetch(`${API_BASE_URL}/mfa/enroll`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,6 +82,7 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
       }
 
       setFactorId(data.factor_id);
+      setChallengeId(data.challenge_id || '');
       setStep('verify');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -85,13 +96,13 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/mfa/verify-enrollment', {
+      const response = await fetch(`${API_BASE_URL}/mfa/verify-enrollment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
-        body: JSON.stringify({ factor_id: factorId, code })
+        body: JSON.stringify({ factor_id: factorId, code, challenge_id: challengeId })
       });
 
       const data = await response.json();
@@ -100,8 +111,8 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
         throw new Error(data.detail || 'Invalid verification code');
       }
 
-      setBackupCodes(data.backup_codes || []);
-      setStep('backup');
+      // Skip backup codes completely - enrollment is complete
+      onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code');
     } finally {
@@ -178,6 +189,20 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
                 </div>
               </div>
 
+              <div className="mb-4">
+                <label className="flex items-start space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={consentToSMS}
+                    onChange={(e) => setConsentToSMS(e.target.checked)}
+                    className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    I consent to receive SMS messages for account security. Message and data rates may apply.
+                  </span>
+                </label>
+              </div>
+
               {error && (
                 <div className="text-red-600 text-sm mb-4">
                   {error}
@@ -196,22 +221,13 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
                 )}
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !consentToSMS}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Sending...' : 'Send Code'}
                 </button>
               </div>
             </form>
-
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <h3 className="text-sm font-semibold text-blue-900 mb-1">Why 2FA?</h3>
-              <ul className="text-xs text-blue-800 space-y-1">
-                <li>• Prevents unauthorized access even if password is compromised</li>
-                <li>• Required by many compliance standards</li>
-                <li>• One-time setup, remember device for 30 days</li>
-              </ul>
-            </div>
           </div>
         )}
 
