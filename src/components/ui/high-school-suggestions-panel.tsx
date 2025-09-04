@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { X, Check, ChevronLeft, GraduationCap, MapPin } from "lucide-react";
+import { X, Check, ChevronLeft, GraduationCap, MapPin, Loader2 } from "lucide-react";
+import { HighSchoolService, type HighSchool } from "@/services/HighSchoolService";
 
 interface HighSchoolSuggestion {
   id: string;
@@ -15,20 +16,68 @@ interface HighSchoolSuggestion {
 }
 
 interface HighSchoolSuggestionsPanelProps {
-  suggestions: HighSchoolSuggestion[];
+  schoolName: string; // The school name to search for
+  studentCity?: string; // Student's city for location-aware search
+  studentState?: string; // Student's state for location-aware search
   isOpen: boolean;
   onClose: () => void;
-  onApplySuggestion: (suggestion: HighSchoolSuggestion) => void;
+  onApplySuggestion: (suggestion: HighSchool) => void;
   className?: string;
 }
 
 export function HighSchoolSuggestionsPanel({
-  suggestions,
+  schoolName,
+  studentCity,
+  studentState,
   isOpen,
   onClose,
   onApplySuggestion,
   className = "",
 }: HighSchoolSuggestionsPanelProps) {
+  const [suggestions, setSuggestions] = useState<HighSchool[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch suggestions when panel opens
+  useEffect(() => {
+    if (!isOpen || !schoolName || schoolName.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    const fetchSuggestions = async () => {
+      setIsLoading(true);
+      try {
+        const response = await HighSchoolService.searchHighSchools(
+          schoolName,
+          15, // Get more suggestions
+          studentState
+        );
+        
+        // Sort results to prioritize schools in the student's city
+        const sortedResults = [...response.results];
+        if (studentCity) {
+          sortedResults.sort((a, b) => {
+            const aMatchesCity = a.city?.toLowerCase() === studentCity.toLowerCase();
+            const bMatchesCity = b.city?.toLowerCase() === studentCity.toLowerCase();
+            
+            if (aMatchesCity && !bMatchesCity) return -1;
+            if (!aMatchesCity && bMatchesCity) return 1;
+            return 0;
+          });
+        }
+        
+        setSuggestions(sortedResults);
+      } catch (error) {
+        console.error("Failed to fetch school suggestions:", error);
+        setSuggestions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSuggestions();
+  }, [isOpen, schoolName, studentCity, studentState]);
+
   if (!isOpen) {
     return null;
   }
@@ -96,52 +145,56 @@ export function HighSchoolSuggestionsPanel({
           </CardHeader>
           
           <CardContent className="p-4 overflow-y-auto flex-1">
-            {suggestions && suggestions.length > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                <span className="ml-2 text-gray-600">Finding schools...</span>
+              </div>
+            ) : suggestions && suggestions.length > 0 ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600 mb-4">
-                  We found {suggestions.length} matching school{suggestions.length !== 1 ? 's' : ''} in our directory:
+                  We found {suggestions.length} matching school{suggestions.length !== 1 ? 's' : ''} in our directory{studentCity ? ` (prioritized schools in ${studentCity})` : ''}:
                 </p>
                 
                 {suggestions.map((suggestion, index) => {
-                  const confidence = getConfidenceBadge(suggestion.match_score);
+                  const isLocalSchool = studentCity && suggestion.city?.toLowerCase() === studentCity.toLowerCase();
                   
                   return (
                     <div
                       key={suggestion.id || index}
-                      className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                      className={`border rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-colors ${
+                        isLocalSchool ? 'border-green-300 bg-green-50' : 'border-gray-200'
+                      }`}
                     >
                       {/* School Name */}
                       <div className="mb-3">
-                        <p className="font-semibold text-gray-900 text-base leading-relaxed">
-                          {suggestion.name}
-                        </p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-gray-900 text-base leading-relaxed">
+                            {suggestion.name}
+                          </p>
+                          {isLocalSchool && (
+                            <Badge variant="outline" className="text-xs px-2 py-1 bg-green-100 text-green-800 border-green-200">
+                              Local School
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
                           <MapPin className="w-3 h-3" />
-                          <span>{suggestion.location}</span>
+                          <span>{suggestion.city}, {suggestion.state}</span>
                         </div>
-                        {suggestion.distance_info && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {suggestion.distance_info}
-                          </p>
-                        )}
                       </div>
                       
-                      {/* CEEB Code and Confidence */}
-                      <div className="flex items-center gap-2 mb-3">
-                        <Badge 
-                          variant="outline"
-                          className="text-xs px-2 py-1 bg-gray-50 text-gray-700 border-gray-300"
-                        >
-                          CEEB: {suggestion.ceeb_code || 'N/A'}
-                        </Badge>
-                        
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs px-2 py-1 ${confidence.className}`}
-                        >
-                          {confidence.text} ({(suggestion.match_score * 100).toFixed(0)}%)
-                        </Badge>
-                      </div>
+                      {/* CEEB Code */}
+                      {suggestion.ceeb_code && (
+                        <div className="flex items-center gap-2 mb-3">
+                          <Badge 
+                            variant="outline"
+                            className="text-xs px-2 py-1 bg-gray-50 text-gray-700 border-gray-300"
+                          >
+                            CEEB: {suggestion.ceeb_code}
+                          </Badge>
+                        </div>
+                      )}
                       
                       {/* Action Button */}
                       <Button

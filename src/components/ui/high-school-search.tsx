@@ -64,7 +64,6 @@ export function HighSchoolSearch({
 
   // Memoize the current state to avoid unnecessary recalculations
   const getCurrentState = useMemo(() => {
-    
     // If searching, show loading state
     if (isSearching) {
       return { type: 'searching', message: 'Searching...', icon: 'loading' };
@@ -109,23 +108,34 @@ export function HighSchoolSearch({
     
     // Enhanced validation states from backend
     if (isEnhancedValidation) {
-      if (validationStatus === 'verified' && currentSchoolData && currentCeebCode) {
-        // Ensure we have both city and state for proper formatting
-        const city = currentSchoolData.city?.trim();
-        const stateValue = currentSchoolData.state?.trim();
-        
-        if (city && stateValue) {
-          const location = `${city}, ${stateValue}`;
+      if (validationStatus === 'verified') {
+        // For verified schools, prioritize showing verification even if some data is missing
+        if (currentCeebCode && inputValue.trim()) {
+          // Try to get location from schoolData first
+          const city = currentSchoolData?.city?.trim();
+          const stateValue = currentSchoolData?.state?.trim();
+          
+          if (city && stateValue) {
+            const location = `${city}, ${stateValue}`;
+            return { 
+              type: 'verified', 
+              message: `${location} • CEEB: ${currentCeebCode}`, 
+              icon: 'check' 
+            };
+          } else {
+            // Fallback - still show verified status with CEEB
+            return { 
+              type: 'verified', 
+              message: `School verified • CEEB: ${currentCeebCode}`, 
+              icon: 'check' 
+            };
+          }
+        }
+        // If no CEEB but validation says verified, still show as verified
+        else if (inputValue.trim()) {
           return { 
             type: 'verified', 
-            message: `${location} • CEEB: ${currentCeebCode}`, 
-            icon: 'check' 
-          };
-        } else {
-          // Fallback if location data is missing
-          return { 
-            type: 'verified', 
-            message: `CEEB: ${currentCeebCode}`, 
+            message: 'School verified', 
             icon: 'check' 
           };
         }
@@ -164,7 +174,6 @@ export function HighSchoolSearch({
 
   // Check if current value is verified (has CEEB code or enhanced verification)
   useEffect(() => {
-    
     const verified = !!ceebCode || (isEnhancedValidation && validationStatus === 'verified');
     
     // Only update internal state if we don't have a manually selected school
@@ -186,34 +195,35 @@ export function HighSchoolSearch({
     // Only set suggestions if user hasn't started typing to avoid interfering with search
     if (!userHasTyped && suggestions.length > 0) {
       if ((needsReview && !isVerified) || (isEnhancedValidation && validationStatus === 'needs_validation')) {
-        setSearchResults(suggestions);
+        // Apply city-based sorting to suggestions to match dropdown search behavior
+        const sortedSuggestions = [...suggestions];
+        if (city) {
+          sortedSuggestions.sort((a, b) => {
+            const aMatchesCity = a.city?.toLowerCase() === city.toLowerCase();
+            const bMatchesCity = b.city?.toLowerCase() === city.toLowerCase();
+            
+            if (aMatchesCity && !bMatchesCity) return -1;
+            if (!aMatchesCity && bMatchesCity) return 1;
+            return 0;
+          });
+        }
+        
+        setSearchResults(sortedSuggestions);
         if (needsReview && !isVerified) {
           setShowSuggestionsPrompt(true);
         }
       }
     }
-  }, [needsReview, suggestions, isVerified, isEnhancedValidation, validationStatus, userHasTyped]);
+  }, [needsReview, suggestions, isVerified, isEnhancedValidation, validationStatus, userHasTyped, city]);
 
   // Update input value when prop changes (but preserve school selections)
   useEffect(() => {
-    console.log('🔄 useEffect triggered - value sync check:', {
-      value,
-      inputValue,
-      userHasTyped,
-      lastSelectedSchool: lastSelectedSchool?.name,
-      isVerified
-    });
-    
     if (!userHasTyped && !lastSelectedSchool) {
-      console.log('🔄 Setting inputValue from prop (initial):', value);
       setInputValue(value);
     }
     // Only update if we have a verified school and the value is actually different and longer
     else if (isVerified && value && value !== inputValue && value.length > inputValue.length) {
-      console.log('🔄 Setting inputValue from prop (verified school, longer):', value);
       setInputValue(value);
-    } else {
-      console.log('🔄 Not updating inputValue, preserving current value:', inputValue);
     }
   }, [value, userHasTyped, isVerified, inputValue, lastSelectedSchool]);
 
@@ -329,7 +339,6 @@ export function HighSchoolSearch({
   // Handle school selection
   const handleSelectSchool = (school: HighSchool) => {
     const fullSchoolName = school.name;
-    console.log('🏫 Setting input value to full school name:', fullSchoolName);
     setInputValue(fullSchoolName);
     setCurrentCeebCode(school.ceeb_code);
     setCurrentSchoolData(school);
@@ -337,16 +346,6 @@ export function HighSchoolSearch({
     setShowResults(false);
     setUserHasTyped(false); // Reset typing flag when user selects from dropdown
     setLastSelectedSchool(school); // Remember the selected school
-    
-    console.log('🏫 School selected from dropdown:', {
-      schoolName: fullSchoolName,
-      ceebCode: school.ceeb_code,
-      city: school.city,
-      state: school.state,
-      isVerified: true,
-      inputValueBefore: inputValue,
-      inputValueAfter: fullSchoolName
-    });
     
     // Immediately call onChange to update parent form data
     onChange(fullSchoolName, school.ceeb_code, school);
@@ -366,16 +365,39 @@ export function HighSchoolSearch({
     inputRef.current?.focus();
   };
 
-  // Handle showing suggestions with text highlighting
+  // Handle showing suggestions by opening live search dropdown
   const handleShowSuggestions = () => {
     // Highlight/select all text in input field
     if (inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
     }
-    // Show dropdown with suggestions
-    setSearchResults(suggestions);
-    setShowResults(true);
+    
+    // Trigger live search with current input to get location-aware results
+    if (inputValue.trim().length >= 2) {
+      performSearch(inputValue);
+    } else {
+      // If input is too short, perform search with school name to get relevant results
+      const searchQuery = inputValue || value || "";
+      if (searchQuery.trim().length >= 2) {
+        performSearch(searchQuery);
+      } else {
+        // Fall back to showing original suggestions but with city sorting
+        const sortedSuggestions = [...suggestions];
+        if (city) {
+          sortedSuggestions.sort((a, b) => {
+            const aMatchesCity = a.city?.toLowerCase() === city.toLowerCase();
+            const bMatchesCity = b.city?.toLowerCase() === city.toLowerCase();
+            
+            if (aMatchesCity && !bMatchesCity) return -1;
+            if (!aMatchesCity && bMatchesCity) return 1;
+            return 0;
+          });
+        }
+        setSearchResults(sortedSuggestions);
+        setShowResults(true);
+      }
+    }
     
     // Scroll to center the field with some context after a brief delay to ensure dropdown is rendered
     setTimeout(() => {
@@ -419,7 +441,7 @@ export function HighSchoolSearch({
   };
 
   return (
-    <div className="flex items-start gap-2 w-full">
+    <div className="flex items-center gap-2 w-full">
       <div ref={wrapperRef} className="relative flex-1">
       <div className="relative">
         <Input
@@ -531,25 +553,16 @@ export function HighSchoolSearch({
         
         if (type === 'no_matches') {
           return (
-            <div className="text-sm text-gray-500">
-              <div className="flex items-center gap-2 mb-1">
-                <Search className="w-3 h-3" />
-                <span>{userHasTyped && inputValue.trim() ? `No schools found matching "${inputValue.trim()}"` : message}</span>
-              </div>
-              {onManualReview && (
-                <button 
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onManualReview();
-                    setShowResults(false);  // Close dropdown after marking as reviewed
-                  }}
-                  className="text-blue-600 hover:text-blue-800 underline cursor-pointer text-sm"
-                >
-                  Mark as reviewed
-                </button>
-              )}
+            <div className="flex items-center gap-1 text-xs text-orange-600 whitespace-nowrap">
+              <AlertTriangle className="w-3 h-3" />
+              <span>High School Not Found, </span>
+              <button 
+                type="button"
+                onClick={handleShowSuggestions}
+                className="text-orange-600 hover:text-orange-800 underline cursor-pointer font-medium"
+              >
+                See Suggestions
+              </button>
             </div>
           );
         }

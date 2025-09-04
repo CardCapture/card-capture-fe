@@ -226,6 +226,30 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
     if (actualFieldKey === 'high_school') {
       const fieldData = selectedCardForReview?.fields?.[actualFieldKey];
       const ceebCode = formData['ceeb_code'] || selectedCardForReview?.fields?.ceeb_code?.value || '';
+      console.log('🔍 CEEB CODE DEBUG:', {
+        formDataCeeb: formData['ceeb_code'],
+        cardFieldCeeb: selectedCardForReview?.fields?.ceeb_code?.value,
+        finalCeebCode: ceebCode,
+        allCardFields: Object.keys(selectedCardForReview?.fields || {}),
+        ceebField: selectedCardForReview?.fields?.ceeb_code,
+        // Check alternative field names
+        alternativeFields: {
+          ceeb: selectedCardForReview?.fields?.ceeb,
+          ceebcode: selectedCardForReview?.fields?.ceebcode,
+          school_code: selectedCardForReview?.fields?.school_code
+        },
+        // Log all field values to find CEEB
+        allFieldsDebug: Object.entries(selectedCardForReview?.fields || {}).reduce((acc, [key, field]) => {
+          if (key.toLowerCase().includes('ceeb') || key.toLowerCase().includes('code')) {
+            acc[key] = field;
+          }
+          return acc;
+        }, {}),
+        // Check if CEEB exists with different casing
+        ceebVariations: Object.keys(selectedCardForReview?.fields || {}).filter(key => 
+          key.toLowerCase().includes('ceeb')
+        )
+      });
       const state = formData['state'] || selectedCardForReview?.fields?.state?.value || '';
       
       // Get enhanced validation status from backend
@@ -245,8 +269,8 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         district_name: suggestion.distance_info
       })) || [];
       
-      // Use enhanced suggestions if available, otherwise fall back to legacy
-      const suggestions = enhancedSuggestions.length > 0 ? enhancedSuggestions : legacySuggestions;
+      // Don't use cached suggestions - let the component use live search instead
+      const suggestions: HighSchool[] = [];
       
       // Extract school data for verified schools from metadata
       let schoolData: HighSchool | undefined;
@@ -322,7 +346,18 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         }
       }
       
-      // Removed excessive debug logging for performance
+      // Debug logging for high school field
+      console.log('🏫 HIGH SCHOOL DEBUG - ReviewForm props:', {
+        fieldValue,
+        ceebCode,
+        validationStatus: validationStatus?.value,
+        isEnhancedValidation: !!validationStatus,
+        schoolData,
+        suggestions: suggestions.length,
+        state,
+        city: formData.city || selectedCardForReview?.fields?.city?.value || '',
+        fieldData: fieldData?.metadata
+      });
       
       // Determine review status based on enhanced validation
       // For high school fields, if the user has typed something that doesn't match a verified school,
@@ -413,10 +448,10 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           }}
           placeholder="Search for high school..."
           className={getInputClassName("h-10 sm:h-8 text-sm w-full")}
-          needsReview={reviewStatus}
+          needsReview={false}
           suggestions={suggestions}
-          validationStatus={validationStatus?.value}
-          isEnhancedValidation={!!validationStatus}
+          validationStatus='unvalidated'
+          isEnhancedValidation={false}
           onManualReview={() => {
             // Mark field as reviewed manually
             if (handleFieldReview) {

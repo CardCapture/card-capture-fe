@@ -50,6 +50,10 @@ interface HighSchoolFieldWithValidationProps {
   ceebCode?: string;
   onCeebCodeChange?: (value: string) => void;
   
+  // Student location for city-aware search
+  studentCity?: string;
+  studentState?: string;
+  
   // Styling
   className?: string;
   disabled?: boolean;
@@ -62,6 +66,8 @@ export function HighSchoolFieldWithValidation({
   validationStatus,
   ceebCode,
   onCeebCodeChange,
+  studentCity,
+  studentState,
   className = "",
   disabled = false,
 }: HighSchoolFieldWithValidationProps) {
@@ -82,7 +88,7 @@ export function HighSchoolFieldWithValidation({
   const hasSuggestions = validationStatus?.suggestions && validationStatus.suggestions.length > 0;
 
   // Handle applying a suggestion
-  const handleApplySuggestion = (suggestion: HighSchoolSuggestion) => {
+  const handleApplySuggestion = (suggestion: any) => {
     onHighSchoolChange(suggestion.name);
     
     // Update CEEB code if handler provided
@@ -93,7 +99,7 @@ export function HighSchoolFieldWithValidation({
     setAppliedSuggestion(suggestion);
     setIsPanelOpen(false);
     
-    toast.success(`✅ High school verified: ${suggestion.name} (CEEB: ${suggestion.ceeb_code})`);
+    toast.success(`✅ High school verified: ${suggestion.name}${suggestion.ceeb_code ? ` (CEEB: ${suggestion.ceeb_code})` : ''}`);
   };
 
   // Helper to get field styling based on review status
@@ -200,7 +206,9 @@ export function HighSchoolFieldWithValidation({
 
       {/* Suggestions Panel */}
       <HighSchoolSuggestionsPanel
-        suggestions={validationStatus?.suggestions || []}
+        schoolName={highSchool}
+        studentCity={studentCity}
+        studentState={studentState}
         isOpen={isPanelOpen}
         onClose={() => setIsPanelOpen(false)}
         onApplySuggestion={handleApplySuggestion}
