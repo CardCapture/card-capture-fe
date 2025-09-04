@@ -131,18 +131,24 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       console.log('Challenge response status:', challengeResponse.status);
       const challengeData = await challengeResponse.json();
       console.log('Challenge response data:', challengeData);
+      console.log('challengeData.mfa_required:', challengeData.mfa_required);
 
       if (!challengeData.mfa_required) {
+        console.log('MFA not required, calling onSuccess');
         onSuccess();
         return;
       }
 
       console.log('Challenge data received:', challengeData);
       console.log('Setting factorId to:', challengeData.factor_id);
+      console.log('Setting challengeId to:', challengeData.challenge_id);
+      console.log('Setting phoneLastFour to:', challengeData.phone_masked);
       setFactorId(challengeData.factor_id || '');
       setChallengeId(challengeData.challenge_id || '');
       setPhoneLastFour(challengeData.phone_masked || '');
+      console.log('Setting step to mfa-challenge');
       setStep('mfa-challenge');
+      console.log('Step set complete');
 
     } catch (err) {
       onError(err instanceof Error ? err.message : 'An error occurred');
@@ -167,6 +173,7 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         },
         body: JSON.stringify({
           factor_id: factorId,
+          challenge_id: challengeId,
           code,
           remember_device: rememberDevice,
           device_name: navigator.userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop'
@@ -228,6 +235,10 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
     // User skipped enrollment, complete login
     onSuccess();
   };
+
+  console.log('MFALoginFlow render - current step:', step);
+  console.log('MFALoginFlow render - factorId:', factorId);
+  console.log('MFALoginFlow render - challengeId:', challengeId);
 
   if (step === 'mfa-enroll') {
     return (

@@ -19,7 +19,7 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
   onSkip,
   isRequired = false
 }) => {
-  const [step, setStep] = useState<'phone' | 'verify' | 'backup'>('phone');
+  const [step, setStep] = useState<'phone' | 'verify' | 'backup' | 'success'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('+1');
   const [factorId, setFactorId] = useState<string>('');
@@ -28,7 +28,8 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedBackupCodes, setCopiedBackupCodes] = useState(false);
-  const [consentToSMS, setConsentToSMS] = useState(true);
+  const [consentToSMS, setConsentToSMS] = useState(false);
+  const [showSMSDetails, setShowSMSDetails] = useState(false);
 
   if (!isOpen) return null;
 
@@ -111,8 +112,13 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
         throw new Error(data.detail || 'Invalid verification code');
       }
 
-      // Skip backup codes completely - enrollment is complete
-      onComplete();
+      // Show success message before completing
+      setStep('success');
+      
+      // Auto-close after 3 seconds
+      setTimeout(() => {
+        onComplete();
+      }, 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code');
     } finally {
@@ -159,6 +165,12 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
               <p className="text-gray-600">
                 Add two-factor authentication to protect your account from unauthorized access.
               </p>
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>How it works:</strong> We'll send a 6-digit verification code via SMS to your phone 
+                  when you log in. This ensures only you can access your account.
+                </p>
+              </div>
             </div>
 
             <form onSubmit={handlePhoneSubmit}>
@@ -196,11 +208,39 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
                     checked={consentToSMS}
                     onChange={(e) => setConsentToSMS(e.target.checked)}
                     className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    required
                   />
-                  <span className="text-sm text-gray-700">
-                    I consent to receive SMS messages for account security. Message and data rates may apply.
-                  </span>
+                  <div className="text-sm text-gray-700">
+                    <span>
+                      I consent to receive SMS verification codes from CardCapture for account security. 
+                      Message and data rates may apply.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowSMSDetails(!showSMSDetails)}
+                      className="ml-2 text-blue-600 hover:text-blue-800 underline text-xs"
+                    >
+                      {showSMSDetails ? 'Hide details' : 'View SMS terms'}
+                    </button>
+                  </div>
                 </label>
+
+                {showSMSDetails && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-gray-600">
+                    <ul className="space-y-1">
+                      <li><strong>Frequency:</strong> Up to 5 messages per login session</li>
+                      <li><strong>Content:</strong> 6-digit verification codes only</li>
+                      <li><strong>From:</strong> CardCapture or short code</li>
+                      <li><strong>To stop:</strong> Reply STOP to any message</li>
+                      <li><strong>Help:</strong> Reply HELP or email support@cardcapture.io</li>
+                    </ul>
+                    <p className="mt-2">
+                      <a href="https://cardcapture.io/privacy" className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                      {' | '}
+                      <a href="https://cardcapture.io/terms" className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">Terms</a>
+                    </p>
+                  </div>
+                )}
               </div>
 
               {error && (
@@ -240,6 +280,37 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
             error={error}
             phoneLastFour={phoneNumber.slice(-4)}
           />
+        )}
+
+        {/* Success Confirmation Step */}
+        {step === 'success' && (
+          <div className="text-center">
+            <div className="mb-6">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">2FA Successfully Enabled!</h2>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-left mb-4">
+                <p className="text-sm text-green-800 font-semibold mb-2">
+                  ✅ Opt-In Confirmation
+                </p>
+                <p className="text-xs text-green-700">
+                  You are successfully enrolled in CardCapture 2FA. You will receive automated verification codes 
+                  via SMS when logging in. Message frequency: up to 5 messages per login session. 
+                  Message and data rates may apply.
+                </p>
+                <p className="text-xs text-green-700 mt-2">
+                  <strong>To opt-out:</strong> Reply STOP to any message or disable 2FA in account settings<br/>
+                  <strong>For help:</strong> Reply HELP or contact support@cardcapture.io
+                </p>
+              </div>
+              <p className="text-gray-600 text-sm">
+                Your account is now protected with two-factor authentication.
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Backup Codes Step */}
