@@ -70,9 +70,9 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
       // For US numbers, ensure we format correctly for international use
       let fullPhone: string;
       if (countryCode === '+1') {
-        // For US numbers, format as +1 512 694 6172 (with spaces)
+        // For US numbers, format as +15126946172 (E.164 format without spaces)
         if (cleanPhone.length === 10) {
-          fullPhone = `+1 ${cleanPhone.slice(0, 3)} ${cleanPhone.slice(3, 6)} ${cleanPhone.slice(6)}`;
+          fullPhone = `+1${cleanPhone}`;
         } else {
           fullPhone = `+1${cleanPhone}`;
         }
