@@ -30,13 +30,13 @@ const LoginPage = () => {
   const { showButtonLoader, hideButtonLoader, isLoading } = useLoader();
   const LOADER_ID = "login-button";
 
-  // Redirect if user is already logged in
+  // Redirect if user is already logged in, but not during MFA flow
   useEffect(() => {
-    if (user && profile) {
+    if (user && profile && !showMFAFlow) {
       const redirectPath = getDefaultRedirectPath(profile);
       navigate(redirectPath, { replace: true });
     }
-  }, [user, profile, navigate]);
+  }, [user, profile, navigate, showMFAFlow]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -56,16 +56,23 @@ const LoginPage = () => {
     console.log('=== MFA SUCCESS ===');
     
     // MFA enrollment completed successfully
-    // Since the user was authenticated with password initially, just redirect them
-    console.log('MFA enrollment completed, redirecting to main app');
+    console.log('MFA enrollment completed, checking auth state');
     
-    // Navigate directly to the main app
-    if (profile) {
-      const redirectPath = getDefaultRedirectPath(profile);
-      navigate(redirectPath, { replace: true });
+    // Wait a moment for auth state to propagate
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Get the current session to ensure auth state is updated
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('Current session after MFA:', session);
+    
+    if (session) {
+      // Session is ready, redirect to /events
+      console.log('Session confirmed, redirecting to /events');
+      navigate('/events', { replace: true });
     } else {
-      // If no profile yet, redirect to root and let the app figure it out
-      navigate('/', { replace: true });
+      // If no session yet, try to refresh and redirect
+      console.log('No session found, attempting to refresh');
+      window.location.href = '/events';
     }
     
     setShowMFAFlow(false);

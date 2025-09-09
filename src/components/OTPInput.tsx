@@ -127,11 +127,6 @@ const OTPInput: React.FC<OTPInputProps> = ({
           We sent a {length}-digit code to your phone
           {phoneLastFour && ` ending in ${phoneLastFour}`}
         </p>
-        {phoneLastFour === "6172" && (
-          <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-sm text-yellow-800">
-            <strong>Debug Mode:</strong> For test phone number ending in 6172, try code: <strong>121212</strong>
-          </div>
-        )}
       </div>
 
       <div className="flex space-x-2 sm:space-x-3">

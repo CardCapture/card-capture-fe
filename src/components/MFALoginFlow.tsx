@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDefaultRedirectPath } from '@/utils/roleRedirect';
-import OTPInput from './OTPInput';
 import MFAEnrollmentModal from './MFAEnrollmentModal';
-import { supabase } from '@/lib/supabase';
+import MFAChallengeModal from './MFAChallengeModal';
+import { supabase } from '@/lib/supabaseClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const USE_V2_MFA = true; // Toggle to use new robust MFA implementation
 
 interface MFALoginFlowProps {
   email: string;
@@ -26,7 +27,7 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   const [challengeId, setChallengeId] = useState<string>('');
   const [phoneLastFour, setPhoneLastFour] = useState<string>('');
   const [userId, setUserId] = useState<string>('');
-  const [rememberDevice, setRememberDevice] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(true); // Default to true for better UX
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFirstPasswordLogin, setIsFirstPasswordLogin] = useState(false);
@@ -89,6 +90,7 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         console.log('User does not have MFA enabled, showing enrollment modal');
         setIsFirstPasswordLogin(true);
         setStep('mfa-enroll');
+        setIsLoading(false); // Explicitly set loading to false here
         return;
       }
 
@@ -96,9 +98,13 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
       // Step 3: Check if device is trusted
       const deviceToken = localStorage.getItem('device_token');
+      const deviceExpires = localStorage.getItem('device_expires');
+      console.log('Device trust check - token exists:', !!deviceToken, 'expires:', deviceExpires);
+      
       if (deviceToken) {
         console.log('Checking device trust with token:', deviceToken.substring(0, 8) + '...');
-        const response = await fetch(`${API_BASE_URL}/mfa/check-device`, {
+        const checkEndpoint = USE_V2_MFA ? '/mfa2/check-device' : '/mfa/check-device';
+        const response = await fetch(`${API_BASE_URL}${checkEndpoint}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -119,7 +125,8 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
       // Step 4: Create MFA challenge
       console.log('Creating MFA challenge...');
-      const challengeResponse = await fetch(`${API_BASE_URL}/mfa/challenge`, {
+      const mfaEndpoint = USE_V2_MFA ? '/mfa2/challenge' : '/mfa/challenge';
+      const challengeResponse = await fetch(`${API_BASE_URL}${mfaEndpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -165,7 +172,8 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
     console.log('Code:', code);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/mfa/verify`, {
+      const verifyEndpoint = USE_V2_MFA ? '/mfa2/verify' : '/mfa/verify';
+      const response = await fetch(`${API_BASE_URL}${verifyEndpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -186,10 +194,22 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         throw new Error(data.detail || 'Invalid code');
       }
 
+      // Update the session if MFA verification returned new tokens
+      if (data.session) {
+        console.log('MFA verify returned new session, updating auth state');
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        });
+      }
+      
       // Store device token if remember device was selected
       if (rememberDevice && data.device_token) {
+        console.log('Storing device token for 30-day trust:', data.device_token.substring(0, 8) + '...');
         localStorage.setItem('device_token', data.device_token);
         localStorage.setItem('device_expires', data.device_expires_at);
+      } else {
+        console.log('Device token not stored. rememberDevice:', rememberDevice, 'device_token present:', !!data.device_token);
       }
 
       onSuccess();
@@ -204,7 +224,8 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/mfa/challenge`, {
+      const resendEndpoint = USE_V2_MFA ? '/mfa2/challenge' : '/mfa/challenge';
+      const response = await fetch(`${API_BASE_URL}${resendEndpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -254,32 +275,16 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
   if (step === 'mfa-challenge') {
     return (
-      <div className="w-full max-w-md mx-auto">
-        <OTPInput
-          onComplete={handleMFAVerify}
-          onResend={handleMFAResend}
-          isLoading={isLoading}
-          error={error}
-          phoneLastFour={phoneLastFour}
-        />
-        
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={rememberDevice}
-              onChange={(e) => setRememberDevice(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-700">
-              Remember this device for 30 days
-            </span>
-          </label>
-          <p className="text-xs text-gray-500 mt-1 ml-6">
-            You won't need to enter a code on this device for 30 days
-          </p>
-        </div>
-      </div>
+      <MFAChallengeModal
+        isOpen={true}
+        onComplete={handleMFAVerify}
+        onResend={handleMFAResend}
+        isLoading={isLoading}
+        error={error}
+        phoneLastFour={phoneLastFour}
+        rememberDevice={rememberDevice}
+        onRememberDeviceChange={setRememberDevice}
+      />
     );
   }
 

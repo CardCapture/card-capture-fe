@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import OTPInput from './OTPInput';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const USE_V2_MFA = true; // Use new robust MFA implementation
 
 interface MFAEnrollmentModalProps {
   isOpen: boolean;
@@ -63,11 +64,31 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Clean phone number
+      // Clean phone number - remove all formatting
       const cleanPhone = phoneNumber.replace(/\D/g, '');
-      const fullPhone = `${countryCode}${cleanPhone}`;
+      
+      // For US numbers, ensure we format correctly for international use
+      let fullPhone: string;
+      if (countryCode === '+1') {
+        // For US numbers, format as +1 512 694 6172 (with spaces)
+        if (cleanPhone.length === 10) {
+          fullPhone = `+1 ${cleanPhone.slice(0, 3)} ${cleanPhone.slice(3, 6)} ${cleanPhone.slice(6)}`;
+        } else {
+          fullPhone = `+1${cleanPhone}`;
+        }
+      } else {
+        fullPhone = `${countryCode}${cleanPhone}`;
+      }
 
-      const response = await fetch(`${API_BASE_URL}/mfa/enroll`, {
+      console.log('=== PHONE NUMBER DEBUG ===');
+      console.log('Input phoneNumber:', phoneNumber);
+      console.log('After replacing non-digits:', cleanPhone);
+      console.log('Country code:', countryCode);
+      console.log('Final fullPhone:', fullPhone);
+      console.log('========================');
+
+      const enrollEndpoint = USE_V2_MFA ? '/mfa2/enroll' : '/mfa/enroll';
+      const response = await fetch(`${API_BASE_URL}${enrollEndpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +118,8 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/mfa/verify-enrollment`, {
+      const verifyEndpoint = USE_V2_MFA ? '/mfa2/verify-enrollment' : '/mfa/verify-enrollment';
+      const response = await fetch(`${API_BASE_URL}${verifyEndpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,6 +132,15 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
 
       if (!response.ok) {
         throw new Error(data.detail || 'Invalid verification code');
+      }
+
+      // Update the session if MFA verification returned new tokens
+      if (data.session) {
+        console.log('MFA enrollment returned new session, updating auth state');
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        });
       }
 
       // Show success message before completing
