@@ -25,6 +25,34 @@ const OTPInput: React.FC<OTPInputProps> = ({
     // Focus first input on mount
     inputRefs.current[0]?.focus();
   }, []);
+  
+  useEffect(() => {
+    // Add input event listeners to detect auto-fill
+    const handleInput = (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      const index = inputRefs.current.findIndex(ref => ref === target);
+      if (index !== -1 && target.value.length > 1) {
+        // This is likely auto-fill, handle it as multi-character input
+        handleChange(index, target.value);
+        // Clear the input to prevent display issues
+        target.value = '';
+      }
+    };
+    
+    inputRefs.current.forEach(input => {
+      if (input) {
+        input.addEventListener('input', handleInput);
+      }
+    });
+    
+    return () => {
+      inputRefs.current.forEach(input => {
+        if (input) {
+          input.removeEventListener('input', handleInput);
+        }
+      });
+    };
+  }, [otp]); // Add otp dependency to recreate listeners when state changes
 
   useEffect(() => {
     // Start resend timer
@@ -159,6 +187,40 @@ const OTPInput: React.FC<OTPInputProps> = ({
         </p>
       </div>
 
+      {/* Hidden input for iOS auto-fill detection */}
+      <input
+        type="text"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+          opacity: 0,
+          pointerEvents: 'none'
+        }}
+        onChange={(e) => {
+          const value = e.target.value.replace(/[^0-9]/g, '').slice(0, length);
+          if (value.length > 0) {
+            const newOtp = new Array(length).fill('');
+            for (let i = 0; i < value.length; i++) {
+              newOtp[i] = value[i];
+            }
+            setOtp(newOtp);
+            
+            if (value.length === length) {
+              onComplete(value);
+            } else {
+              // Focus the next empty input
+              const nextIndex = value.length < length ? value.length : length - 1;
+              inputRefs.current[nextIndex]?.focus();
+            }
+            
+            // Clear the hidden input
+            e.target.value = '';
+          }
+        }}
+      />
+
       <div className="flex space-x-2 sm:space-x-3">
         {otp.map((digit, index) => (
           <input
@@ -187,7 +249,7 @@ const OTPInput: React.FC<OTPInputProps> = ({
               ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
             `}
-            autoComplete={index === 0 ? "one-time-code" : "off"}
+            autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
