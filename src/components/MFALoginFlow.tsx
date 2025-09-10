@@ -77,11 +77,12 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
       // Step 2: Check if user has MFA enabled
       console.log('Checking MFA settings for user:', session.user.id);
+      
       const { data: mfaSettings, error: mfaError } = await supabase
         .from('user_mfa_settings')
         .select('*')
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle(); // Use maybeSingle() instead of single() to handle no rows gracefully
 
       console.log('MFA Settings result:', mfaSettings, mfaError);
 
@@ -115,11 +116,16 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
         const deviceData = await response.json();
         console.log('Device trust check result:', deviceData);
+        console.log('deviceData.trusted:', deviceData.trusted);
+        console.log('deviceData.expired:', deviceData.expired);
         if (deviceData.trusted) {
           // Device is trusted - skip MFA
           console.log('Device is trusted, skipping MFA');
           onSuccess();
           return;
+        } else {
+          console.log('Device is NOT trusted - requiring MFA');
+          console.log('Reason: trusted=', deviceData.trusted, 'expired=', deviceData.expired);
         }
       }
 
@@ -173,12 +179,22 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
     try {
       const verifyEndpoint = USE_V2_MFA ? '/mfa2/verify' : '/mfa/verify';
+      
+      // Prepare headers with current device token if available
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+      };
+      
+      // Include current device token in headers for smart token management
+      const currentDeviceToken = localStorage.getItem('device_token');
+      if (currentDeviceToken) {
+        headers['X-Device-Token'] = currentDeviceToken;
+      }
+      
       const response = await fetch(`${API_BASE_URL}${verifyEndpoint}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
+        headers,
         body: JSON.stringify({
           factor_id: factorId,
           challenge_id: challengeId,

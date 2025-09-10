@@ -34,41 +34,95 @@ export function useCardReviewModal(
       e.stopPropagation();
       if (!selectedCardForReview) return;
       const updatedCard = { ...selectedCardForReview };
-      const currentValue =
-        formData[fieldKey] ??
-        selectedCardForReview.fields[fieldKey]?.value ??
-        "";
       
-      // Ensure the field exists in the card fields
-      if (!updatedCard.fields[fieldKey]) {
+      // Special handling for address field - mark all address-related fields as reviewed
+      if (fieldKey === 'address') {
+        const addressFields = ['address', 'city', 'state', 'zip_code'];
+        const allAddressFieldsReviewed = addressFields.every(field => 
+          updatedCard.fields[field]?.reviewed === true
+        );
+        
+        // Toggle all address fields together
+        addressFields.forEach(field => {
+          const currentValue = formData[field] ?? 
+            selectedCardForReview.fields[field]?.value ?? "";
+          
+          // Ensure the field exists
+          if (!updatedCard.fields[field]) {
+            updatedCard.fields[field] = {
+              ...defaultField,
+              value: currentValue,
+              requires_human_review: true,
+            };
+          }
+          
+          updatedCard.fields[field] = {
+            ...updatedCard.fields[field],
+            value: currentValue,
+            reviewed: !allAddressFieldsReviewed,
+            requires_human_review: allAddressFieldsReviewed,
+            review_notes: allAddressFieldsReviewed ? "Marked as needing review" : "Manually reviewed",
+          };
+        });
+        
+        // Update form data for all address fields
+        setFormData((prev) => {
+          const newFormData = { ...prev };
+          addressFields.forEach(field => {
+            const currentValue = formData[field] ?? 
+              selectedCardForReview.fields[field]?.value ?? "";
+            newFormData[field] = currentValue;
+          });
+          return newFormData;
+        });
+        
+        setSelectedCardForReview(updatedCard);
+        localCardRef.current = updatedCard;
+        
+        toast.success(
+          `Address fields have been ${
+            !allAddressFieldsReviewed ? "marked as reviewed" : "marked as needing review"
+          }.`,
+          "Field Review Status Updated"
+        );
+      } else {
+        // Regular field handling
+        const currentValue =
+          formData[fieldKey] ??
+          selectedCardForReview.fields[fieldKey]?.value ??
+          "";
+        
+        // Ensure the field exists in the card fields
+        if (!updatedCard.fields[fieldKey]) {
+          updatedCard.fields[fieldKey] = {
+            ...defaultField,
+            value: currentValue,
+            requires_human_review: true,
+          };
+        }
+        
+        const currentReviewed = updatedCard.fields[fieldKey].reviewed;
         updatedCard.fields[fieldKey] = {
-          ...defaultField,
+          ...updatedCard.fields[fieldKey],
           value: currentValue,
-          requires_human_review: true,
+          reviewed: !currentReviewed,
+          requires_human_review: currentReviewed,
+          review_notes: currentReviewed ? "Marked as needing review" : "Manually reviewed",
         };
+        
+        setSelectedCardForReview(updatedCard);
+        localCardRef.current = updatedCard;
+        setFormData((prev) => ({
+          ...prev,
+          [fieldKey]: currentValue,
+        }));
+        toast.success(
+          `${dataFieldsMap.get(fieldKey) || fieldKey} has been ${
+            updatedCard.fields[fieldKey].reviewed ? "marked as reviewed" : "marked as needing review"
+          }.`,
+          "Field Review Status Updated"
+        );
       }
-      
-      const currentReviewed = updatedCard.fields[fieldKey].reviewed;
-      updatedCard.fields[fieldKey] = {
-        ...updatedCard.fields[fieldKey],
-        value: currentValue,
-        reviewed: !currentReviewed,
-        requires_human_review: currentReviewed,
-        review_notes: currentReviewed ? "Marked as needing review" : "Manually reviewed",
-      };
-      
-      setSelectedCardForReview(updatedCard);
-      localCardRef.current = updatedCard;
-      setFormData((prev) => ({
-        ...prev,
-        [fieldKey]: currentValue,
-      }));
-      toast.success(
-        `${dataFieldsMap.get(fieldKey) || fieldKey} has been ${
-          updatedCard.fields[fieldKey].reviewed ? "marked as reviewed" : "marked as needing review"
-        }.`,
-        "Field Review Status Updated"
-      );
     },
     [selectedCardForReview, formData, dataFieldsMap]
   );

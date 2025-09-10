@@ -119,13 +119,29 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
 
     try {
       const verifyEndpoint = USE_V2_MFA ? '/mfa2/verify-enrollment' : '/mfa/verify-enrollment';
+      
+      // Prepare headers with current device token if available
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+      };
+      
+      // Include current device token in headers for smart token management
+      const currentDeviceToken = localStorage.getItem('device_token');
+      if (currentDeviceToken) {
+        headers['X-Device-Token'] = currentDeviceToken;
+      }
+      
       const response = await fetch(`${API_BASE_URL}${verifyEndpoint}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: JSON.stringify({ factor_id: factorId, code, challenge_id: challengeId })
+        headers,
+        body: JSON.stringify({ 
+          factor_id: factorId, 
+          code, 
+          challenge_id: challengeId,
+          remember_device: true,  // Always remember device after enrollment
+          device_name: navigator.userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop'
+        })
       });
 
       const data = await response.json();
@@ -141,6 +157,13 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token
         });
+      }
+
+      // Store device token if provided (for 30-day trust)
+      if (data.device_token) {
+        console.log('Storing device token for 30-day trust after enrollment');
+        localStorage.setItem('device_token', data.device_token);
+        localStorage.setItem('device_expires', data.device_expires_at);
       }
 
       // Show success message before completing

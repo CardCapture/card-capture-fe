@@ -135,6 +135,26 @@ export function AddressGroupSimple({
       return;
     }
     
+    // Skip validation entirely for ready-for-export cards
+    // These have already been reviewed by the user
+    if (isReadyForExport) {
+      console.log("📋 Ready for Export - skipping validation, showing as verified");
+      setCurrentValidationState("verified");
+      setSuggestion(null);
+      lastValidatedValues.current = currentValues;
+      return;
+    }
+    
+    // Skip validation if address has been manually reviewed
+    const addressIsReviewed = addressFieldData?.reviewed;
+    if (addressIsReviewed) {
+      console.log("✅ Address manually reviewed - skipping validation, showing as verified");
+      setCurrentValidationState("verified");
+      setSuggestion(null);
+      lastValidatedValues.current = currentValues;
+      return;
+    }
+    
     // Additional safety check: skip if no meaningful address data
     if (!address && !city && !state && !zipCode) {
       console.log("🛑 Validation skipped - no address data");
@@ -147,14 +167,6 @@ export function AddressGroupSimple({
       currentValues,
       reviewStatus
     });
-    
-    // Special handling for ready for export on first render
-    if (isReadyForExport && !lastValidatedValues.current) {
-      console.log("📋 Ready for Export - setting as verified without API call");
-      lastValidatedValues.current = currentValues;
-      setCurrentValidationState("verified");
-      return; // Skip validation entirely
-    }
     
     const hasUsefulInfo = hasUsefulAddressInfo();
     const valuesChanged = currentValues !== lastValidatedValues.current;
@@ -193,12 +205,31 @@ export function AddressGroupSimple({
         lastValidatedValues.current = currentValues;
       }
     }
-  }, [currentValues, isReadyForExport, disabled]);
+  }, [currentValues, isReadyForExport, disabled, addressFieldData?.reviewed]);
+
+  // When address is marked as reviewed, update validation state
+  useEffect(() => {
+    // Check if address field needs review and show checkbox
+    const addressIsReviewed = addressFieldData?.reviewed;
+    
+    // If address has been marked as reviewed, show it as verified
+    if (addressIsReviewed) {
+      console.log("✅ Address marked as reviewed - setting as verified");
+      setCurrentValidationState("verified");
+      setSuggestion(null);
+    }
+  }, [addressFieldData?.reviewed]);
 
   const validateUserInput = async (validatedValues: string) => {
     // Skip validation if component is disabled
     if (disabled) {
       console.log("🛑 Validation aborted - component is disabled");
+      return;
+    }
+    
+    // Safety check: never validate ready-for-export cards
+    if (isReadyForExport) {
+      console.log("🛑 Validation aborted - card is ready for export");
       return;
     }
     
@@ -332,10 +363,14 @@ export function AddressGroupSimple({
         );
 
       case "verified":
+        // Check if this was manually reviewed by user
+        const isManuallyReviewed = addressFieldData?.reviewed;
         return (
           <div className="flex items-center gap-2 text-sm text-green-600">
             <CheckCircle className="w-3 h-3" />
-            <span>Address verified by Google Maps</span>
+            <span>
+              {isManuallyReviewed ? "Verified by user" : "Address verified by Google Maps"}
+            </span>
           </div>
         );
 
@@ -445,7 +480,9 @@ export function AddressGroupSimple({
             onChange={(value) => {
               onAddressChange(value);
               // Clear verified status when user manually types
-              if (currentValidationState === "verified") {
+              // BUT not for ready-for-export cards or reviewed addresses - they stay verified
+              const addressIsReviewed = addressFieldData?.reviewed;
+              if (currentValidationState === "verified" && !isReadyForExport && !addressIsReviewed) {
                 setCurrentValidationState("not_verified");
               }
             }}

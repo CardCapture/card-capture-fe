@@ -37,22 +37,48 @@ const OTPInput: React.FC<OTPInputProps> = ({
   const handleChange = (index: number, value: string) => {
     if (isLoading) return;
     
-    // Only allow digits
-    const digit = value.replace(/[^0-9]/g, '').slice(-1);
+    // Handle multi-character input (like auto-fill or paste)
+    const digits = value.replace(/[^0-9]/g, '');
     
-    const newOtp = [...otp];
-    newOtp[index] = digit;
-    setOtp(newOtp);
+    if (digits.length > 1) {
+      // Multiple digits - treat as auto-fill or paste
+      const newOtp = [...otp];
+      
+      // Fill from current index onwards
+      for (let i = 0; i < digits.length && (index + i) < length; i++) {
+        newOtp[index + i] = digits[i];
+      }
+      
+      setOtp(newOtp);
+      
+      // Focus the next empty input or last input
+      const nextEmptyIndex = newOtp.findIndex((val, idx) => idx > index && val === '');
+      const focusIndex = nextEmptyIndex === -1 ? Math.min(index + digits.length, length - 1) : nextEmptyIndex;
+      inputRefs.current[focusIndex]?.focus();
+      
+      // Auto-submit if complete
+      const otpString = newOtp.join('');
+      if (otpString.length === length) {
+        onComplete(otpString);
+      }
+    } else {
+      // Single digit
+      const digit = digits.slice(-1);
+      
+      const newOtp = [...otp];
+      newOtp[index] = digit;
+      setOtp(newOtp);
 
-    // Move to next input if digit was entered
-    if (digit && index < length - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
+      // Move to next input if digit was entered
+      if (digit && index < length - 1) {
+        inputRefs.current[index + 1]?.focus();
+      }
 
-    // Check if all digits are filled
-    const otpString = newOtp.join('');
-    if (otpString.length === length) {
-      onComplete(otpString);
+      // Check if all digits are filled
+      const otpString = newOtp.join('');
+      if (otpString.length === length) {
+        onComplete(otpString);
+      }
     }
   };
 
@@ -90,10 +116,14 @@ const OTPInput: React.FC<OTPInputProps> = ({
     e.preventDefault();
     if (isLoading) return;
     
+    // Get the current input index
+    const currentIndex = inputRefs.current.findIndex(ref => ref === e.target);
+    
     const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, length);
     const newOtp = [...otp];
     
-    for (let i = 0; i < pastedData.length; i++) {
+    // Always fill from the beginning for pasted data (more intuitive)
+    for (let i = 0; i < pastedData.length && i < length; i++) {
       newOtp[i] = pastedData[i];
     }
     
@@ -141,7 +171,7 @@ const OTPInput: React.FC<OTPInputProps> = ({
             value={digit}
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
-            onPaste={index === 0 ? handlePaste : undefined}
+            onPaste={handlePaste}
             disabled={isLoading}
             className={`
               w-12 h-14 sm:w-14 sm:h-16
@@ -157,7 +187,7 @@ const OTPInput: React.FC<OTPInputProps> = ({
               ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
             `}
-            autoComplete="off"
+            autoComplete={index === 0 ? "one-time-code" : "off"}
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}

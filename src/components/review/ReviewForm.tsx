@@ -593,8 +593,13 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       data => data?.requires_human_review
     );
     
+    // Check if any address field has been marked as reviewed
+    const hasAnyAddressReviewed = [addressData, cityData, stateData, zipCodeData].some(
+      data => data?.reviewed
+    );
+    
     const isSignupSheet = selectedCardForReview?.upload_type === "signup_sheet";
-    const showRedIcon = hasAnyReviewNeeded && !isSignupSheet; // Hide red icons for signup sheets
+    const showRedIcon = hasAnyReviewNeeded && !hasAnyAddressReviewed && !isSignupSheet; // Hide red icons for signup sheets or reviewed addresses
     
     return (
       <div key="address-group" className="flex items-start gap-4 py-1">
