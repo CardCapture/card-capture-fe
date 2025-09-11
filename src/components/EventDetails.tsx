@@ -1267,11 +1267,18 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 h-full">
                 {/* Image Panel - Mobile: Full width, Desktop: Half width */}
                 <ReviewImagePanel
-                  imagePath={
-                    selectedCardForReview?.trimmed_image_path ||
-                    selectedCardForReview?.image_path ||
-                    ""
-                  }
+                  imagePath={(() => {
+                    const trimmedPath = selectedCardForReview?.trimmed_image_path;
+                    const originalPath = selectedCardForReview?.image_path;
+                    const finalPath = trimmedPath || originalPath || "";
+                    console.log("[DEBUG] Image paths after backend fix:", {
+                      trimmed_image_path: trimmedPath,
+                      image_path: originalPath,
+                      finalPath,
+                      cardId: selectedCardForReview?.id
+                    });
+                    return finalPath;
+                  })()}
                   zoom={zoom}
                   zoomIn={zoomIn}
                   zoomOut={zoomOut}
