@@ -6,6 +6,7 @@ import { toast } from "@/lib/toast";
 import { Loader2, Calendar } from "lucide-react";
 import { CRMEventsService } from "@/services/CRMEventsService";
 import { format } from "date-fns";
+import { formatDateOnlyWithFormat } from "@/utils/dateUtils";
 import {
   Dialog,
   DialogContent,
@@ -313,7 +314,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                           <div className="flex items-center gap-2 mt-1">
                             <div className="flex items-center gap-1 text-xs text-gray-500">
                               <Calendar className="h-3 w-3" />
-                              {format(new Date(event.event_date), "MMM d, yyyy")}
+                              {formatDateOnlyWithFormat(event.event_date, "MMM d, yyyy")}
                             </div>
                             <div className="text-xs text-gray-400 font-mono bg-gray-100 px-1.5 py-0.5 rounded">
                               {event.crm_event_id.length > 12 
