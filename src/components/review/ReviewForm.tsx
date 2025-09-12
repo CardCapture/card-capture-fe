@@ -121,7 +121,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           <SelectTrigger className={getInputClassName("h-10 sm:h-8 text-sm w-full")}>
             <SelectValue placeholder={`Select ${getFieldLabel(fieldKey)}`} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-[100]" align="start" sideOffset={4}>
             {fieldConfig.options.map((option) => (
               <SelectItem key={option} value={option}>
                 {option}
@@ -134,21 +134,51 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
 
     // Handle special cases for backward compatibility
     if (actualFieldKey === "permission_to_text") {
-      const options = fieldConfig?.options || ["Yes", "No"];
+      // Use default options if fieldConfig.options is empty or undefined
+      const options = (fieldConfig?.options && fieldConfig.options.length > 0) 
+        ? fieldConfig.options 
+        : ["Yes", "No"];
+      
+      console.log('🔍 Permission to Text Debug:', {
+        actualFieldKey,
+        fieldValue,
+        options,
+        fieldConfig,
+        hasFieldConfig: !!fieldConfig,
+        fieldType: fieldConfig?.field_type,
+        backendOptionsEmpty: fieldConfig?.options?.length === 0
+      });
+      
       return (
         <Select
           value={fieldValue}
-          onValueChange={(value) => handleFormChange(actualFieldKey, value)}
+          onValueChange={(value) => {
+            console.log('🔄 Permission to Text value changed:', value);
+            handleFormChange(actualFieldKey, value);
+          }}
+          onOpenChange={(open) => {
+            console.log('📋 Permission to Text dropdown open state:', open);
+          }}
         >
-          <SelectTrigger className={getInputClassName("h-10 sm:h-8 text-sm w-full")}>
+          <SelectTrigger 
+            className={getInputClassName("h-10 sm:h-8 text-sm w-full")}
+            onClick={() => console.log('🖱️ Permission to Text trigger clicked')}
+          >
             <SelectValue placeholder="Select..." />
           </SelectTrigger>
-          <SelectContent>
-            {options.map((option) => (
-              <SelectItem key={option} value={option}>
-                {option}
-              </SelectItem>
-            ))}
+          <SelectContent className="z-[100]" align="start" sideOffset={4}>
+            {options.length === 0 ? (
+              <div className="p-2 text-sm text-gray-500">No options available</div>
+            ) : (
+              options.map((option) => {
+                console.log('📋 Rendering option:', option);
+                return (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                );
+              })
+            )}
           </SelectContent>
         </Select>
       );
@@ -380,6 +410,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           schoolData={schoolData}
           state={state}
           city={formData.city || selectedCardForReview?.fields?.city?.value || ''}
+          isInModal={isModalOpen}
           onChange={(newValue, newCeebCode, newSchoolData) => {
             handleFormChange(actualFieldKey, newValue);
             
@@ -448,7 +479,8 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           }}
           placeholder="Search for high school..."
           className={getInputClassName("h-10 sm:h-8 text-sm w-full")}
-          needsReview={false}
+          needsReview={reviewStatus && !isReviewed}
+          isReviewed={isReviewed}
           suggestions={suggestions}
           validationStatus='unvalidated'
           isEnhancedValidation={false}
@@ -706,23 +738,38 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                 const hasVerifiedCeeb = !!ceebCode;
                 const isValidated = validationStatus?.value === 'verified' && hasVerifiedCeeb; // Only validated if has CEEB
                 const fieldValue = formData[actualFieldKey] || selectedCardForReview?.fields?.[actualFieldKey]?.value || '';
+                const originalValue = selectedCardForReview?.fields?.[actualFieldKey]?.value || '';
+                const hasUserModifiedField = fieldValue !== originalValue;
                 
-                console.log('🏫 High School Debug:', {
-                  selectedTab,
-                  ceebCode,
-                  validationStatus: validationStatus?.value,
-                  hasVerifiedCeeb,
-                  isValidated,
-                  fieldValue,
-                  isReviewedBefore: isReviewed,
-                  needsReviewBefore: needsReview
-                });
+                console.log('🏫 High School FULL Debug:');
+                console.log('  fieldValue:', fieldValue);
+                console.log('  originalValue:', originalValue);
+                console.log('  hasUserModifiedField:', hasUserModifiedField);
+                console.log('  isValidated:', isValidated);
+                console.log('  fieldDataReviewed:', fieldData?.reviewed);
+                console.log('  formDataValue:', formData[actualFieldKey]);
+                console.log('  cardFieldValue:', selectedCardForReview?.fields?.[actualFieldKey]?.value);
+                console.log('  isReviewedBefore:', isReviewed);
+                console.log('  validationStatus:', validationStatus?.value);
                 
-                // If field is empty, always needs review regardless of other state
-                if (!fieldValue.trim()) {
+                // If user has modified the field and it's not validated, reset reviewed state
+                if (hasUserModifiedField && !isValidated) {
                   isReviewed = false;
                   needsReview = true;
-                  console.log('🔴 High school field is empty - needs review');
+                  console.log('🔄 User modified high school field - resetting reviewed state');
+                }
+                // Special case: if field is empty AND validation status is needs_validation (from clear operation)
+                // Always reset the reviewed state when field is cleared
+                else if (!fieldValue.trim() && validationStatus?.value === 'needs_validation') {
+                  isReviewed = false;
+                  needsReview = true;
+                  console.log('🔄 Field cleared - overriding reviewed state');
+                }
+                // If field is empty (but not from a clear operation), suggest review but allow manual override
+                else if (!fieldValue.trim() && validationStatus?.value !== 'needs_validation' && !fieldData?.reviewed) {
+                  // Only force needs review if not manually reviewed and not from clear operation
+                  needsReview = true;
+                  console.log('🔴 High school field is empty - suggesting review (but respects manual review)');
                 }
                 // For "ready for export" tab: if school is verified, treat as reviewed automatically
                 else if (selectedTab === 'ready_for_export' && isValidated) {

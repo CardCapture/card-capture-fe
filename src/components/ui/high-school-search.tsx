@@ -27,6 +27,8 @@ interface HighSchoolSearchProps {
   disabled?: boolean;
   validationStatus?: 'verified' | 'needs_validation' | 'no_matches' | 'unvalidated';
   isEnhancedValidation?: boolean;
+  isInModal?: boolean; // Add prop to handle modal-specific behavior
+  isReviewed?: boolean; // Add prop to track if field is reviewed
 }
 
 export function HighSchoolSearch({
@@ -44,6 +46,8 @@ export function HighSchoolSearch({
   disabled = false,
   validationStatus = 'unvalidated',
   isEnhancedValidation = false,
+  isInModal = false,
+  isReviewed = false,
 }: HighSchoolSearchProps) {
   const [inputValue, setInputValue] = useState(value);
   const [searchResults, setSearchResults] = useState<HighSchool[]>(suggestions);
@@ -152,8 +156,13 @@ export function HighSchoolSearch({
     }
     
     // Legacy needsReview state
-    if (needsReview && suggestions.length > 0 && !isVerified) {
+    if (needsReview && suggestions.length > 0 && !isVerified && !isReviewed) {
       // Don't show status message - just open dropdown and let user select
+      return null;
+    }
+    
+    // Don't show suggestions if field is manually reviewed
+    if (isReviewed) {
       return null;
     }
     
@@ -170,7 +179,7 @@ export function HighSchoolSearch({
     return null;
   }, [isSearching, isSearchPending, userHasTyped, inputValue, searchResults.length, isVerified, 
       currentCeebCode, currentSchoolData, isEnhancedValidation, validationStatus, 
-      needsReview, suggestions.length]);
+      needsReview, suggestions.length, isReviewed]);
 
   // Check if current value is verified (has CEEB code or enhanced verification)
   useEffect(() => {
@@ -229,15 +238,23 @@ export function HighSchoolSearch({
 
   // Handle click outside to close dropdown
   useEffect(() => {
+    if (!showResults) return;
+
     const handleClickOutside = (event: MouseEvent) => {
+      // Check if click is outside the wrapper
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setShowResults(false);
+        setSelectedIndex(-1);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    // Use capture phase to ensure we catch the event before other handlers
+    document.addEventListener("mousedown", handleClickOutside, true);
+    
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside, true);
+    };
+  }, [showResults]);
 
   // Debounced search
   const performSearch = useCallback(async (searchQuery: string) => {
@@ -302,10 +319,16 @@ export function HighSchoolSearch({
     // Clear verification state when user types (unless they're typing the exact verified school name)
     const isTypingVerifiedSchool = lastSelectedSchool && newValue === lastSelectedSchool.name;
     if (!isTypingVerifiedSchool) {
+      console.log('🧹 HighSchoolSearch: User typing, clearing verification state');
       setIsVerified(false);
       setCurrentCeebCode(undefined);
       setCurrentSchoolData(undefined);
       setLastSelectedSchool(null);
+      
+      // Notify parent that field is no longer verified and needs review reset
+      if (onChange) {
+        console.log('🔄 HighSchoolSearch: Notifying parent of unverified state');
+      }
     }
     
     setShowSuggestionsPrompt(false); // Hide the prompt once user starts typing
