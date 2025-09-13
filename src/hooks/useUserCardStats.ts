@@ -53,12 +53,7 @@ export function useUserCardStats(eventId?: string) {
       total_user_cards: userCards.length,
     });
 
-    console.log('🔍 User card stats calculated:', {
-      eventId,
-      userId: profile.id,
-      totalCards: userCards.length,
-      stats,
-    });
+    // Debug logging removed for production
   }, [cards, profile?.id, eventId]);
 
   useEffect(() => {

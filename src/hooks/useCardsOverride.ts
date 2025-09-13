@@ -49,17 +49,14 @@ export function useCardsOverride(eventId?: string) {
       fetchInProgressRef.current ||
       now - lastFetchTimeRef.current < DEBOUNCE_DELAY
     ) {
-      console.log("useCardsOverride: Fetch skipped - too soon or in progress");
       return;
     }
 
     // Only fetch if we have an eventId
     if (!eventId) {
-      console.log("useCardsOverride: No eventId provided, skipping fetch");
       return;
     }
 
-    console.log("useCardsOverride: fetchCards called", { eventId });
     try {
       fetchInProgressRef.current = true;
       lastFetchTimeRef.current = now;
@@ -69,28 +66,16 @@ export function useCardsOverride(eventId?: string) {
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const url = new URL(`${apiBaseUrl}/cards`);
       url.searchParams.append("event_id", eventId);
-      console.log("useCardsOverride: Fetching cards from", url.toString());
 
       // Use CardService instead of direct API call
       const data: RawCardData[] = (await CardService.getCardsByEvent(
         eventId
       )) as RawCardData[];
 
-      console.log("useCardsOverride: Cards data received", {
-        count: data.length,
-      });
-      console.log("✅ [CARDS OVERRIDE] Cards data received", {
-        count: data.length,
-        firstCard: data.length > 0 ? data[0] : null,
-      });
 
       // Map the data to ensure all required fields are properly set
       const mappedCards = data.map((card: RawCardData) => {
-        // Debug log the raw card data
-        console.log("Raw card data:", card);
-        console.log("🔍 Raw card fields from API:", card.fields ? Object.keys(card.fields) : 'NO_FIELDS');
-        if (card.fields?.ceeb_code) console.log("🎯 CEEB CODE FOUND:", card.fields.ceeb_code);
-        if (card.fields?.high_school_validation) console.log("🎯 VALIDATION FOUND:", card.fields.high_school_validation);
+        // Raw card data processing
 
         // Preserve all fields from backend and only add defaults for core missing ones
         const fields = card.fields || {};
@@ -124,7 +109,6 @@ export function useCardsOverride(eventId?: string) {
         };
 
         // Debug log the mapped card
-        console.log("Mapped card:", mappedCard);
 
         return mappedCard;
       });
@@ -165,7 +149,6 @@ export function useCardsOverride(eventId?: string) {
       new?: Record<string, unknown>;
       old?: Record<string, unknown>;
     }) => {
-      console.log("useCardsOverride: Supabase change received:", payload);
 
       // Check if the change is relevant to our event
       const newRecord = payload.new as { event_id?: string } | undefined;

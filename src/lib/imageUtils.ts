@@ -8,13 +8,11 @@ import { supabase } from "@/lib/supabaseClient";
  */
 export const getSignedImageUrl = async (imagePath: string, expiresIn: number = 3600): Promise<string> => {
   if (!imagePath) {
-    console.log("[ImageUtils] No imagePath provided");
     return "";
   }
 
   // Remove 'cards-uploads/' prefix if it exists
   const cleanPath = imagePath.replace(/^cards-uploads\//, '');
-  console.log("[ImageUtils] Requesting signed URL for:", cleanPath);
   
   try {
     const { data, error } = await supabase
@@ -35,14 +33,11 @@ export const getSignedImageUrl = async (imagePath: string, expiresIn: number = 3
         
         if (listError) {
           console.error("[ImageUtils] Error listing files in folder:", folder, listError);
-        } else {
-          console.log(`[ImageUtils] Files in folder '${folder}':`, listData?.map(f => f.name));
         }
       }
       return "";
     }
 
-    console.log("[ImageUtils] Signed URL generated successfully");
     return data.signedUrl;
   } catch (error) {
     console.error("[ImageUtils] Unexpected error generating signed URL:", error);

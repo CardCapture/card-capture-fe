@@ -9,24 +9,12 @@ export async function updateSchoolCardFields(
   session: Session | null
 ) {
   try {
-    console.log('Starting updateSchoolCardFields API call');
     const accessToken = session?.access_token;
 
     if (!accessToken) {
       console.error('No access token available');
       throw new Error('No access token available');
     }
-
-    console.log('Making API request to update school card fields:', {
-      url: `${API_BASE_URL}/schools/${schoolId}/card-fields`,
-      schoolId,
-      cardFields,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer [REDACTED]',
-        'Accept': 'application/json'
-      }
-    });
 
     const response = await fetch(`${API_BASE_URL}/schools/${schoolId}/card-fields`, {
       method: 'PUT',
@@ -38,9 +26,7 @@ export async function updateSchoolCardFields(
       body: JSON.stringify({ card_fields: cardFields }),
     });
 
-    console.log('API response status:', response.status);
     const responseText = await response.text();
-    console.log('API response body:', responseText);
 
     if (!response.ok) {
       let errorMessage = 'Failed to update school card fields';
@@ -54,7 +40,6 @@ export async function updateSchoolCardFields(
     }
 
     const parsedResponse = JSON.parse(responseText);
-    console.log('Successfully parsed API response:', parsedResponse);
     return parsedResponse;
   } catch (error) {
     console.error('Error in updateSchoolCardFields:', error);

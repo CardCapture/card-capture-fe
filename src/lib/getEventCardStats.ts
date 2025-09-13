@@ -14,15 +14,7 @@ export interface CardStats {
  * This ensures consistent counting across all views in the application.
  */
 export function getEventCardStats(cards: ProspectCard[]): CardStats {
-  console.log('🔍 getEventCardStats called with:', {
-    cardCount: cards?.length || 0,
-    firstCard: cards?.[0] ? { 
-      id: cards[0].id,
-      review_status: cards[0].review_status,
-      exported_at: cards[0].exported_at,
-      event_id: cards[0].event_id
-    } : null
-  });
+  // Debug logging removed for production
 
   if (!Array.isArray(cards)) {
     return {
@@ -44,13 +36,7 @@ export function getEventCardStats(cards: ProspectCard[]): CardStats {
 
   cards.forEach(card => {
     const status = determineCardStatus(card);
-    console.log('📊 Card status:', {
-      id: card.id,
-      review_status: card.review_status,
-      determinedStatus: status,
-      exported_at: card.exported_at,
-      event_id: card.event_id
-    });
+    // Debug logging removed for production
 
     switch (status) {
       case 'needs_human_review':
@@ -68,6 +54,5 @@ export function getEventCardStats(cards: ProspectCard[]): CardStats {
     }
   });
 
-  console.log('✅ Final stats:', { stats });
   return stats;
 } 

@@ -1271,11 +1271,7 @@ const Dashboard = () => {
                     // Always use original image - trimming has been removed from pipeline
                     const originalPath = selectedCardForReview?.image_path;
                     const finalPath = originalPath || "";
-                    console.log("[DEBUG] Using original image path (trimming disabled):", {
-                      image_path: originalPath,
-                      finalPath,
-                      cardId: selectedCardForReview?.id
-                    });
+                    // Debug logging removed for production
                     return finalPath;
                   })()}
                   zoom={zoom}

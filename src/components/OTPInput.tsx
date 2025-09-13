@@ -178,7 +178,7 @@ const OTPInput: React.FC<OTPInputProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
+    <div className="flex flex-col items-center space-y-4 relative">
       <div className="text-center mb-4">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Enter Verification Code</h2>
         <p className="text-gray-600">
@@ -187,41 +187,40 @@ const OTPInput: React.FC<OTPInputProps> = ({
         </p>
       </div>
 
-      {/* Hidden input for iOS auto-fill detection */}
+      {/* Hidden input for mobile autofill - properly positioned */}
       <input
-        type="text"
+        type="tel"
         inputMode="numeric"
         autoComplete="one-time-code"
+        maxLength={length}
         style={{
           position: 'absolute',
-          left: '-9999px',
+          top: '0',
+          left: '0',
+          width: '100%',
+          height: '100%',
           opacity: 0,
-          pointerEvents: 'none'
+          fontSize: '16px', // Prevent zoom on iOS
+          zIndex: 1,
         }}
         onChange={(e) => {
-          const value = e.target.value.replace(/[^0-9]/g, '').slice(0, length);
+          const value = e.target.value.replace(/[^0-9]/g, '');
           if (value.length > 0) {
             const newOtp = new Array(length).fill('');
-            for (let i = 0; i < value.length; i++) {
+            for (let i = 0; i < Math.min(value.length, length); i++) {
               newOtp[i] = value[i];
             }
             setOtp(newOtp);
-            
+
+            // Auto-submit if complete
             if (value.length === length) {
               onComplete(value);
-            } else {
-              // Focus the next empty input
-              const nextIndex = value.length < length ? value.length : length - 1;
-              inputRefs.current[nextIndex]?.focus();
             }
-            
-            // Clear the hidden input
-            e.target.value = '';
           }
         }}
       />
 
-      <div className="flex space-x-2 sm:space-x-3">
+      <div className="flex space-x-2 sm:space-x-3 relative">
         {otp.map((digit, index) => (
           <input
             key={index}
@@ -249,7 +248,7 @@ const OTPInput: React.FC<OTPInputProps> = ({
               ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
             `}
-            autoComplete="off"
+            autoComplete={index === 0 ? "one-time-code" : "off"}
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
