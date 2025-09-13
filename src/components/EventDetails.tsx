@@ -1268,11 +1268,10 @@ const Dashboard = () => {
                 {/* Image Panel - Mobile: Full width, Desktop: Half width */}
                 <ReviewImagePanel
                   imagePath={(() => {
-                    const trimmedPath = selectedCardForReview?.trimmed_image_path;
+                    // Always use original image - trimming has been removed from pipeline
                     const originalPath = selectedCardForReview?.image_path;
-                    const finalPath = trimmedPath || originalPath || "";
-                    console.log("[DEBUG] Image paths after backend fix:", {
-                      trimmed_image_path: trimmedPath,
+                    const finalPath = originalPath || "";
+                    console.log("[DEBUG] Using original image path (trimming disabled):", {
                       image_path: originalPath,
                       finalPath,
                       cardId: selectedCardForReview?.id

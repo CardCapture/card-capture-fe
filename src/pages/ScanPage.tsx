@@ -17,6 +17,7 @@ import { useCardUpload } from '@/hooks/useCardUpload';
 import { Event } from '@/types/event';
 import { CreateEventModal } from '@/components/CreateEventModal';
 import CameraCapture from '@/components/card-scanner/CameraCapture';
+import { ScanStatusCard } from '@/components/ScanStatusCard';
 import imageCompression from 'browser-image-compression';
 
 const ScanPage: React.FC = () => {
@@ -255,6 +256,15 @@ const ScanPage: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Scan Status Card - Show if event is selected */}
+        {selectedEventId && selectedEvent && (
+          <ScanStatusCard
+            eventId={selectedEventId}
+            eventName={selectedEvent.name}
+            className="mb-6"
+          />
+        )}
 
         {/* Camera/Upload UI */}
         {!capturedImage && !isCameraOpen && (
