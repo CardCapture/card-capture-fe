@@ -11,42 +11,52 @@ import {
 } from "lucide-react";
 import { useUserCardStats } from "@/hooks/useUserCardStats";
 import { ProcessingStatusBar } from "@/components/ProcessingStatusBar";
+import { useProcessingStatus } from "@/hooks/useProcessingStatus";
 
 interface ScanStatusCardProps {
   eventId: string;
   eventName: string;
   onRetryFailed?: () => void;
   className?: string;
+  forceShow?: boolean; // Force show processing status even if no user cards yet
 }
 
 export function ScanStatusCard({
   eventId,
   eventName,
   onRetryFailed,
-  className = ""
+  className = "",
+  forceShow = false
 }: ScanStatusCardProps) {
   const { userStats, isLoading } = useUserCardStats(eventId);
+  const { status: processingStatus } = useProcessingStatus(eventId);
 
   if (isLoading) {
     return null;
   }
 
-  // Don't show if user hasn't scanned any cards yet
-  if (userStats.total_user_cards === 0) {
+  // Show if user has scanned cards OR if there are cards being processed OR forced
+  // This ensures the processing status shows immediately after upload
+  const hasUserCards = userStats.total_user_cards > 0;
+  const hasProcessingCards = processingStatus.isProcessing;
+
+  // Don't show anything if no user cards, no processing, and not forced
+  if (!hasUserCards && !hasProcessingCards && !forceShow) {
     return null;
   }
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Processing Status Bar - reuse existing component */}
+      {/* Processing Status Bar - always show if there's processing */}
       <ProcessingStatusBar
         eventId={eventId}
         eventName={eventName}
         onRetryFailed={onRetryFailed}
       />
 
-      {/* User Stats Card */}
-      <Card className="border-slate-200">
+      {/* User Stats Card - only show if user has completed cards */}
+      {hasUserCards && (
+        <Card className="border-slate-200">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -110,6 +120,7 @@ export function ScanStatusCard({
 
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
