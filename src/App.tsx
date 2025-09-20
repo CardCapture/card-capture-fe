@@ -48,6 +48,7 @@ const AuthCallback = React.lazy(() => import("./components/AuthCallback"));
 const MagicLinkPage = React.lazy(() => import("./pages/MagicLinkPage"));
 const StudentSignupPage = React.lazy(() => import("./pages/StudentSignupPage"));
 const StudentLookupPage = React.lazy(() => import("./pages/StudentLookupPage"));
+const MFASettingsPage = React.lazy(() => import("./pages/MFASettingsPage"));
 
 // New registration system pages
 const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
@@ -204,6 +205,14 @@ function App() {
                         <RoleProtectedRoute requiredPermission="canAccessSettings">
                           <AdminSettings />
                         </RoleProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings/security"
+                      element={
+                        <ProtectedRoute>
+                          <MFASettingsPage />
+                        </ProtectedRoute>
                       }
                     />
                     <Route

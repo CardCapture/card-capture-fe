@@ -136,12 +136,12 @@ export const normalizeFieldValue = (value: string | null | undefined, fieldKey: 
   
   // Skip normalization for certain fields that should preserve original formatting
   // Includes select fields that need exact value matching for dropdowns
-  // Includes address field to prevent cursor jumping during typing
+  // Includes address and major fields to prevent cursor jumping during typing
   if (fieldKey === 'gpa' || fieldKey === 'class_rank' || fieldKey === 'students_in_class' || 
       fieldKey === 'zip_code' || fieldKey === 'date_of_birth' || fieldKey === 'cell' ||
       fieldKey === 'permission_to_text' || fieldKey === 'student_type' || fieldKey === 'entry_term' ||
       fieldKey === 'gender' || fieldKey === 'familiarity_with_acu' || fieldKey === 'rank' ||
-      fieldKey === 'mapped_major' || fieldKey === 'address') {
+      fieldKey === 'mapped_major' || fieldKey === 'address' || fieldKey === 'major') {
     return value;
   }
   

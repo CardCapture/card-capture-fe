@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { Check, AlertCircle, MapPin, Loader2 } from 'lucide-react';
 
@@ -18,6 +19,11 @@ interface AddressAutocompleteProps {
   helpText?: string;
   className?: string;
   required?: boolean;
+  locationContext?: {
+    zipCode?: string;
+    city?: string;
+    state?: string;
+  };
 }
 
 interface Prediction {
@@ -35,13 +41,17 @@ export function AddressAutocomplete({
   helpText,
   className,
   required = false,
+  locationContext,
   ...props 
 }: AddressAutocompleteProps) {
+  console.log('🎯 AddressAutocomplete rendered with:', { value, locationContext });
+  
   const [displayValue, setDisplayValue] = useState(value);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -56,6 +66,21 @@ export function AddressAutocomplete({
     setIsLoading(true);
     
     try {
+      // Use just the input for better results - don't restrict by zip
+      // Google will naturally prioritize nearby results
+      let searchQuery = input;
+      
+      // Only add city/state if we don't have a zip code
+      // This gives broader results while still being somewhat local
+      if (locationContext?.city && locationContext?.state && !locationContext?.zipCode) {
+        searchQuery = `${input}, ${locationContext.city}, ${locationContext.state}`;
+      } else if (locationContext?.state) {
+        // If we have a zip, just add the state for broader results
+        searchQuery = `${input}, ${locationContext.state}`;
+      }
+      
+      console.log('🚀 Making Places API call with query:', searchQuery);
+      
       // Use the new Places API Text Search (Autocomplete)
       const response = await fetch(`https://places.googleapis.com/v1/places:autocomplete`, {
         method: 'POST',
@@ -64,21 +89,26 @@ export function AddressAutocomplete({
           'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDSVu7JPTKZvnTQ4DijQDxkA48LWoOJEdo'
         },
         body: JSON.stringify({
-          input: input,
-          regionCode: 'US',
-          includedPrimaryTypes: ['street_address']
+          input: searchQuery,
+          regionCode: 'US'
+          // Removed includedPrimaryTypes to get more results
         })
       });
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Places API response:', data);
         const formattedPredictions = data.suggestions?.map((suggestion: any) => ({
           description: suggestion.placePrediction?.text?.text || '',
           place_id: suggestion.placePrediction?.placeId || ''
-        }))?.slice(0, 5) || []; // Limit to 5 results
+        }))?.slice(0, 8) || []; // Show up to 8 results
         
+        console.log('📍 Formatted predictions:', formattedPredictions);
         setPredictions(formattedPredictions);
-        console.log('New Places API working successfully! Found', formattedPredictions.length, 'results');
+        if (formattedPredictions.length > 0) {
+          setShowDropdown(true);
+          console.log('🎉 Setting showDropdown to true with predictions:', formattedPredictions.length);
+        }
       } else {
         console.error('Places API error:', response.status, response.statusText);
         const errorData = await response.text();
@@ -94,6 +124,7 @@ export function AddressAutocomplete({
   };
 
   const getPlaceDetails = async (placeId: string) => {
+    console.log('🏠 Getting place details for placeId:', placeId);
     try {
       const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
         method: 'GET',
@@ -106,6 +137,7 @@ export function AddressAutocomplete({
 
       if (response.ok) {
         const place = await response.json();
+        console.log('📦 Place details response:', place);
         const components = place.addressComponents || [];
         
         let street = '';
@@ -132,14 +164,21 @@ export function AddressAutocomplete({
           }
         });
 
+        const addressData = {
+          street: street.trim(),
+          street2,
+          city,
+          state,
+          zipCode
+        };
+        
+        console.log('🏡 Extracted address data:', addressData);
+
         if (onAddressSelect) {
-          onAddressSelect({
-            street: street.trim(),
-            street2,
-            city,
-            state,
-            zipCode
-          });
+          console.log('✅ Calling onAddressSelect callback');
+          onAddressSelect(addressData);
+        } else {
+          console.log('⚠️ No onAddressSelect callback provided');
         }
       } else {
         console.error('Place details error:', response.status, response.statusText);
@@ -149,13 +188,29 @@ export function AddressAutocomplete({
     }
   };
 
+  // Calculate dropdown position based on input element
+  const updateDropdownPosition = () => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      console.log('📏 Calculating dropdown position:', rect);
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
+    console.log('📝 AddressAutocomplete input changed:', input);
     setDisplayValue(input);
     onChange(input);
     setSelectedIndex(-1);
     
     if (input.length >= 3) {
+      console.log('🔍 Searching for:', input);
+      updateDropdownPosition();
       setShowDropdown(true);
       searchPredictions(input);
     } else {
@@ -165,10 +220,12 @@ export function AddressAutocomplete({
   };
 
   const handlePredictionSelect = (prediction: Prediction) => {
+    console.log('🔥 handlePredictionSelect called with:', prediction);
     setDisplayValue(prediction.description);
     onChange(prediction.description);
     setShowDropdown(false);
     setPredictions([]);
+    console.log('📍 Getting place details for:', prediction.place_id);
     getPlaceDetails(prediction.place_id);
   };
 
@@ -201,18 +258,15 @@ export function AddressAutocomplete({
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Delay hiding dropdown to allow for clicks
-    setTimeout(() => {
-      if (!dropdownRef.current?.contains(document.activeElement)) {
-        setShowDropdown(false);
-        setSelectedIndex(-1);
-      }
-    }, 150);
+    // Don't hide dropdown on blur - let clicks handle it
+    // This prevents the dropdown from closing before click events fire
+    console.log('Input blur event - keeping dropdown open for clicks');
   };
 
   const handleFocus = () => {
     // Only show dropdown if we have predictions AND user has typed something
     if (predictions.length > 0 && displayValue.length >= 3) {
+      updateDropdownPosition();
       setShowDropdown(true);
     }
   };
@@ -222,15 +276,50 @@ export function AddressAutocomplete({
     setDisplayValue(value);
   }, [value]);
 
+  // Update dropdown position on scroll/resize when dropdown is open
+  useEffect(() => {
+    if (!showDropdown) return;
+
+    const handlePositionUpdate = () => {
+      updateDropdownPosition();
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      // Close dropdown if clicking outside of input and dropdown
+      if (
+        inputRef.current && 
+        !inputRef.current.contains(event.target as Node) &&
+        dropdownRef.current && 
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        console.log('Clicked outside - closing dropdown');
+        setShowDropdown(false);
+        setSelectedIndex(-1);
+      }
+    };
+
+    window.addEventListener('scroll', handlePositionUpdate, true);
+    window.addEventListener('resize', handlePositionUpdate);
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('scroll', handlePositionUpdate, true);
+      window.removeEventListener('resize', handlePositionUpdate);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+
   return (
     <div className="space-y-2 relative">
-      <label 
-        htmlFor={`address-input-${label.replace(/\s+/g, '-').toLowerCase()}`}
-        className="block text-sm font-medium text-gray-900"
-      >
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
+      {label && (
+        <label 
+          htmlFor={`address-input-${label.replace(/\s+/g, '-').toLowerCase()}`}
+          className="block text-sm font-medium text-gray-900"
+        >
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+      )}
       
       <div className="relative">
         <input
@@ -242,16 +331,15 @@ export function AddressAutocomplete({
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           onFocus={handleFocus}
-          placeholder="Start typing your address..."
+          placeholder="Street Address"
           autoComplete="nope"
           spellCheck={false}
           autoCorrect="off"
           autoCapitalize="off"
           className={cn(
-            "w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200",
-            "text-base", // Prevent zoom on iOS
-            error && "border-red-500 focus:ring-red-500 focus:border-red-500",
-            success && "border-green-500 focus:ring-green-500 focus:border-green-500 pr-10",
+            "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+            error && "border-red-500 focus-visible:ring-red-500",
+            success && "border-green-500 focus-visible:ring-green-500 pr-10",
             className
           )}
           {...props}
@@ -270,11 +358,25 @@ export function AddressAutocomplete({
           )}
         </div>
 
-        {/* Dropdown */}
-        {showDropdown && predictions.length > 0 && (
+        {/* Portal-based Dropdown to escape overflow containers */}
+        {console.log('🚨 DROPDOWN CHECK:', { showDropdown, predictions: predictions.length, willRender: showDropdown && predictions.length > 0, position: dropdownPosition })}
+        {showDropdown && predictions.length > 0 && typeof document !== 'undefined' && createPortal(
           <div 
             ref={dropdownRef}
-            className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+            className="bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+            style={{ 
+              position: 'fixed',
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: `${dropdownPosition.width}px`,
+              zIndex: 99999,
+              pointerEvents: 'auto',
+              cursor: 'default'
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault(); // Prevent blur on input
+              e.stopPropagation();
+            }}
           >
             {predictions.map((prediction, index) => (
               <button
@@ -284,7 +386,13 @@ export function AddressAutocomplete({
                   "w-full px-4 py-3 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0",
                   index === selectedIndex && "bg-blue-50"
                 )}
-                onClick={() => handlePredictionSelect(prediction)}
+                style={{ cursor: 'pointer' }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('🎯 Prediction clicked:', prediction);
+                  handlePredictionSelect(prediction);
+                }}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
                 <div className="flex items-center gap-3">
@@ -295,7 +403,8 @@ export function AddressAutocomplete({
                 </div>
               </button>
             ))}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
       

@@ -33,6 +33,17 @@ export function DateInput({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const input = e.target as HTMLInputElement;
+    const cursorPosition = input.selectionStart || 0;
+    
+    // Handle backspace at the beginning of input
+    if (e.key === 'Backspace' && cursorPosition === 0) {
+      e.preventDefault();
+      return;
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target;
     const cursorPosition = input.selectionStart || 0;
@@ -70,8 +81,8 @@ export function DateInput({
           }
         }
         
-        // If we didn't find the right position, default to end
-        if (targetPosition === 0) {
+        // If we didn't find the right position, keep cursor at beginning
+        if (targetPosition === 0 && digitsBeforeCursor > 0) {
           targetPosition = newFormatted.length;
         }
         
@@ -87,6 +98,7 @@ export function DateInput({
       inputMode="numeric"
       value={formatDate(value)}
       onChange={handleChange}
+      onKeyDown={handleKeyDown}
       placeholder="MM/DD/YYYY"
       className={cn(className)}
       {...props}

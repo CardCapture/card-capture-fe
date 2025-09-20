@@ -17,6 +17,7 @@ import { useCardUpload } from '@/hooks/useCardUpload';
 import { Event } from '@/types/event';
 import { CreateEventModal } from '@/components/CreateEventModal';
 import CameraCapture from '@/components/card-scanner/CameraCapture';
+import { ScanStatusCard } from '@/components/ScanStatusCard';
 import imageCompression from 'browser-image-compression';
 
 const ScanPage: React.FC = () => {
@@ -32,6 +33,7 @@ const ScanPage: React.FC = () => {
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { uploadCard } = useCardUpload();
+  const [forceShowProcessing, setForceShowProcessing] = useState(false);
 
   // Fetch events on mount
   useEffect(() => {
@@ -119,7 +121,11 @@ const ScanPage: React.FC = () => {
       // Use the uploadCard hook
       const data = await uploadCard(file, selectedEventId, selectedEvent.school_id);
       setDocumentId(data.document_id);
+      setForceShowProcessing(true); // Force show processing status
       toast.success("Card captured successfully. Processing in background...");
+
+      // Reset force show processing after a delay to allow natural processing status to take over
+      setTimeout(() => setForceShowProcessing(false), 3000);
     } catch (error: any) {
       console.error("Upload error details:", {
         error,
@@ -255,6 +261,16 @@ const ScanPage: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Scan Status Card - Show if event is selected */}
+        {selectedEventId && selectedEvent && (
+          <ScanStatusCard
+            eventId={selectedEventId}
+            eventName={selectedEvent.name}
+            className="mb-6"
+            forceShow={forceShowProcessing}
+          />
+        )}
 
         {/* Camera/Upload UI */}
         {!capturedImage && !isCameraOpen && (

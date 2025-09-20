@@ -49,17 +49,14 @@ export function useCardsOverride(eventId?: string) {
       fetchInProgressRef.current ||
       now - lastFetchTimeRef.current < DEBOUNCE_DELAY
     ) {
-      console.log("useCardsOverride: Fetch skipped - too soon or in progress");
       return;
     }
 
     // Only fetch if we have an eventId
     if (!eventId) {
-      console.log("useCardsOverride: No eventId provided, skipping fetch");
       return;
     }
 
-    console.log("useCardsOverride: fetchCards called", { eventId });
     try {
       fetchInProgressRef.current = true;
       lastFetchTimeRef.current = now;
@@ -69,63 +66,21 @@ export function useCardsOverride(eventId?: string) {
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const url = new URL(`${apiBaseUrl}/cards`);
       url.searchParams.append("event_id", eventId);
-      console.log("useCardsOverride: Fetching cards from", url.toString());
 
       // Use CardService instead of direct API call
       const data: RawCardData[] = (await CardService.getCardsByEvent(
         eventId
       )) as RawCardData[];
 
-      console.log("useCardsOverride: Cards data received", {
-        count: data.length,
-      });
-      console.log("✅ [CARDS OVERRIDE] Cards data received", {
-        count: data.length,
-        firstCard: data.length > 0 ? data[0] : null,
-      });
 
       // Map the data to ensure all required fields are properly set
       const mappedCards = data.map((card: RawCardData) => {
-        // Debug log the raw card data
-        console.log("Raw card data:", card);
+        // Raw card data processing
 
-        // Ensure all expected fields are present
+        // Preserve all fields from backend and only add defaults for core missing ones
         const fields = card.fields || {};
-        const expectedFields = [
-          "name",
-          "preferred_first_name",
-          "date_of_birth",
-          "email",
-          "cell",
-          "permission_to_text",
-          "address",
-          "city",
-          "state",
-          "zip_code",
-          "high_school",
-          "class_rank",
-          "students_in_class",
-          "gpa",
-          "student_type",
-          "entry_term",
-          "major",
-        ];
-
-        // Add missing fields with default values
-        expectedFields.forEach((field) => {
-          if (!fields[field]) {
-            fields[field] = {
-              value: "",
-              required: false,
-              enabled: true,
-              review_confidence: 0.0,
-              requires_human_review: false,
-              review_notes: "",
-              confidence: 0.0,
-              bounding_box: [],
-            };
-          }
-        });
+        // No need to add missing fields - the backend handles all field configuration
+        // via the school's card_fields setting. Frontend should only display what the backend provides.
 
         const mappedCard: ProspectCard = {
           id:
@@ -154,7 +109,6 @@ export function useCardsOverride(eventId?: string) {
         };
 
         // Debug log the mapped card
-        console.log("Mapped card:", mappedCard);
 
         return mappedCard;
       });
@@ -195,7 +149,6 @@ export function useCardsOverride(eventId?: string) {
       new?: Record<string, unknown>;
       old?: Record<string, unknown>;
     }) => {
-      console.log("useCardsOverride: Supabase change received:", payload);
 
       // Check if the change is relevant to our event
       const newRecord = payload.new as { event_id?: string } | undefined;

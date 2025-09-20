@@ -33,6 +33,7 @@ import { useLoader } from "@/contexts/LoaderContext";
 import { CRMEventsService } from "@/services/CRMEventsService";
 import { CSVUploadModal } from "./CRMEvents/CSVUploadModal";
 import { format } from "date-fns";
+import { formatDateOnlyWithFormat } from "@/utils/dateUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -330,7 +331,7 @@ export function CRMEventsSection() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-muted-foreground" />
-                          {format(new Date(event.event_date), "MMM d, yyyy")}
+                          {formatDateOnlyWithFormat(event.event_date, "MMM d, yyyy")}
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">

@@ -54,7 +54,8 @@ interface UseAddressValidationReturn {
 export function useAddressValidation(
   options: UseAddressValidationOptions = {}
 ): UseAddressValidationReturn {
-  const { debounceMs = 800, minLoadingMs = 500 } = options;
+  // Increased debounce to reduce API calls (was 800ms)
+  const { debounceMs = 2000, minLoadingMs = 500 } = options;
 
   const [validationState, setValidationState] = useState<ValidationState>("not_verified");
   const [suggestion, setSuggestion] = useState<AddressSuggestion | null>(null);

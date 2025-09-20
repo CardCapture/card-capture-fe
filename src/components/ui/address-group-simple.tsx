@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AddressSuggestionsPanel } from "@/components/ui/address-suggestions-panel";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { 
@@ -54,6 +55,8 @@ interface AddressGroupSimpleProps {
   
   // Styling
   className?: string;
+  
+  // Disable validation when modal is closing
   disabled?: boolean;
 }
 
@@ -92,16 +95,7 @@ export function AddressGroupSimple({
   const pipelineValidationState = addressFieldData?.validation_state;
   const pipelineSuggestion = addressFieldData?.validation_suggestion;
   
-  console.log("🏗️ AddressGroupSimple:", {
-    reviewStatus,
-    isReadyForExport,
-    pipelineValidationState,
-    currentValidationState,
-    address,
-    city,
-    state,
-    zipCode
-  });
+  // Debug logging removed for performance
 
   // Simple approach: validate whenever values change from what we last validated
   const currentValues = JSON.stringify({ address, city, state, zipCode });
@@ -130,20 +124,49 @@ export function AddressGroupSimple({
 
   // Debounced validation when values change
   useEffect(() => {
+    // Clear any existing timeout when disabled changes
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    
+    // Skip validation if component is disabled (e.g., modal is closing)
+    if (disabled) {
+      console.log("🛑 Validation skipped - component is disabled");
+      return;
+    }
+    
+    // Skip validation entirely for ready-for-export cards
+    // These have already been reviewed by the user
+    if (isReadyForExport) {
+      console.log("📋 Ready for Export - skipping validation, showing as verified");
+      setCurrentValidationState("verified");
+      setSuggestion(null);
+      lastValidatedValues.current = currentValues;
+      return;
+    }
+    
+    // Skip validation if address has been manually reviewed
+    const addressIsReviewed = addressFieldData?.reviewed;
+    if (addressIsReviewed) {
+      console.log("✅ Address manually reviewed - skipping validation, showing as verified");
+      setCurrentValidationState("verified");
+      setSuggestion(null);
+      lastValidatedValues.current = currentValues;
+      return;
+    }
+    
+    // Additional safety check: skip if no meaningful address data
+    if (!address && !city && !state && !zipCode) {
+      console.log("🛑 Validation skipped - no address data");
+      return;
+    }
+    
     console.log("🚀 Validation useEffect running:", {
       isReadyForExport,
       lastValidatedValuesBefore: lastValidatedValues.current,
       currentValues,
       reviewStatus
     });
-    
-    // Special handling for ready for export on first render
-    if (isReadyForExport && !lastValidatedValues.current) {
-      console.log("📋 Ready for Export - setting as verified without API call");
-      lastValidatedValues.current = currentValues;
-      setCurrentValidationState("verified");
-      return; // Skip validation entirely
-    }
     
     const hasUsefulInfo = hasUsefulAddressInfo();
     const valuesChanged = currentValues !== lastValidatedValues.current;
@@ -182,9 +205,34 @@ export function AddressGroupSimple({
         lastValidatedValues.current = currentValues;
       }
     }
-  }, [currentValues, isReadyForExport]);
+  }, [currentValues, isReadyForExport, disabled, addressFieldData?.reviewed]);
+
+  // When address is marked as reviewed, update validation state
+  useEffect(() => {
+    // Check if address field needs review and show checkbox
+    const addressIsReviewed = addressFieldData?.reviewed;
+    
+    // If address has been marked as reviewed, show it as verified
+    if (addressIsReviewed) {
+      console.log("✅ Address marked as reviewed - setting as verified");
+      setCurrentValidationState("verified");
+      setSuggestion(null);
+    }
+  }, [addressFieldData?.reviewed]);
 
   const validateUserInput = async (validatedValues: string) => {
+    // Skip validation if component is disabled
+    if (disabled) {
+      console.log("🛑 Validation aborted - component is disabled");
+      return;
+    }
+    
+    // Safety check: never validate ready-for-export cards
+    if (isReadyForExport) {
+      console.log("🛑 Validation aborted - card is ready for export");
+      return;
+    }
+    
     try {
       setCurrentValidationState("loading");
       
@@ -315,10 +363,14 @@ export function AddressGroupSimple({
         );
 
       case "verified":
+        // Check if this was manually reviewed by user
+        const isManuallyReviewed = addressFieldData?.reviewed;
         return (
           <div className="flex items-center gap-2 text-sm text-green-600">
             <CheckCircle className="w-3 h-3" />
-            <span>Address verified by Google Maps</span>
+            <span>
+              {isManuallyReviewed ? "Verified by user" : "Address verified by Google Maps"}
+            </span>
           </div>
         );
 
@@ -388,19 +440,71 @@ export function AddressGroupSimple({
   // Check if address field needs review and show checkbox
   const addressNeedsReview = addressFieldData?.requires_human_review;
   const addressIsReviewed = addressFieldData?.reviewed;
-  const showReviewCheckbox = addressNeedsReview && onFieldReview;
+  const validationFailed = currentValidationState === 'not_verified' || currentValidationState === 'no_house_number';
+  const showReviewCheckbox = (addressNeedsReview || validationFailed) && onFieldReview;
+
+  const handleAddressAutocomplete = (addressData: {
+    street: string;
+    street2: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  }) => {
+    // Auto-fill all address fields
+    onAddressChange(addressData.street);
+    onCityChange(addressData.city);
+    onStateChange(addressData.state);
+    onZipCodeChange(addressData.zipCode);
+    
+    // Set as verified since it comes from Google Maps
+    setCurrentValidationState("verified");
+    setSuggestion(null);
+    lastValidatedValues.current = JSON.stringify({
+      address: addressData.street,
+      city: addressData.city,
+      state: addressData.state,
+      zipCode: addressData.zipCode
+    });
+    
+    toast.success("✅ Address verified with Google Maps");
+  };
 
   return (
     <div className={`space-y-2 ${className}`}>
-      {/* Street Address Input */}
-      <Input
-        type="text"
-        value={address}
-        onChange={(e) => onAddressChange(e.target.value)}
-        placeholder="Street Address"
-        className="w-full max-w-sm h-10 sm:h-8 text-sm"
-        disabled={disabled}
-      />
+      {/* Street Address with Google Maps Autocomplete */}
+      <div className="w-full max-w-sm">
+        {!disabled ? (
+          <AddressAutocomplete
+            label=""
+            value={address}
+            onChange={(value) => {
+              onAddressChange(value);
+              // Clear verified status when user manually types
+              // BUT not for ready-for-export cards or reviewed addresses - they stay verified
+              const addressIsReviewed = addressFieldData?.reviewed;
+              if (currentValidationState === "verified" && !isReadyForExport && !addressIsReviewed) {
+                setCurrentValidationState("not_verified");
+              }
+            }}
+            onAddressSelect={handleAddressAutocomplete}
+            className="h-10 sm:h-8 text-sm"
+            locationContext={{
+              zipCode: zipCode,
+              city: city,
+              state: state
+            }}
+          />
+        ) : (
+          <Input
+            type="text"
+            value={address}
+            onChange={(e) => onAddressChange(e.target.value)}
+            placeholder="Street Address"
+            className="w-full h-10 sm:h-8 text-sm"
+            disabled={disabled}
+          />
+        )}
+      </div>
       
       {/* City, State, Zip Row */}
       <div className="flex gap-2">

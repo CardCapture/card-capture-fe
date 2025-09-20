@@ -34,6 +34,17 @@ export function PhoneNumberInput({
     return parts.join('-');
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const input = e.target as HTMLInputElement;
+    const cursorPosition = input.selectionStart || 0;
+    
+    // Handle backspace at the beginning of input
+    if (e.key === 'Backspace' && cursorPosition === 0) {
+      e.preventDefault();
+      return;
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target;
     const cursorPosition = input.selectionStart || 0;
@@ -71,8 +82,8 @@ export function PhoneNumberInput({
           }
         }
         
-        // If we didn't find the right position, default to end
-        if (targetPosition === 0) {
+        // If we didn't find the right position, keep cursor at beginning
+        if (targetPosition === 0 && digitsBeforeCursor > 0) {
           targetPosition = newFormatted.length;
         }
         
@@ -88,6 +99,7 @@ export function PhoneNumberInput({
       inputMode="numeric"
       value={formatPhoneNumber(value)}
       onChange={handleChange}
+      onKeyDown={handleKeyDown}
       className={cn(className)}
       {...props}
     />

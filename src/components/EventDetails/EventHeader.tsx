@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { CompactProcessingStatus } from "@/components/CompactProcessingStatus";
 import { ProcessingService } from "@/services/processingService";
-import { useToast } from "@/hooks/use-toast";
 
 interface EventHeaderProps {
   selectedEvent: { id: string; name: string; school_id?: string } | null;
@@ -52,7 +51,6 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   handleCancelEditEventName,
   onRefreshCards,
 }) => {
-  const { toast } = useToast();
   // Memoize tab click handlers to prevent unnecessary re-renders
   const handleNeedsReviewClick = useCallback(() => {
     setSelectedTab("needs_human_review");

@@ -49,7 +49,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useCardsOverride } from "@/hooks/useCardsOverride";
 import { useSchool } from "@/hooks/useSchool";
-import { useEvents } from "@/hooks/useEvents";
+import { useEvent } from "@/hooks/useEvent";
 import { useAuth } from "@/contexts/AuthContext";
 // Utilities and Types
 import {
@@ -98,12 +98,22 @@ const Dashboard = () => {
   const { eventId } = useParams<{ eventId?: string }>();
   const { profile, session } = useAuth();
   const {
-    events,
-    loading: eventsLoading,
-    fetchEvents,
-  } = useEvents(profile?.school_id);
+    event: selectedEvent,
+    loading: eventLoading,
+    refetch: refetchEvent,
+  } = useEvent(eventId);
   const { school, loading: schoolLoading } = useSchool(profile?.school_id);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  
+  // Debug school loading
+  useEffect(() => {
+    console.log('🔍 School loading debug:', {
+      schoolLoading,
+      hasSchool: !!school,
+      schoolId: profile?.school_id,
+      schoolName: school?.name,
+      cardFieldsLength: school?.card_fields?.length
+    });
+  }, [school, schoolLoading, profile?.school_id]);
   const {
     cards,
     fetchCards,
@@ -122,7 +132,7 @@ const Dashboard = () => {
   );
 
   // Event Name
-  const eventName = useEventName(selectedEvent, fetchEvents);
+  const eventName = useEventName(selectedEvent, refetchEvent);
 
   // --- State Declarations (consolidated here) ---
   // Table state
@@ -164,34 +174,98 @@ const Dashboard = () => {
 
   // Extract cardFields from school data first (moved up for dependency)
   const cardFields = useMemo(() => {
-    if (!school?.card_fields) return [];
+    console.log('🔍 Debug cardFields:', {
+      hasSchool: !!school,
+      cardFieldsRaw: school?.card_fields,
+      cardFieldsLength: school?.card_fields?.length || 0
+    });
+    
+    if (!school?.card_fields) {
+      console.log('🚨 No school or card_fields found');
+      return [];
+    }
 
     // Use the SchoolService transformation to apply proper field type inference
-    return SchoolService.transformCardFieldsForUI(school.card_fields);
+    const transformed = SchoolService.transformCardFieldsForUI(school.card_fields);
+    console.log('🔍 Transformed cardFields:', transformed);
+    return transformed;
   }, [school?.card_fields]);
 
-  // Dynamic field order based on school configuration (same logic as review modal)
-  const reviewFieldOrder: string[] = useMemo(() => {
-    return cardFields
+  // Base field order from school configuration (without dynamic card data)
+  const baseReviewFieldOrder: string[] = useMemo(() => {
+    // Get fields from school configuration
+    const configuredFields = cardFields
       .filter((field) => field.visible)
       .map((field) => field.key);
-  }, [cardFields]);
+    
+    // Fields to exclude (duplicates or legacy fields that should never show)
+    const fieldsToExclude = new Set([
+      'name', // Hide combined name when split fields are available
+      'name_of_high_school', // Duplicate of high_school
+      'name_of_high_school_college', // Duplicate of high_school
+      'name_of_high_school_/college', // Duplicate of high_school (variant with slash)
+      'high_school_name', // Duplicate of high_school
+      'name_of_high_school_/_college', // Duplicate of high_school
+      'city_state', // Duplicate when separate city/state exist
+      'city/state', // Duplicate when separate city/state exist
+      'entry_term_year', // Redundant with entry_term
+      'major_academic_program_of_interest', // Redundant with major/mapped_major
+    ]);
 
-  // Dynamic field mapping using labels from school configuration
+    // Use only the configured fields from the school's card_fields configuration
+    // No hardcoded canonical fields - just use what the school has configured
+    return configuredFields.filter(field => !fieldsToExclude.has(field));
+  }, [cardFields]);
+  
+  // Use base field order for hook initialization (dynamic enhancement happens in the hook)
+  const reviewFieldOrder: string[] = baseReviewFieldOrder;
+
+  // Dynamic field mapping using labels from school configuration + canonical field labels
   const dataFieldsMap = useMemo(() => {
     const map = new Map<string, string>();
+    
+    // Add labels from school configuration
     cardFields.forEach((field) => {
-      // Use label from school config, fallback to generated label if not present
       const label = (field as any).label || field.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       map.set(field.key, label);
     });
+    
+    // Add canonical field labels for fields that might not be in school config
+    const canonicalLabels = {
+      'first_name': 'First Name',
+      'last_name': 'Last Name', 
+      'preferred_first_name': 'Preferred Name',
+      'date_of_birth': 'Birthday',
+      'email': 'Email',
+      'cell': 'Phone Number',
+      'permission_to_text': 'Permission to Text',
+      'address': 'Address',
+      'city': 'City',
+      'state': 'State', 
+      'zip_code': 'Zip Code',
+      'high_school': 'High School',
+      'class_rank': 'Class Rank',
+      'students_in_class': 'Students in Class',
+      'gpa': 'GPA',
+      'student_type': 'Student Type',
+      'entry_term': 'Entry Term',
+      'major': 'Major',
+      'mapped_major': 'Mapped Major'
+    };
+    
+    // Add canonical labels if not already present
+    Object.entries(canonicalLabels).forEach(([key, label]) => {
+      if (!map.has(key)) {
+        map.set(key, label);
+      }
+    });
+    
     return map;
   }, [cardFields]);
 
   // --- Refs ---
   const imageUrlRef = useRef<string>("");
   const debounceTimerRef = useRef<NodeJS.Timeout>();
-  const eventsRef = useRef<{ fetchEvents: () => Promise<void> } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevHideExported = useRef(hideExported);
 
@@ -226,7 +300,7 @@ const Dashboard = () => {
     fieldsWithToastRef,
     isSaving,
     setIsSaving,
-  } = useCardReviewModal(cards, reviewFieldOrder, fetchCards, dataFieldsMap);
+  } = useCardReviewModal(cards, baseReviewFieldOrder, fetchCards, dataFieldsMap);
 
   const {
     isManualEntryModalOpen,
@@ -412,44 +486,23 @@ const Dashboard = () => {
     };
   }, [selectedCardForReview]);
 
-  // Effect to fetch events when component mounts
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
 
-  // Effect to control full page loader for events loading
+  // Effect to control full page loader for event loading
   useEffect(() => {
-    if (eventsLoading) {
-      showFullPageLoader("Loading events...");
+    if (eventLoading) {
+      showFullPageLoader("Loading event...");
     } else {
       hideFullPageLoader();
     }
-  }, [eventsLoading, showFullPageLoader, hideFullPageLoader]);
+  }, [eventLoading, showFullPageLoader, hideFullPageLoader]);
 
-  // Effect to handle event selection based on URL params
+  // Effect to handle missing eventId in URL
   useEffect(() => {
-    if (events.length > 0) {
-      if (eventId) {
-        // Find event matching URL param
-        const event = events.find((e) => e.id === eventId);
-        if (event) {
-          setSelectedEvent(event);
-        } else {
-          // If event not found, redirect to first event
-          const firstEvent = events[0];
-          navigate(`/events/${firstEvent.id}`);
-          toast.error(
-            "The requested event could not be found. Redirected to the first available event.",
-            "Event Not Found"
-          );
-        }
-      } else {
-        // No eventId in URL, redirect to first event
-        const firstEvent = events[0];
-        navigate(`/events/${firstEvent.id}`);
-      }
+    if (!eventId) {
+      // No eventId in URL, redirect to home or show error
+      navigate('/events');
     }
-  }, [eventId, events, navigate]);
+  }, [eventId, navigate]);
 
   // ✅ REMOVED: useCardsOverride already handles event changes
   // useEffect(() => {
@@ -773,16 +826,41 @@ const Dashboard = () => {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // Fields to show in the review panel
+  // Fields to show in the review panel with dynamic canonical field support
   const fieldsToShow = useMemo(() => {
     if (!selectedCardForReview) return [];
     
-    // Only show fields that are explicitly visible in the school's configuration
-    // This prevents fields from one tenant's cards from appearing in another tenant's review modal
-    return cardFields
-      .filter((f) => f.visible)
+    console.log('🔍 Debug fieldsToShow:', {
+      hasSelectedCard: !!selectedCardForReview,
+      cardFields: cardFields,
+      cardFieldsCount: cardFields.length,
+      schoolData: school,
+      hasSchoolCardFields: !!school?.card_fields
+    });
+    
+    // Fields to exclude (duplicates or legacy fields)
+    const fieldsToExclude = new Set([
+      'name', // Hide combined name when split fields are available
+      'name_of_high_school', // Duplicate of high_school
+      'name_of_high_school_college', // Duplicate of high_school
+      'name_of_high_school_/college', // Duplicate of high_school (variant with slash)
+      'high_school_name', // Duplicate of high_school
+      'name_of_high_school_/_college', // Duplicate of high_school
+      'city_state', // Duplicate when separate city/state exist
+      'city/state', // Duplicate when separate city/state exist
+      'entry_term_year', // Redundant with entry_term
+      'major_academic_program_of_interest', // Redundant with major/mapped_major
+    ]);
+    
+    // Use only the configured fields from the school's card_fields configuration
+    // Don't add any fields just because they exist in card data
+    const result = cardFields
+      .filter((f) => f.visible && !fieldsToExclude.has(f.key))
       .map((f) => f.key);
-  }, [selectedCardForReview, cardFields]);
+    
+    console.log('🔍 fieldsToShow result:', result);
+    return result;
+  }, [cardFields, selectedCardForReview, school]);
 
   // --- Row Selection and Card Actions ---
   const handleArchiveCard = () => {
@@ -838,10 +916,7 @@ const Dashboard = () => {
       );
       toast.updated("Event name");
       setIsEditingEventName(false);
-      setSelectedEvent((ev) =>
-        ev ? { ...ev, name: eventNameInput.trim() } : ev
-      );
-      fetchEvents();
+      refetchEvent();
     } catch (error) {
       setEventNameError(
         error instanceof Error ? error.message : "Failed to update event name"
@@ -1192,11 +1267,13 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 h-full">
                 {/* Image Panel - Mobile: Full width, Desktop: Half width */}
                 <ReviewImagePanel
-                  imagePath={
-                    selectedCardForReview?.trimmed_image_path ||
-                    selectedCardForReview?.image_path ||
-                    ""
-                  }
+                  imagePath={(() => {
+                    // Always use original image - trimming has been removed from pipeline
+                    const originalPath = selectedCardForReview?.image_path;
+                    const finalPath = originalPath || "";
+                    // Debug logging removed for production
+                    return finalPath;
+                  })()}
                   zoom={zoom}
                   zoomIn={zoomIn}
                   zoomOut={zoomOut}
@@ -1215,6 +1292,7 @@ const Dashboard = () => {
                   loadingMajors={loadingMajors}
                   onCardUpdated={fetchCards}
                   cardFields={cardFields}
+                  isModalOpen={isReviewModalOpen}
                 />
               </div>
             </div>

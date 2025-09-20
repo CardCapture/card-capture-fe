@@ -151,6 +151,18 @@ export function useCardTableActions(
 
       const result = await response.json();
       
+      // Mark cards as exported in the database
+      const markExportedResponse = await fetch(`${apiBaseUrl}/mark-exported`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document_ids: idsToExport }),
+      });
+      
+      if (!markExportedResponse.ok) {
+        console.warn("Failed to mark cards as exported, but Slate export was successful");
+        // Don't throw error here since Slate export succeeded
+      }
+      
       // Refresh the cards data to reflect any status changes
       await fetchCards();
       

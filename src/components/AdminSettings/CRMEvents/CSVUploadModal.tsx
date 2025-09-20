@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +57,20 @@ export function CSVUploadModal({ open, onClose, onComplete }: CSVUploadModalProp
   const service = new CRMEventsService();
 
   const [dragActive, setDragActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Reset modal state whenever it opens to avoid stale file/mapping from previous import
+  useEffect(() => {
+    if (!open) return;
+    setStep("upload");
+    setFile(null);
+    setCsvData([]);
+    setCsvHeaders([]);
+    setMapping({ name: "", date: "", crm_id: "" });
+    setPreview([]);
+    setDragActive(false);
+    if (inputRef.current) inputRef.current.value = "";
+  }, [open]);
 
   const handleFileSelect = (file: File) => {
     // Validate file type
@@ -81,6 +95,8 @@ export function CSVUploadModal({ open, onClose, onComplete }: CSVUploadModalProp
     if (file) {
       handleFileSelect(file);
     }
+    // allow re-selecting the same filename by clearing the input value
+    event.currentTarget.value = "";
   };
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
@@ -110,9 +126,11 @@ export function CSVUploadModal({ open, onClose, onComplete }: CSVUploadModalProp
     Papa.parse(file, {
       complete: (result) => {
         if (result.data && result.data.length > 0) {
-          const headers = Object.keys(result.data[0] as any);
+          // Filter out completely empty rows
+          const rows = (result.data as any[]).filter((r) => r && Object.values(r).some((v) => String(v || "").trim() !== ""));
+          const headers = rows.length > 0 ? Object.keys(rows[0] as any) : [];
           setCsvHeaders(headers);
-          setCsvData(result.data as any[]);
+          setCsvData(rows as any[]);
           autoDetectMapping(headers);
           setStep("mapping");
         }
@@ -167,11 +185,11 @@ export function CSVUploadModal({ open, onClose, onComplete }: CSVUploadModalProp
       return;
     }
 
-    // Generate preview with mapped data
-    const previewData = csvData.slice(0, 5).map(row => ({
-      name: row[mapping.name],
-      date: row[mapping.date],
-      crm_id: row[mapping.crm_id],
+    // Generate preview with mapped data (defensive indexing)
+    const previewData = csvData.slice(0, 5).map((row) => ({
+      name: row?.[mapping.name] ?? "",
+      date: row?.[mapping.date] ?? "",
+      crm_id: mapping.crm_id ? row?.[mapping.crm_id] ?? "" : "",
     }));
     setPreview(previewData);
     setStep("preview");
@@ -198,7 +216,10 @@ export function CSVUploadModal({ open, onClose, onComplete }: CSVUploadModalProp
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onClick={() => document.getElementById('csv-file-input')?.click()}
+        onClick={() => {
+          if (inputRef.current) inputRef.current.value = "";
+          document.getElementById('csv-file-input')?.click();
+        }}
         className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
           dragActive 
             ? "border-primary bg-primary/5" 
@@ -213,6 +234,7 @@ export function CSVUploadModal({ open, onClose, onComplete }: CSVUploadModalProp
           accept=".csv,text/csv"
           onChange={handleFileInputChange}
           className="hidden"
+          ref={inputRef}
         />
         
         <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
