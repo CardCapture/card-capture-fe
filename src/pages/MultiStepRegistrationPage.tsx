@@ -114,9 +114,15 @@ export default function MultiStepRegistrationPage() {
     }
 
     try {
-      console.log('🔍 Searching schools for:', query);
+      console.log('🔍 Searching schools for:', query, 'in state:', formData.state);
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${API_BASE_URL}/high-schools/search?q=${encodeURIComponent(query)}&limit=10`);
+
+      // Add state parameter if available to prioritize local schools
+      const stateParam = formData.state ? `&state=${encodeURIComponent(formData.state)}` : '';
+      const searchUrl = `${API_BASE_URL}/high-schools/search?q=${encodeURIComponent(query)}&limit=10${stateParam}`;
+
+      console.log('🔍 Location-aware search URL:', searchUrl);
+      const response = await fetch(searchUrl);
       const data = await response.json();
       console.log('🔍 School search results:', data);
       setSchoolSuggestions(data.results || []);
@@ -167,6 +173,39 @@ export default function MultiStepRegistrationPage() {
   useEffect(() => {
     checkSession();
   }, []);
+
+  // Handle click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      // Close school dropdown if clicking outside
+      if (showSchoolSuggestions) {
+        const schoolDropdown = document.querySelector('[data-dropdown="school-suggestions"]');
+        const schoolInput = document.querySelector('[aria-controls="institution-typeahead-listbox"]');
+
+        if (schoolDropdown && !schoolDropdown.contains(target) &&
+            schoolInput && !schoolInput.contains(target)) {
+          setShowSchoolSuggestions(false);
+        }
+      }
+
+      // Close major dropdown if clicking outside
+      if (showMajorSuggestions) {
+        const majorDropdown = document.querySelector('[data-dropdown="major-suggestions"]');
+        const majorInput = document.querySelector('[aria-controls="major-typeahead-listbox"]');
+
+        if (majorDropdown && !majorDropdown.contains(target) &&
+            majorInput && !majorInput.contains(target)) {
+          setShowMajorSuggestions(false);
+        }
+      }
+    };
+
+    // Use capture phase to handle before any other handlers
+    document.addEventListener('click', handleClickOutside, true);
+    return () => document.removeEventListener('click', handleClickOutside, true);
+  }, [showSchoolSuggestions, showMajorSuggestions]);
 
   const checkSession = async () => {
     try {
@@ -454,7 +493,7 @@ export default function MultiStepRegistrationPage() {
                         value={formData.state}
                         onValueChange={(value) => updateData({ state: value })}
                       >
-                        <SelectTrigger className="h-12">
+                        <SelectTrigger className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-base h-12 !bg-white">
                           <SelectValue placeholder="Select state" />
                         </SelectTrigger>
                         <SelectContent>
@@ -548,7 +587,9 @@ export default function MultiStepRegistrationPage() {
                     }}
                   />
                   {showSchoolSuggestions && schoolSuggestions.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <div
+                      data-dropdown="school-suggestions"
+                      className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                       {schoolSuggestions.map((school: any) => (
                         <button
                           key={school.id}
@@ -764,7 +805,9 @@ export default function MultiStepRegistrationPage() {
                     }}
                   />
                   {showMajorSuggestions && majorSuggestions.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <div
+                      data-dropdown="major-suggestions"
+                      className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                       {majorSuggestions.map((major: any) => (
                         <button
                           key={major.id}

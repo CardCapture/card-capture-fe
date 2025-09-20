@@ -1,0 +1,1 @@
+export { QRScannerModal } from './QRScannerModal';

@@ -7,6 +7,7 @@ export interface SchoolData {
   stripe_customer_id: string | null;
   created_at: string;
   enable_signup_sheets?: boolean; // Feature flag for signup sheet functionality
+  enable_qr_scanning?: boolean; // Feature flag for QR code scanning functionality
   card_fields?:
     | Array<{
         key: string;

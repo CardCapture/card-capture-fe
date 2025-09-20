@@ -1,5 +1,5 @@
 import React, { memo, useCallback } from "react";
-import { ZoomIn, ZoomOut } from "lucide-react";
+import { ZoomIn, ZoomOut, QrCode, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSignedImageUrl } from "@/lib/imageUtils";
 import { useEffect, useState } from "react";
@@ -64,8 +64,23 @@ const ReviewImagePanel: React.FC<ReviewImagePanelProps> = ({
               }}
             />
           ) : (
-            <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-              <span className="text-gray-500">No image available</span>
+            <div className="w-full h-64 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-blue-200">
+              <div className="text-center space-y-4">
+                <div className="relative">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                    <QrCode className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                    <UserCheck className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-gray-700">QR Code Scan</h4>
+                  <p className="text-xs text-gray-500 max-w-48">
+                    Student information was captured via QR code scan - no physical card image available
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </div>

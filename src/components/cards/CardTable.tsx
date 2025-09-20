@@ -25,6 +25,7 @@ import {
   ChevronDown,
   RotateCcw,
   FileSpreadsheet,
+  QrCode,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -49,6 +50,7 @@ import { CardService } from "@/services/CardService";
 import { useState, useEffect } from "react";
 import { IntegrationsService } from "@/services/IntegrationsService";
 import type { SchoolData } from "@/api/supabase/schools";
+import { QRScannerModal } from "@/components/QRScannerModal";
 
 // Add any additional imports as needed
 
@@ -138,7 +140,10 @@ const CardTable: React.FC<CardTableProps> = ({
 
   // Add retry functionality for AI failed cards
   const [isRetrying, setIsRetrying] = useState(false);
-  
+
+  // QR Scanner Modal state
+  const [showQRScanner, setShowQRScanner] = useState(false);
+
   // Check if school has Slate integration enabled
   const [hasSlateIntegration, setHasSlateIntegration] = useState(false);
   
@@ -296,6 +301,12 @@ const CardTable: React.FC<CardTableProps> = ({
                 <Upload className="w-4 h-4 mr-2" />
                 <span>Import Card(s)</span>
               </DropdownMenuItem>
+              {school?.enable_qr_scanning && (
+                <DropdownMenuItem onSelect={() => setShowQRScanner(true)}>
+                  <QrCode className="w-4 h-4 mr-2" />
+                  <span>Scan QR Code</span>
+                </DropdownMenuItem>
+              )}
               {school?.enable_signup_sheets && (
                 <DropdownMenuItem onSelect={handleSignupSheet}>
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
@@ -665,6 +676,19 @@ const CardTable: React.FC<CardTableProps> = ({
           </div>
         </div>
       </div>
+
+      {/* QR Scanner Modal */}
+      {selectedEvent?.id && (
+        <QRScannerModal
+          isOpen={showQRScanner}
+          onClose={() => setShowQRScanner(false)}
+          eventId={selectedEvent.id}
+          onSuccess={() => {
+            fetchCards();
+            setShowQRScanner(false);
+          }}
+        />
+      )}
     </div>
   );
 };

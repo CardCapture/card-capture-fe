@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, RotateCw, RotateCcw, Maximize2 } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCw, RotateCcw, Maximize2, QrCode } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { getSignedImageUrl } from "@/lib/imageUtils";
 
@@ -437,8 +437,43 @@ const ReviewImagePanel = ({
           </div>
         )}
         {!loading && !signedUrl && !imgError && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-gray-500 text-sm text-center p-4">No image available.</div>
+          <div
+            className="absolute inset-0 flex items-center justify-center p-8"
+            style={{
+              animation: "fadeInUp 200ms ease-out",
+            }}
+          >
+            <style>{`
+              @keyframes fadeInUp {
+                from {
+                  opacity: 0;
+                  transform: translateY(8px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+            `}</style>
+            <div className="w-full max-w-md bg-white rounded-lg p-12">
+              <div className="flex flex-col items-center text-center space-y-6">
+                {/* Icon chip with presence badge */}
+                <div className="relative">
+                  <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center">
+                    <QrCode className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+                </div>
+
+                {/* Copy */}
+                <div className="space-y-2">
+                  <h3 className="text-base font-medium text-gray-900">QR code scan</h3>
+                  <p className="text-sm text-gray-600">
+                    Student info was captured with a QR code, so no image is available.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

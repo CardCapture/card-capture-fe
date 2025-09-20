@@ -38,8 +38,8 @@ export default function RegistrationSuccessPage() {
             </h1>
 
             <p className="text-gray-600 mb-6">
-              {message || (verified 
-                ? "Your registration is complete and verified."
+              {message || (verified
+                ? "Registration successful!"
                 : "Your registration is complete. Check your email to verify your address."
               )}
             </p>
@@ -58,14 +58,6 @@ export default function RegistrationSuccessPage() {
                       alt="Your QR Code" 
                       className="w-48 h-48 border-2 border-gray-100 rounded-lg p-2"
                     />
-                    {token && (
-                      <div className="mt-3 text-center">
-                        <p className="text-xs text-gray-500 mb-1">Access Code:</p>
-                        <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
-                          {token}
-                        </code>
-                      </div>
-                    )}
                   </div>
                 </div>
                 
@@ -79,11 +71,6 @@ export default function RegistrationSuccessPage() {
                   Download QR Code
                 </Button>
                 
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <p className="text-sm text-green-700">
-                    Show this QR code at college fairs to instantly share your information with schools using CardCapture.
-                  </p>
-                </div>
               </div>
             )}
 

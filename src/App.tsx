@@ -17,6 +17,7 @@ import RoleProtectedRoute from "./components/RoleProtectedRoute";
 import SuperAdminRoute from "./components/SuperAdminRoute";
 import LandingLayout from "./components/LandingLayout";
 import AppLayout from "./components/AppLayout";
+import MinimalLayout from "./components/MinimalLayout";
 
 // Loading component for Suspense fallback
 const PageLoader = () => (
@@ -89,19 +90,27 @@ function App() {
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/magic-link" element={<MagicLinkPage />} />
-                  
-                  {/* New secure registration system */}
+
+                  {/* Legacy student registration (keeping for backwards compatibility) */}
+                  <Route path="/register-legacy" element={<StudentSignupPage />} />
+                  <Route path="/register/form-legacy" element={<RegistrationFormPage />} />
+                  <Route path="/lookup" element={<StudentLookupPage />} />
+                </Route>
+
+                {/* Registration flow with minimal layout (no header/footer) */}
+                <Route
+                  element={
+                    <MinimalLayout>
+                      <Outlet />
+                    </MinimalLayout>
+                  }
+                >
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/register/check-email" element={<CheckEmailPage />} />
                   <Route path="/register/verify" element={<MagicLinkVerifyPage />} />
                   <Route path="/register/form" element={<MultiStepRegistrationPage />} />
                   <Route path="/register/success" element={<RegistrationSuccessPage />} />
                   <Route path="/register/verify-email" element={<VerifyEmailPage />} />
-                  
-                  {/* Legacy student registration (keeping for backwards compatibility) */}
-                  <Route path="/register-legacy" element={<StudentSignupPage />} />
-                  <Route path="/register/form-legacy" element={<RegistrationFormPage />} />
-                  <Route path="/lookup" element={<StudentLookupPage />} />
                 </Route>
 
                 {/* SuperAdmin routes */}

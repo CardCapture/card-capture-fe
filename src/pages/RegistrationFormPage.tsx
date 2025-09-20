@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,10 @@ export default function RegistrationFormPage() {
   const [majorSuggestions, setMajorSuggestions] = useState<any[]>([]);
   const [showMajorSuggestions, setShowMajorSuggestions] = useState(false);
 
+  // Refs for dropdown containers
+  const schoolDropdownRef = useRef<HTMLDivElement>(null);
+  const majorDropdownRef = useRef<HTMLDivElement>(null);
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -127,6 +131,35 @@ export default function RegistrationFormPage() {
   useEffect(() => {
     checkSession();
   }, []);
+
+  // Handle click outside for dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Check school dropdown
+      if (showSchoolSuggestions && schoolDropdownRef.current) {
+        if (!schoolDropdownRef.current.contains(event.target as Node)) {
+          console.log('🔍 Closing school dropdown - clicked outside');
+          setShowSchoolSuggestions(false);
+        }
+      }
+
+      // Check major dropdown
+      if (showMajorSuggestions && majorDropdownRef.current) {
+        if (!majorDropdownRef.current.contains(event.target as Node)) {
+          console.log('🔍 Closing major dropdown - clicked outside');
+          setShowMajorSuggestions(false);
+        }
+      }
+    };
+
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSchoolSuggestions, showMajorSuggestions]);
 
   const checkSession = async () => {
     try {
@@ -371,21 +404,21 @@ export default function RegistrationFormPage() {
               </div>
 
               {/* Academic Information */}
-              <div className="col-span-1 md:col-span-2 relative">
+              <div className="col-span-1 md:col-span-2 relative" ref={schoolDropdownRef}>
                 <Label htmlFor="schoolSearchQuery_zz">Current School</Label>
                 {/* Decoy input to defeat aggressive autofill */}
-                <input 
-                  type="text" 
-                  name="dummyDontAutofill" 
-                  autoComplete="off" 
-                  tabIndex={-1} 
-                  aria-hidden="true" 
-                  style={{position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0}} 
+                <input
+                  type="text"
+                  name="dummyDontAutofill"
+                  autoComplete="off"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  style={{position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0}}
                 />
-                <Input 
-                  id="schoolSearchQuery_zz" 
-                  name="schoolSearchQuery_zz" 
-                  value={form.high_school || ''} 
+                <Input
+                  id="schoolSearchQuery_zz"
+                  name="schoolSearchQuery_zz"
+                  value={form.high_school || ''}
                   onChange={(e) => {
                     const value = e.target.value;
                     console.log('🔍 High school input changed:', value);
@@ -498,7 +531,7 @@ export default function RegistrationFormPage() {
                 />
               </div>
 
-              <div className="md:col-span-2 relative">
+              <div className="md:col-span-2 relative" ref={majorDropdownRef}>
                 <Label htmlFor="majorSearchQuery_zz">Intended Major</Label>
                 {/* Decoy input to defeat aggressive autofill */}
                 <input 
