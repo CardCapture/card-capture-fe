@@ -183,15 +183,16 @@ export function AddressFieldWithSuggestions({
   };
 
   // Helper to get field styling based on review status
-  const getFieldClassName = (fieldData?: { requires_human_review?: boolean; reviewed?: boolean }) => {
+  const getFieldClassName = (fieldData?: { requires_human_review?: boolean; reviewed?: boolean }, isQrScan?: boolean) => {
     const baseClasses = "h-10 sm:h-8 text-sm flex-1";
-    
-    if (fieldData?.reviewed) {
+
+    // For QR scans, don't show the green success state
+    if (fieldData?.reviewed && !isQrScan) {
       return `${baseClasses} border-green-300 focus-visible:ring-green-400 bg-green-50`;
     } else if (fieldData?.requires_human_review) {
       return `${baseClasses} border-red-300 focus-visible:ring-red-400`;
     }
-    
+
     return baseClasses;
   };
 

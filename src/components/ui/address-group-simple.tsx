@@ -58,6 +58,9 @@ interface AddressGroupSimpleProps {
   
   // Disable validation when modal is closing
   disabled?: boolean;
+
+  // Is this a QR scan (no image available)
+  isQrScan?: boolean;
 }
 
 export function AddressGroupSimple({
@@ -77,6 +80,7 @@ export function AddressGroupSimple({
   onFieldReview,
   className = "",
   disabled = false,
+  isQrScan = false,
 }: AddressGroupSimpleProps) {
   // Check if card is in "Ready for Export" status
   // Cards that are "reviewed" are ready for export

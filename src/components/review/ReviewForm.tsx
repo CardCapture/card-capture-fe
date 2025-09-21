@@ -81,6 +81,9 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       .join(" ");
   };
 
+  // Check if this is a QR scan (no image available)
+  const isQrScan = !selectedCardForReview?.image_path;
+
   // Render field input based on field type
   const renderFieldInput = (fieldKey: string, actualFieldKey: string, isReviewed: boolean, needsReview: boolean) => {
     const fieldConfig = getFieldConfig(actualFieldKey);
@@ -90,7 +93,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
     // Build conditional styling for reviewed/needs review states
     const getInputClassName = (baseClasses: string = "") => {
       return `${baseClasses} ${
-        isReviewed
+        isReviewed && !isQrScan
           ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
           : needsReview
           ? "border-red-300 focus-visible:ring-red-400"
@@ -672,6 +675,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             reviewStatus={selectedCardForReview?.review_status}
             onFieldReview={(fieldKey) => handleFieldReview(fieldKey, { preventDefault: () => {}, stopPropagation: () => {} } as React.MouseEvent)}
             disabled={!selectedCardForReview || !isModalOpen}
+            isQrScan={isQrScan}
           />
         </div>
       </div>
