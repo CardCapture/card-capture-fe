@@ -82,7 +82,7 @@ export default function RegistrationFormPage() {
 
     try {
       console.log('🔍 Searching schools for:', query);
-      const response = await fetch(`http://localhost:8000/high-schools/search?q=${encodeURIComponent(query)}&limit=10`);
+      const response = await fetch(`http://localhost:8000/high_schools/search?q=${encodeURIComponent(query)}&limit=10`);
       const data = await response.json();
       console.log('🔍 School search results:', data);
       setSchoolSuggestions(data.results || []);

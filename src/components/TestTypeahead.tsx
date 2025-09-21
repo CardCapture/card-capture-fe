@@ -23,7 +23,7 @@ export const TestTypeahead: React.FC = () => {
           console.log('TestTypeahead: onChange called with:', newValue);
           setValue(newValue);
         }}
-        searchEndpoint="/high-schools/search"
+        searchEndpoint="/high_schools/search"
         displayField="name"
         placeholder="Type to search schools..."
       />

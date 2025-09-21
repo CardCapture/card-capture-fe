@@ -51,7 +51,7 @@ export function AddressAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0, bottom: 0 });
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -192,12 +192,42 @@ export function AddressAutocomplete({
   const updateDropdownPosition = () => {
     if (inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
-      console.log('📏 Calculating dropdown position:', rect);
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const scrollY = window.scrollY || window.pageYOffset;
+
+      // Check if we're on mobile (viewport width < 768px)
+      const isMobile = window.innerWidth < 768;
+
+      // For mobile, check if dropdown would go off screen
+      const spaceBelow = viewportHeight - rect.bottom;
+      const dropdownHeight = Math.min(240, predictions.length * 48); // Estimate height
+
+      console.log('📏 Calculating dropdown position:', {
+        rect,
+        viewportHeight,
+        spaceBelow,
+        dropdownHeight,
+        isMobile
       });
+
+      // On mobile, use absolute positioning relative to viewport
+      if (isMobile) {
+        // Position directly below input, accounting for fixed positioning
+        setDropdownPosition({
+          top: rect.bottom,
+          left: rect.left,
+          width: rect.width,
+          bottom: spaceBelow < dropdownHeight ? rect.top - dropdownHeight - 4 : 0
+        });
+      } else {
+        // Desktop: use scroll-aware positioning
+        setDropdownPosition({
+          top: rect.bottom + scrollY,
+          left: rect.left,
+          width: rect.width,
+          bottom: 0
+        });
+      }
     }
   };
 
@@ -287,9 +317,9 @@ export function AddressAutocomplete({
     const handleClickOutside = (event: MouseEvent) => {
       // Close dropdown if clicking outside of input and dropdown
       if (
-        inputRef.current && 
+        inputRef.current &&
         !inputRef.current.contains(event.target as Node) &&
-        dropdownRef.current && 
+        dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
         console.log('Clicked outside - closing dropdown');
@@ -298,16 +328,30 @@ export function AddressAutocomplete({
       }
     };
 
+    // Update position immediately when dropdown opens
+    updateDropdownPosition();
+
     window.addEventListener('scroll', handlePositionUpdate, true);
     window.addEventListener('resize', handlePositionUpdate);
     document.addEventListener('mousedown', handleClickOutside);
+
+    // Handle viewport changes (important for mobile keyboards)
+    const visualViewport = window.visualViewport;
+    if (visualViewport) {
+      visualViewport.addEventListener('resize', handlePositionUpdate);
+      visualViewport.addEventListener('scroll', handlePositionUpdate);
+    }
 
     return () => {
       window.removeEventListener('scroll', handlePositionUpdate, true);
       window.removeEventListener('resize', handlePositionUpdate);
       document.removeEventListener('mousedown', handleClickOutside);
+      if (visualViewport) {
+        visualViewport.removeEventListener('resize', handlePositionUpdate);
+        visualViewport.removeEventListener('scroll', handlePositionUpdate);
+      }
     };
-  }, [showDropdown]);
+  }, [showDropdown, predictions.length]);
 
   return (
     <div className="space-y-2 relative">
@@ -361,17 +405,21 @@ export function AddressAutocomplete({
         {/* Portal-based Dropdown to escape overflow containers */}
         {console.log('🚨 DROPDOWN CHECK:', { showDropdown, predictions: predictions.length, willRender: showDropdown && predictions.length > 0, position: dropdownPosition })}
         {showDropdown && predictions.length > 0 && typeof document !== 'undefined' && createPortal(
-          <div 
+          <div
             ref={dropdownRef}
-            className="bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
-            style={{ 
+            className="bg-white border border-gray-300 rounded-lg shadow-lg overflow-y-auto"
+            style={{
               position: 'fixed',
-              top: `${dropdownPosition.top}px`,
+              top: dropdownPosition.bottom ? 'auto' : `${dropdownPosition.top}px`,
+              bottom: dropdownPosition.bottom ? `${dropdownPosition.bottom}px` : 'auto',
               left: `${dropdownPosition.left}px`,
               width: `${dropdownPosition.width}px`,
+              maxHeight: '240px',
               zIndex: 99999,
               pointerEvents: 'auto',
-              cursor: 'default'
+              cursor: 'default',
+              // Add transform for mobile to ensure proper positioning
+              transform: window.innerWidth < 768 && dropdownPosition.bottom ? 'translateY(-4px)' : 'none'
             }}
             onMouseDown={(e) => {
               e.preventDefault(); // Prevent blur on input

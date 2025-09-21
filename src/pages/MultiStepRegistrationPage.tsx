@@ -119,7 +119,7 @@ export default function MultiStepRegistrationPage() {
 
       // Add state parameter if available to prioritize local schools
       const stateParam = formData.state ? `&state=${encodeURIComponent(formData.state)}` : '';
-      const searchUrl = `${API_BASE_URL}/high-schools/search?q=${encodeURIComponent(query)}&limit=10${stateParam}`;
+      const searchUrl = `${API_BASE_URL}/high_schools/search?q=${encodeURIComponent(query)}&limit=10${stateParam}`;
 
       console.log('🔍 Location-aware search URL:', searchUrl);
       const response = await fetch(searchUrl);
@@ -342,7 +342,7 @@ export default function MultiStepRegistrationPage() {
         
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-2">
+          <h1 className="text-3xl sm:text-4xl font-bold text-blue-600 mb-2">
             Join CardCapture
           </h1>
           <p className="text-gray-600 text-lg">

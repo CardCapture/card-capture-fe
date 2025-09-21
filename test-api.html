@@ -17,7 +17,7 @@
             resultsDiv.innerHTML = "Testing high schools...";
             
             try {
-                const response = await fetch(`${API_BASE_URL}/high-schools/search?q=Albert`);
+                const response = await fetch(`${API_BASE_URL}/high_schools/search?q=Albert`);
                 const data = await response.json();
                 resultsDiv.innerHTML = `<h3>High Schools Result:</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
             } catch (error) {

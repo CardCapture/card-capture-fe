@@ -17,7 +17,7 @@ interface TypeaheadInputProps {
   value: string;
   onChange: (value: string) => void;
   onSelect?: (item: TypeaheadItem) => void;
-  searchEndpoint: string; // e.g., "/high-schools/search" or "/majors/search"
+  searchEndpoint: string; // e.g., "/high_schools/search" or "/majors/search"
   displayField: string; // e.g., "name" or "cip_title"
   placeholder?: string;
   required?: boolean;
