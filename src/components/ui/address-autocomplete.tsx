@@ -86,7 +86,7 @@ export function AddressAutocomplete({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDSVu7JPTKZvnTQ4DijQDxkA48LWoOJEdo'
+          'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY
         },
         body: JSON.stringify({
           input: searchQuery,
@@ -130,7 +130,7 @@ export function AddressAutocomplete({
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDSVu7JPTKZvnTQ4DijQDxkA48LWoOJEdo',
+          'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
           'X-Goog-FieldMask': 'addressComponents,formattedAddress'
         }
       });
