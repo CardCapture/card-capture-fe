@@ -40,6 +40,7 @@ interface AddressFields {
 interface UseAddressValidationOptions {
   debounceMs?: number;
   minLoadingMs?: number; // Minimum loading time for good UX
+  onValidationSuccess?: (fields: AddressFields) => void; // Callback when address is verified
 }
 
 interface UseAddressValidationReturn {
@@ -55,7 +56,7 @@ export function useAddressValidation(
   options: UseAddressValidationOptions = {}
 ): UseAddressValidationReturn {
   // Increased debounce to reduce API calls (was 800ms)
-  const { debounceMs = 2000, minLoadingMs = 500 } = options;
+  const { debounceMs = 2000, minLoadingMs = 500, onValidationSuccess } = options;
 
   const [validationState, setValidationState] = useState<ValidationState>("not_verified");
   const [suggestion, setSuggestion] = useState<AddressSuggestion | null>(null);
@@ -170,6 +171,11 @@ export function useAddressValidation(
               toast.success("✅ Address verified with Google Maps");
               // Cache this verified address to prevent future API calls
               verifiedAddressesRef.current.add(requestHash);
+
+              // Call the validation success callback if provided
+              if (onValidationSuccess) {
+                onValidationSuccess(fields);
+              }
             }
             
             lastRequestRef.current = requestHash;
@@ -203,7 +209,7 @@ export function useAddressValidation(
         }, remainingLoadingTime);
       }
     }, debounceMs);
-  }, [debounceMs, minLoadingMs]);
+  }, [debounceMs, minLoadingMs, onValidationSuccess]);
 
   const clearValidation = useCallback(() => {
     setValidationState("not_verified");
@@ -227,7 +233,7 @@ export function useAddressValidation(
       onApply(suggestion);
       setValidationState("verified");
       toast.success("✅ Address verified with Google Maps");
-      
+
       // Cache this verified address
       const appliedFields = {
         address: suggestion.address,
@@ -237,8 +243,13 @@ export function useAddressValidation(
       };
       const appliedHash = JSON.stringify(appliedFields);
       verifiedAddressesRef.current.add(appliedHash);
+
+      // Call the validation success callback if provided
+      if (onValidationSuccess) {
+        onValidationSuccess(appliedFields);
+      }
     }
-  }, [suggestion]);
+  }, [suggestion, onValidationSuccess]);
 
   // Cleanup on unmount
   useEffect(() => {

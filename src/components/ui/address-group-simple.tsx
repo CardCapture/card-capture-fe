@@ -85,9 +85,21 @@ export function AddressGroupSimple({
   // Check if card is in "Ready for Export" status
   // Cards that are "reviewed" are ready for export
   const isReadyForExport = reviewStatus === "ready_for_export" || reviewStatus === "reviewed";
-  
+
   // If ready for export, address is verified by definition
   const initialState: ValidationState = isReadyForExport ? "verified" : "not_verified";
+
+  // Helper to mark all address fields as reviewed when validation succeeds
+  const handleValidationSuccess = () => {
+    console.log("✅ Address validated successfully, marking fields as reviewed");
+
+    // Mark all address fields as reviewed by calling onFieldReview for each
+    if (onFieldReview) {
+      // This will trigger the parent component's handleFieldReview logic
+      // which already handles marking all address fields together
+      onFieldReview('address');
+    }
+  };
   
   const [currentValidationState, setCurrentValidationState] = useState<ValidationState>(initialState);
   const [suggestion, setSuggestion] = useState<any>(null);
@@ -312,6 +324,8 @@ export function AddressGroupSimple({
         
         if (finalState === "verified") {
           toast.success("✅ Address verified with Google Maps");
+          // Automatically mark address fields as reviewed when validation succeeds
+          handleValidationSuccess();
         } else if (finalState === "can_be_verified" && data.validation.suggestion) {
           console.log("📍 Address has suggestions, showing validation button");
         }
@@ -352,8 +366,10 @@ export function AddressGroupSimple({
     setCurrentValidationState("verified");
     setSuggestion(sug);
     setIsSuggestionPanelOpen(false);
-    
+
     toast.success("✅ Address verified with Google Maps");
+    // Automatically mark address fields as reviewed when suggestion is applied
+    handleValidationSuccess();
   };
 
   const renderValidationStatus = () => {
@@ -469,8 +485,10 @@ export function AddressGroupSimple({
       state: addressData.state,
       zipCode: addressData.zipCode
     });
-    
+
     toast.success("✅ Address verified with Google Maps");
+    // Automatically mark address fields as reviewed when autocomplete is used
+    handleValidationSuccess();
   };
 
   return (
