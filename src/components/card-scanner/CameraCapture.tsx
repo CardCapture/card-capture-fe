@@ -13,7 +13,27 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLandscape, setIsLandscape] = useState(false);
   const { hasPermission, requestPermission } = useCameraPermission();
+
+  // Detect orientation changes
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+
+    // Set initial orientation
+    handleOrientationChange();
+
+    // Listen for resize/orientation changes
+    window.addEventListener('resize', handleOrientationChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+
+    return () => {
+      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, []);
 
   // Initialize camera
   useEffect(() => {
@@ -102,8 +122,14 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
             style={{ minHeight: 320 }}
           />
           <canvas ref={canvasRef} className="hidden" />
-          {/* Minimal overlay for capture button */}
-          <div className="absolute bottom-8 left-0 right-0 flex justify-center z-20">
+          {/* Capture button - positioned based on orientation */}
+          <div
+            className={`absolute z-20 ${
+              isLandscape
+                ? 'right-8 top-1/2 -translate-y-1/2' // Right edge, vertically centered in landscape
+                : 'bottom-8 left-1/2 -translate-x-1/2' // Bottom edge, horizontally centered in portrait
+            }`}
+          >
             <Button
               onClick={captureImage}
               className="rounded-full bg-green-600 hover:bg-green-700 shadow-lg w-16 h-16 flex items-center justify-center text-white text-lg"
