@@ -290,11 +290,11 @@ export function downloadCSV(
     ...cards.map(card => {
       const row = csvFieldOrder.map(fieldKey => {
         const value = getFieldValue(card, fieldKey);
-        // Escape quotes and wrap in quotes if contains comma, quote, or newline
-        const escaped = String(value || "").replace(/"/g, '""');
-        return /[",\n\r]/.test(escaped) ? `"${escaped}"` : escaped;
+        // Strip commas to prevent Slate import issues
+        const cleaned = String(value || "").replace(/,/g, '');
+        return cleaned;
       });
-      
+
       return row.join(",");
     })
   ];
