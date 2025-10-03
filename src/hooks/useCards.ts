@@ -74,7 +74,7 @@ export function useCards(): UseCardsReturn {
       return;
     }
 
-    const channelName = "reviewed_data_changes";
+    const channelName = "cards_changes";
     let channel: RealtimeChannel | null = null;
 
     const handleDbChange = (payload: {
@@ -89,16 +89,27 @@ export function useCards(): UseCardsReturn {
       fetchCards();
     };
 
-    const subscriptionOptions = {
-      event: "*" as const,
-      schema: "public",
-      table: "reviewed_data",
-    };
-
-    // Subscribe
+    // Subscribe to both tables
     channel = supabase
       .channel(channelName)
-      .on("postgres_changes", subscriptionOptions, handleDbChange)
+      .on(
+        "postgres_changes",
+        {
+          event: "*" as const,
+          schema: "public",
+          table: "reviewed_data",
+        },
+        handleDbChange
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*" as const,
+          schema: "public",
+          table: "student_school_interactions",
+        },
+        handleDbChange
+      )
       .subscribe((status, err) => {
         if (status === "SUBSCRIBED") {
           console.log(
