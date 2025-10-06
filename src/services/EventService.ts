@@ -116,6 +116,25 @@ export class EventService {
   }
 
   /**
+   * Update an event with multiple fields
+   */
+  static async updateEvent(
+    eventId: string,
+    updates: {
+      name?: string;
+      date?: string;
+      slate_event_id?: string | null;
+    }
+  ): Promise<void> {
+    try {
+      await backendEventsApi.updateEvent(eventId, updates);
+    } catch (error) {
+      console.error("EventService: Failed to update event", error);
+      throw error;
+    }
+  }
+
+  /**
    * Archive a single event with optional card archiving
    */
   static async archiveEvent(

@@ -42,7 +42,7 @@ export const backendEventsApi = {
    */
   async updateEvent(
     eventId: string,
-    updates: { name?: string }
+    updates: { name?: string; date?: string; slate_event_id?: string | null }
   ): Promise<void> {
     const response = await authFetch(`${API_BASE_URL}/events/${eventId}`, {
       method: "PUT",

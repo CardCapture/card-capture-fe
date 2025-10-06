@@ -89,6 +89,7 @@ import { useLoader } from "@/contexts/LoaderContext";
 import { EventHeader } from "./EventDetails/EventHeader";
 import { SignupSheetUpload } from "@/components/SignupSheetUpload";
 import { SignupSheetProcessing } from "@/components/SignupSheetProcessing";
+import { CreateEventModal } from "@/components/CreateEventModal";
 
 // === Component Definition ===
 const Dashboard = () => {
@@ -156,13 +157,8 @@ const Dashboard = () => {
   const [zoom, setZoom] = useState(0.85);
   const [imageUrlState, setImageUrlState] = useState("");
 
-  // Event editing
-  const [isEditingEventName, setIsEditingEventName] = useState(false);
-  const [eventNameInput, setEventNameInput] = useState(
-    selectedEvent?.name || ""
-  );
-  const [eventNameLoading, setEventNameLoading] = useState(false);
-  const [eventNameError, setEventNameError] = useState<string | null>(null);
+  // Event editing modal
+  const [isEditEventModalOpen, setIsEditEventModalOpen] = useState(false);
 
   // Settings/preferences
   const [cardFieldPrefs, setCardFieldPrefs] = useState<Record<
@@ -892,43 +888,16 @@ const Dashboard = () => {
   const zoomIn = useCallback(() => setZoom((z) => Math.min(z * 1.2, 3)), []);
   const zoomOut = useCallback(() => setZoom((z) => Math.max(z / 1.2, 0.3)), []);
 
-  // --- Event Name Editing ---
-  const handleEditEventName = () => {
-    setIsEditingEventName(true);
-    setEventNameInput(selectedEvent?.name || "");
-    setEventNameError(null);
-  };
+  // --- Event Editing ---
+  const handleEditEvent = useCallback(() => {
+    setIsEditEventModalOpen(true);
+  }, []);
 
-  const handleCancelEditEventName = () => {
-    setIsEditingEventName(false);
-    setEventNameInput(selectedEvent?.name || "");
-    setEventNameError(null);
-  };
-
-  const handleSaveEventName = async () => {
-    if (!selectedEvent || !eventNameInput.trim()) return;
-    setEventNameLoading(true);
-    setEventNameError(null);
-    try {
-      await EventService.updateEventName(
-        selectedEvent.id,
-        eventNameInput.trim()
-      );
-      toast.updated("Event name");
-      setIsEditingEventName(false);
-      refetchEvent();
-    } catch (error) {
-      setEventNameError(
-        error instanceof Error ? error.message : "Failed to update event name"
-      );
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update event name",
-        "Error"
-      );
-    } finally {
-      setEventNameLoading(false);
-    }
-  };
+  const handleEventUpdated = useCallback(async () => {
+    console.log("Refetching event data after update...");
+    await refetchEvent();
+    console.log("Event data refetched successfully");
+  }, [refetchEvent]);
 
   // --- useEffect for hiding exported cards & sorting ---
   useEffect(() => {
@@ -937,11 +906,6 @@ const Dashboard = () => {
     }
     prevHideExported.current = hideExported;
   }, [hideExported]);
-
-  // --- useEffect for event name ---
-  useEffect(() => {
-    setEventNameInput(selectedEvent?.name || "");
-  }, [selectedEvent]);
 
   // --- useEffect for card field preferences ---
   // ✅ OPTIMIZED: Use existing school data instead of duplicate API call
@@ -1090,14 +1054,7 @@ const Dashboard = () => {
           setSelectedTab={setSelectedTab}
           setHideExported={setHideExported}
           hideExported={hideExported}
-          isEditingEventName={isEditingEventName}
-          eventNameInput={eventNameInput}
-          setEventNameInput={setEventNameInput}
-          eventNameLoading={eventNameLoading}
-          eventNameError={eventNameError || ""}
-          handleEditEventName={handleEditEventName}
-          handleSaveEventName={handleSaveEventName}
-          handleCancelEditEventName={handleCancelEditEventName}
+          onEditEvent={handleEditEvent}
           onRefreshCards={fetchCards}
         />
 
@@ -1396,6 +1353,19 @@ const Dashboard = () => {
             />
           </DialogContent>
         </Dialog>
+
+        {/* Edit Event Modal */}
+        <CreateEventModal
+          isOpen={isEditEventModalOpen}
+          onClose={() => setIsEditEventModalOpen(false)}
+          onEventCreated={handleEventUpdated}
+          existingEvent={selectedEvent ? {
+            id: selectedEvent.id,
+            name: selectedEvent.name,
+            date: selectedEvent.date || '',
+            slate_event_id: selectedEvent.slate_event_id
+          } : null}
+        />
       </div>
     </ErrorBoundary>
   );

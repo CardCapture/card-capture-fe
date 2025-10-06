@@ -17,20 +17,13 @@ import { CompactProcessingStatus } from "@/components/CompactProcessingStatus";
 import { ProcessingService } from "@/services/processingService";
 
 interface EventHeaderProps {
-  selectedEvent: { id: string; name: string; school_id?: string } | null;
+  selectedEvent: { id: string; name: string; school_id?: string; date?: string; slate_event_id?: string | null } | null;
   getStatusCount: (status: string) => number;
   selectedTab: string;
   setSelectedTab: (tab: string) => void;
   setHideExported: (hide: boolean) => void;
   hideExported: boolean;
-  isEditingEventName: boolean;
-  eventNameInput: string;
-  setEventNameInput: (name: string) => void;
-  eventNameLoading: boolean;
-  eventNameError: string;
-  handleEditEventName: () => void;
-  handleSaveEventName: () => void;
-  handleCancelEditEventName: () => void;
+  onEditEvent: () => void;
   onRefreshCards?: () => void;
 }
 
@@ -41,14 +34,7 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   setSelectedTab,
   setHideExported,
   hideExported,
-  isEditingEventName,
-  eventNameInput,
-  setEventNameInput,
-  eventNameLoading,
-  eventNameError,
-  handleEditEventName,
-  handleSaveEventName,
-  handleCancelEditEventName,
+  onEditEvent,
   onRefreshCards,
 }) => {
   // Memoize tab click handlers to prevent unnecessary re-renders
@@ -123,66 +109,46 @@ const EventHeader: React.FC<EventHeaderProps> = ({
       <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
         <Card className="mb-4 sm:mb-6">
           <CardContent className="relative flex flex-col gap-4 p-4 sm:p-6">
-            {/* Event Name Section */}
+            {/* Event Details Section */}
             <div className="flex flex-col text-left w-full">
               <div className="flex flex-col text-left min-w-0 flex-1">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-2 text-left flex items-center gap-2 flex-wrap">
-                {isEditingEventName ? (
-                  <>
-                    <input
-                      className="border rounded px-2 py-1 text-base sm:text-lg font-semibold w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={eventNameInput}
-                      onChange={(e) => setEventNameInput(e.target.value)}
-                      disabled={eventNameLoading}
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSaveEventName();
-                        if (e.key === "Escape") handleCancelEditEventName();
-                      }}
-                    />
-                    <div className="flex items-center gap-1">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-1 text-left flex items-center gap-2">
+                      <span className="break-words">
+                        {selectedEvent ? selectedEvent.name : "All Events"}
+                      </span>
                       <button
-                        className="text-green-600 hover:text-green-800 disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                        onClick={handleSaveEventName}
-                        disabled={eventNameLoading || !eventNameInput.trim()}
-                        aria-label="Save event name"
+                        className="text-gray-400 hover:text-blue-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                        onClick={onEditEvent}
+                        aria-label="Edit event"
                       >
-                        {eventNameLoading ? (
-                          <Loader2 className="animate-spin w-5 h-5" />
-                        ) : (
-                          <Check className="w-5 h-5" />
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </h1>
+                    {selectedEvent && (
+                      <div className="flex flex-col gap-1 text-sm text-gray-600">
+                        {selectedEvent.date && (
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">Date:</span>
+                            <span>{(() => {
+                              // Parse date as local date to avoid timezone issues
+                              const [year, month, day] = selectedEvent.date.split('-').map(Number);
+                              const date = new Date(year, month - 1, day);
+                              return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                            })()}</span>
+                          </div>
                         )}
-                      </button>
-                      <button
-                        className="text-gray-500 hover:text-red-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                        onClick={handleCancelEditEventName}
-                        disabled={eventNameLoading}
-                        aria-label="Cancel edit"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <span className="break-words">
-                      {selectedEvent ? selectedEvent.name : "All Events"}
-                    </span>
-                    <button
-                      className="text-gray-400 hover:text-blue-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      onClick={handleEditEventName}
-                      aria-label="Edit event name"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                  </>
-                )}
-              </h1>
-                {eventNameError && (
-                  <div className="text-sm text-red-600 mt-1">
-                    {eventNameError}
+                        {selectedEvent.slate_event_id && (
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">Event UUID:</span>
+                            <span className="font-mono text-xs">{selectedEvent.slate_event_id}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
             

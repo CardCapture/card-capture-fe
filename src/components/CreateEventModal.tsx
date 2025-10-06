@@ -31,14 +31,22 @@ import { useProfile } from "@/hooks/useProfile";
 interface CreateEventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onEventCreated: () => void;
+  onEventCreated: () => void | Promise<void>;
+  existingEvent?: {
+    id: string;
+    name: string;
+    date: string;
+    slate_event_id?: string | null;
+  } | null;
 }
 
 const CreateEventModal: React.FC<CreateEventModalProps> = ({
   isOpen,
   onClose,
   onEventCreated,
+  existingEvent = null,
 }) => {
+  const isEditMode = !!existingEvent;
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [slateEventId, setSlateEventId] = useState("");
@@ -54,8 +62,27 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   // Use shared profile hook instead of duplicate fetching
   const { schoolId, loading: profileLoading } = useProfile();
 
-  // Search CRM events when user types in event name
+  // Initialize form with existing event data when in edit mode
   useEffect(() => {
+    if (existingEvent) {
+      setEventName(existingEvent.name);
+      setEventDate(existingEvent.date);
+      setSlateEventId(existingEvent.slate_event_id || "");
+    } else {
+      // Reset form when not in edit mode
+      setEventName("");
+      setEventDate("");
+      setSlateEventId("");
+    }
+  }, [existingEvent]);
+
+  // Search CRM events when user types in event name (only in create mode)
+  useEffect(() => {
+    // Don't search in edit mode
+    if (isEditMode) {
+      return;
+    }
+
     if (eventName.length < 2) {
       setCrmEvents([]);
       setShowSuggestions(false);
@@ -173,94 +200,118 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         );
         return;
       }
-      if (!schoolId) {
+
+      // Only check schoolId in create mode
+      if (!isEditMode && !schoolId) {
         toast.error(
           "Your user profile is missing a school ID. Please contact support.",
           "Missing School ID"
         );
         return;
       }
+
       setIsCreating(true);
       try {
-        const eventData = {
-          name: eventName,
-          date: eventDate,
-          school_id: schoolId,
-          slate_event_id: slateEventId.trim() || null,
-        };
-        
-        console.log("CREATE EVENT DEBUG - Frontend sending data:", eventData);
-        console.log("CREATE EVENT DEBUG - schoolId from useProfile:", schoolId);
-        console.log("CREATE EVENT DEBUG - user from useAuth:", user?.id);
-        console.log("CREATE EVENT DEBUG - slateEventId state:", slateEventId);
-        console.log("CREATE EVENT DEBUG - slateEventId.trim():", slateEventId.trim());
-        console.log("CREATE EVENT DEBUG - slateEventId.trim() || null:", slateEventId.trim() || null);
-        
-        const createdEvent = await EventService.createEvent(eventData);
-        console.log("CREATE EVENT DEBUG - Created event response:", createdEvent);
-
-        // DEBUG: Check if newly created event appears in Supabase query
-        try {
-          const { supabase } = await import('@/lib/supabaseClient');
-          console.log("DEBUG: Querying events table directly after creation");
-          
-          const { data: directQuery, error } = await supabase
-            .from('events')
-            .select('id, name, school_id')
-            .eq('school_id', schoolId)
-            .order('created_at', { ascending: false })
-            .limit(10);
-            
-          console.log("DEBUG: Direct Supabase query result:", {
-            data: directQuery,
-            error: error,
-            newEventId: createdEvent.id,
-            schoolIdUsed: schoolId
+        if (isEditMode && existingEvent) {
+          // Update existing event
+          console.log("Updating event:", {
+            id: existingEvent.id,
+            name: eventName,
+            date: eventDate,
+            slate_event_id: slateEventId.trim() || null,
           });
-          
-          // Check if the new event is in the results
-          const newEventFound = directQuery?.find(event => event.id === createdEvent.id);
-          console.log("DEBUG: New event found in direct query?", newEventFound);
-          
-          // Also try calling the debug endpoint with proper auth
+
+          await EventService.updateEvent(existingEvent.id, {
+            name: eventName,
+            date: eventDate,
+            slate_event_id: slateEventId.trim() || null,
+          });
+
+          console.log("Event updated successfully");
+          toast.updated("Event");
+        } else {
+          // Create new event
+          const eventData = {
+            name: eventName,
+            date: eventDate,
+            school_id: schoolId!,
+            slate_event_id: slateEventId.trim() || null,
+          };
+
+          console.log("CREATE EVENT DEBUG - Frontend sending data:", eventData);
+          console.log("CREATE EVENT DEBUG - schoolId from useProfile:", schoolId);
+          console.log("CREATE EVENT DEBUG - user from useAuth:", user?.id);
+          console.log("CREATE EVENT DEBUG - slateEventId state:", slateEventId);
+          console.log("CREATE EVENT DEBUG - slateEventId.trim():", slateEventId.trim());
+          console.log("CREATE EVENT DEBUG - slateEventId.trim() || null:", slateEventId.trim() || null);
+
+          const createdEvent = await EventService.createEvent(eventData);
+          console.log("CREATE EVENT DEBUG - Created event response:", createdEvent);
+
+          // DEBUG: Check if newly created event appears in Supabase query
           try {
-            const debugResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/debug/auth-user`, {
-              headers: {
-                'Authorization': `Bearer ${session?.access_token}`,
-              },
+            const { supabase } = await import('@/lib/supabaseClient');
+            console.log("DEBUG: Querying events table directly after creation");
+
+            const { data: directQuery, error } = await supabase
+              .from('events')
+              .select('id, name, school_id')
+              .eq('school_id', schoolId)
+              .order('created_at', { ascending: false })
+              .limit(10);
+
+            console.log("DEBUG: Direct Supabase query result:", {
+              data: directQuery,
+              error: error,
+              newEventId: createdEvent.id,
+              schoolIdUsed: schoolId
             });
-            const debugData = await debugResponse.json();
-            console.log("DEBUG auth.users check:", debugData);
+
+            // Check if the new event is in the results
+            const newEventFound = directQuery?.find(event => event.id === createdEvent.id);
+            console.log("DEBUG: New event found in direct query?", newEventFound);
+
+            // Also try calling the debug endpoint with proper auth
+            try {
+              const debugResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/debug/auth-user`, {
+                headers: {
+                  'Authorization': `Bearer ${session?.access_token}`,
+                },
+              });
+              const debugData = await debugResponse.json();
+              console.log("DEBUG auth.users check:", debugData);
+            } catch (debugError) {
+              console.log("DEBUG endpoint failed:", debugError);
+            }
+
           } catch (debugError) {
-            console.log("DEBUG endpoint failed:", debugError);
+            console.log("DEBUG: Supabase direct query failed:", debugError);
           }
-          
-        } catch (debugError) {
-          console.log("DEBUG: Supabase direct query failed:", debugError);
+
+          toast.created("Event");
         }
 
-        toast.created("Event");
-        onEventCreated();
+        await onEventCreated();
         resetForm();
         onClose();
       } catch (error) {
-        console.error("Error creating event:", error);
+        console.error(`Error ${isEditMode ? 'updating' : 'creating'} event:`, error);
         toast.error(
-          "Something went wrong while creating the event. Please try again.",
-          "Creation Failed"
+          `Something went wrong while ${isEditMode ? 'updating' : 'creating'} the event. Please try again.`,
+          `${isEditMode ? 'Update' : 'Creation'} Failed`
         );
       } finally {
         setIsCreating(false);
       }
     },
-    [eventName, eventDate, slateEventId, schoolId, onEventCreated, onClose]
+    [eventName, eventDate, slateEventId, schoolId, isEditMode, existingEvent, onEventCreated, onClose]
   );
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Event</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Event" : "Create New Event"}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
@@ -292,9 +343,9 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   </div>
                 )}
               </div>
-              
-              {/* CRM Event Suggestions Dropdown */}
-              {showSuggestions && crmEvents.length > 0 && (
+
+              {/* CRM Event Suggestions Dropdown (only in create mode) */}
+              {!isEditMode && showSuggestions && crmEvents.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                   {crmEvents.map((event, index) => (
                     <div
@@ -341,10 +392,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="slate-event-id">Event ID (Optional)</Label>
+              <Label htmlFor="slate-event-id">Event UUID (Optional)</Label>
               <Input
                 id="slate-event-id"
-                placeholder="Enter Event ID"
+                placeholder="Enter Event UUID"
                 value={slateEventId}
                 onChange={handleSlateEventIdChange}
                 disabled={isCreating}
@@ -368,10 +419,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
               {isCreating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
+                  {isEditMode ? "Updating..." : "Creating..."}
                 </>
               ) : (
-                "Create Event"
+                isEditMode ? "Update Event" : "Create Event"
               )}
             </Button>
           </DialogFooter>
