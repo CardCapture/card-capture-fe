@@ -27,7 +27,7 @@ export function useCardStats(cards: ProspectCard[]): CardStats {
       stats.total++;
       
       switch (status) {
-        case 'needs_human_review':
+        case 'needs_review':
           stats.needsReview++;
           break;
         case 'reviewed':

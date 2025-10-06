@@ -79,7 +79,7 @@ const CardList = () => {
 
         if (status === "reviewed") {
           displayText = "Ready for Export";
-        } else if (status === "needs_human_review") {
+        } else if (status === "needs_review") {
           displayText = "Needs Review";
         } else if (status === "exported") {
           displayText = "Exported";
@@ -142,8 +142,8 @@ const CardList = () => {
           <TabsTrigger value="reviewed">
             Reviewed ({getStatusCountWithAll("reviewed")})
           </TabsTrigger>
-          <TabsTrigger value="needs_human_review">
-            Needs Review ({getStatusCountWithAll("needs_human_review")})
+          <TabsTrigger value="needs_review">
+            Needs Review ({getStatusCountWithAll("needs_review")})
           </TabsTrigger>
           <TabsTrigger value="exported">
             Exported ({getStatusCountWithAll("exported")})

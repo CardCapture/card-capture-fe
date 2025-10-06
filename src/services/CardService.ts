@@ -241,7 +241,7 @@ export class CardService {
           card.document_id ||
           card.id ||
           `unknown-${Math.random().toString(36).substring(7)}`,
-        review_status: card.review_status || "needs_human_review",
+        review_status: card.review_status || "needs_review",
         created_at:
           card.created_at || card.uploaded_at || new Date().toISOString(),
         updated_at:

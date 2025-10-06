@@ -5,7 +5,7 @@ export function useStatusTabs(
   cards: ProspectCard[],
   determineCardStatus: (card: ProspectCard) => string
 ) {
-  const [selectedTab, setSelectedTab] = useState<string>("needs_human_review");
+  const [selectedTab, setSelectedTab] = useState<string>("needs_review");
 
   const getStatusCount = useCallback(
     (status: string) => {

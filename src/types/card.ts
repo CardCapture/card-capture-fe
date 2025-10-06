@@ -1,7 +1,7 @@
 // Define all possible status strings returned by the backend's 'review_status'
 export type CardStatus =
   | "reviewed"
-  | "needs_human_review"
+  | "needs_review"
   | "exported"
   | "archived"
   | "processing"

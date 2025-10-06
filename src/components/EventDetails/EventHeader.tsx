@@ -39,7 +39,7 @@ const EventHeader: React.FC<EventHeaderProps> = ({
 }) => {
   // Memoize tab click handlers to prevent unnecessary re-renders
   const handleNeedsReviewClick = useCallback(() => {
-    setSelectedTab("needs_human_review");
+    setSelectedTab("needs_review");
   }, [setSelectedTab]);
 
   const handleReadyToExportClick = useCallback(() => {
@@ -177,14 +177,14 @@ const EventHeader: React.FC<EventHeaderProps> = ({
                 <Badge
                   variant="outline"
                   className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${
-                    selectedTab === "needs_human_review"
+                    selectedTab === "needs_review"
                       ? "border-2 border-indigo-500 text-indigo-700 bg-indigo-50"
                       : ""
                   }`}
                 >
                   <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
                   <span className="hidden sm:inline">Needs Review:</span>
-                  <span>{getStatusCount("needs_human_review")}</span>
+                  <span>{getStatusCount("needs_review")}</span>
                 </Badge>
               </button>
               <button

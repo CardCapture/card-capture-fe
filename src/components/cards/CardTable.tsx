@@ -583,7 +583,7 @@ const CardTable: React.FC<CardTableProps> = ({
                       <TableRow>
                         <TableCell colSpan={13} className="h-24">
                           <div className="flex flex-col items-center justify-center h-full gap-2 p-4">
-                            {selectedTab === "needs_human_review" ? (
+                            {selectedTab === "needs_review" ? (
                               <>
                                 <div className="text-sm font-medium text-gray-900 text-center">
                                   Nice work! No cards need review right now.

@@ -249,7 +249,7 @@ export function useCardReviewModal(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             fields: updatedFields,
-            status: allRequiredReviewed ? "reviewed" : "needs_human_review",
+            status: allRequiredReviewed ? "reviewed" : "needs_review",
           }),
         }
       );

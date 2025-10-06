@@ -39,7 +39,7 @@ export function determineCardStatus(card: ProspectCard): CardStatus | null {
 
   // Check if any fields need review next
   if (card.fields && hasFieldsNeedingReview(card.fields)) {
-    return 'needs_human_review';
+    return 'needs_review';
   }
 
   // If not archived but exported, show as exported
@@ -48,5 +48,5 @@ export function determineCardStatus(card: ProspectCard): CardStatus | null {
   }
 
   // Default to needs review if we can't determine the status
-  return 'needs_human_review';
+  return 'needs_review';
 } 

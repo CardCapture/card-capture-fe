@@ -39,7 +39,7 @@ export function getEventCardStats(cards: ProspectCard[]): CardStats {
     // Debug logging removed for production
 
     switch (status) {
-      case 'needs_human_review':
+      case 'needs_review':
         stats.needs_review++;
         break;
       case 'reviewed':

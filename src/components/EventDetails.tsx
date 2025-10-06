@@ -404,8 +404,8 @@ const Dashboard = () => {
       switch (selectedTab) {
         case "ready_to_export":
           return currentStatus === "reviewed" || currentStatus === "exported";
-        case "needs_human_review":
-          return currentStatus === "needs_human_review";
+        case "needs_review":
+          return currentStatus === "needs_review";
         case "exported":
           return currentStatus === "exported";
         case "archived":
@@ -648,7 +648,7 @@ const Dashboard = () => {
           const exportedAt = card.exported_at;
           const isSignupSheet = card.upload_type === "signup_sheet";
           let displayText: string;
-          if (currentStatus === "needs_human_review") {
+          if (currentStatus === "needs_review") {
             displayText = isSignupSheet ? "Sign-up Sheet" : "Needs Review";
           } else if (currentStatus === "reviewed") {
             displayText = "Ready for Export";
@@ -667,7 +667,7 @@ const Dashboard = () => {
           const getBadgeClasses = () => {
             if (currentStatus === "reviewed") {
               return "border-green-500 text-green-700 bg-green-50 font-semibold text-xs px-3 py-1 rounded-full";
-            } else if (currentStatus === "needs_human_review") {
+            } else if (currentStatus === "needs_review") {
               // Use purple/indigo for signup sheets, yellow for regular needs review
               if (isSignupSheet) {
                 return "border-indigo-400 text-indigo-800 bg-indigo-50 font-semibold text-xs px-3 py-1 rounded-full";
@@ -1004,7 +1004,7 @@ const Dashboard = () => {
   // Auto-switch away from ai_failed tab if no cards need retry
   useEffect(() => {
     if (selectedTab === "ai_failed" && needsRetryCount === 0) {
-      setSelectedTab("needs_human_review");
+      setSelectedTab("needs_review");
     }
   }, [selectedTab, needsRetryCount, setSelectedTab]);
 
@@ -1070,9 +1070,9 @@ const Dashboard = () => {
                 {/* Main Tabs - Left side */}
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 w-full sm:w-auto">
                   <button
-                    onClick={() => setSelectedTab("needs_human_review")}
+                    onClick={() => setSelectedTab("needs_review")}
                     className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                      selectedTab === "needs_human_review"
+                      selectedTab === "needs_review"
                         ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
                         : "text-gray-500 hover:text-gray-700"
                     }`}
@@ -1082,7 +1082,7 @@ const Dashboard = () => {
                       variant="outline"
                       className="ml-2 text-indigo-700 border-indigo-200 bg-white text-xs"
                     >
-                      {getStatusCount("needs_human_review")}
+                      {getStatusCount("needs_review")}
                     </Badge>
                   </button>
                   <button
