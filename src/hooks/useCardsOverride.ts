@@ -43,19 +43,28 @@ export function useCardsOverride(eventId?: string) {
   const LOADER_ID = `cards-${eventId || "default"}`;
 
   const fetchCards = useCallback(async () => {
+    console.log("useCardsOverride: fetchCards called", { eventId });
+    
     // Prevent parallel requests and implement debouncing
     const now = Date.now();
     if (
       fetchInProgressRef.current ||
       now - lastFetchTimeRef.current < DEBOUNCE_DELAY
     ) {
+      console.log("useCardsOverride: fetchCards blocked by debounce", { 
+        fetchInProgress: fetchInProgressRef.current, 
+        timeSinceLastFetch: now - lastFetchTimeRef.current 
+      });
       return;
     }
 
     // Only fetch if we have an eventId
     if (!eventId) {
+      console.log("useCardsOverride: no eventId, skipping fetch");
       return;
     }
+
+    console.log("useCardsOverride: Starting API fetch for event", eventId);
 
     try {
       fetchInProgressRef.current = true;
@@ -71,6 +80,8 @@ export function useCardsOverride(eventId?: string) {
       const data: RawCardData[] = (await CardService.getCardsByEvent(
         eventId
       )) as RawCardData[];
+      
+      console.log("useCardsOverride: Received data from API", { count: data.length, eventId });
 
 
       // Map the data to ensure all required fields are properly set
@@ -114,8 +125,9 @@ export function useCardsOverride(eventId?: string) {
       });
 
       setCards(mappedCards);
+      console.log("useCardsOverride: Cards state updated", { count: mappedCards.length });
     } catch (error) {
-      console.error("Error fetching cards:", error);
+      console.error("useCardsOverride: Error fetching cards:", error);
     } finally {
       hideTableLoader(LOADER_ID);
       fetchInProgressRef.current = false;
@@ -124,13 +136,14 @@ export function useCardsOverride(eventId?: string) {
 
   // Effect for initial fetch and eventId changes
   useEffect(() => {
+    console.log("useCardsOverride: useEffect triggered", { eventId, hasEventId: !!eventId });
     if (eventId) {
       fetchCards();
     } else {
       // Clear cards when no eventId is provided
       setCards([]);
     }
-  }, [eventId]);
+  }, [eventId, fetchCards]); // Include fetchCards to ensure fresh closure
 
   // Effect for Supabase real-time subscription
   useEffect(() => {
