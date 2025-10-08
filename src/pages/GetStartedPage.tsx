@@ -116,7 +116,7 @@ const GetStartedPage = () => {
         >
           <div className="flex items-center justify-center gap-2 mb-4">
             <ClipboardCheck className="h-8 w-8 text-primary" />
-            <h1 className="text-4xl font-bold tracking-tight">Ready to Ditch Data Entry?</h1>
+            <h1 className="text-4xl font-bold tracking-tight">Want to Hear More?</h1>
           </div>
           <p className="text-lg text-muted-foreground">
             Tell us about your school. We'll reach out to schedule a demo, and discuss pricing.
