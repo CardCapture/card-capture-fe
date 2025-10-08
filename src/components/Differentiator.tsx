@@ -26,28 +26,28 @@ const Differentiator = () => {
 
   const comparisons = [
     {
-      feature: "Works even when phones are banned",
-      qr: { type: "x", text: "" },
+      feature: "Works when phones aren't allowed",
+      phoneOnly: { type: "x", text: "" },
+      cardcapture: { type: "check", text: "Physical cards available" }
+    },
+    {
+      feature: "QR code support",
+      phoneOnly: { type: "check", text: "" },
       cardcapture: { type: "check", text: "" }
     },
     {
-      feature: "Works at every school",
-      qr: { type: "warning", text: "Some blocked" },
-      cardcapture: { type: "check", text: "" }
+      feature: "No event coordinator setup required",
+      phoneOnly: { type: "x", text: "Requires pre-registration" },
+      cardcapture: { type: "check", text: "Just hand out cards" }
     },
     {
-      feature: "No setup required",
-      qr: { type: "x", text: "Requires event setup & staff time" },
-      cardcapture: { type: "check", text: "Just print and go" }
-    },
-    {
-      feature: "Instant student engagement",
-      qr: { type: "x", text: "Slows lines down" },
-      cardcapture: { type: "check", text: "Fast and familiar" }
+      feature: "Fast student interaction",
+      phoneOnly: { type: "warning", text: "Students need to find code" },
+      cardcapture: { type: "check", text: "Instant—grab a card" }
     },
     {
       feature: "Instant data delivery",
-      qr: { type: "check", text: "" },
+      phoneOnly: { type: "check", text: "" },
       cardcapture: { type: "check", text: "" }
     }
   ];
@@ -60,7 +60,7 @@ const Differentiator = () => {
           {/* Headline */}
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              The only solution that works anywhere
+              Every School <span className="text-primary">Every Situation</span>
             </h2>
           </div>
 
@@ -71,7 +71,7 @@ const Differentiator = () => {
               <thead>
                 <tr>
                   <th className="text-left p-4 text-lg font-semibold"></th>
-                  <th className="text-center p-4 text-lg font-semibold border-l border-foreground/10">QR Signups</th>
+                  <th className="text-center p-4 text-lg font-semibold border-l border-foreground/10">Phone-Only Solutions</th>
                   <th className="text-center p-4 text-lg font-semibold border-l border-foreground/10">CardCapture</th>
                 </tr>
               </thead>
@@ -83,22 +83,22 @@ const Differentiator = () => {
                     <td className="p-4 font-medium text-left">{item.feature}</td>
 
                     <td className="p-4 border-l border-foreground/10 text-center">
-                      {item.qr.type === "x" && (
+                      {item.phoneOnly.type === "x" && (
                         <div className="flex flex-col items-center gap-2">
                           <X className="h-6 w-6 text-red-500" strokeWidth={2.5} />
-                          {item.qr.text && <span className="text-sm text-foreground/60">{item.qr.text}</span>}
+                          {item.phoneOnly.text && <span className="text-sm text-foreground/60">{item.phoneOnly.text}</span>}
                         </div>
                       )}
-                      {item.qr.type === "check" && (
+                      {item.phoneOnly.type === "check" && (
                         <div className="flex flex-col items-center gap-2">
                           <Check className="h-6 w-6 text-green-500" strokeWidth={2.5} />
-                          {item.qr.text && <span className="text-sm text-foreground/60">{item.qr.text}</span>}
+                          {item.phoneOnly.text && <span className="text-sm text-foreground/60">{item.phoneOnly.text}</span>}
                         </div>
                       )}
-                      {item.qr.type === "warning" && (
+                      {item.phoneOnly.type === "warning" && (
                         <div className="flex flex-col items-center gap-2">
                           <AlertTriangle className="h-6 w-6 text-yellow-500" strokeWidth={2.5} />
-                          {item.qr.text && <span className="text-sm text-foreground/60">{item.qr.text}</span>}
+                          {item.phoneOnly.text && <span className="text-sm text-foreground/60">{item.phoneOnly.text}</span>}
                         </div>
                       )}
                     </td>

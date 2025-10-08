@@ -57,7 +57,7 @@ const Hero = () => {
                     poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 720'%3E%3Crect fill='%23000000' width='1280' height='720'/%3E%3C/svg%3E"
                   >
                     <source
-                      src="https://assets.cardcapture.io/storage/v1/object/public/assets/CardCapture%20Demo-Nationwide.mp4"
+                      src="https://assets.cardcapture.io/storage/v1/object/public/assets/CardCapture%20Demo.mp4"
                       type="video/mp4"
                     />
                     Your browser does not support the video tag.

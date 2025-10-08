@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Camera, Download } from 'lucide-react';
+import { Package, Camera, Download, Smartphone, FileText } from 'lucide-react';
 
 const HowItWorks = () => {
   const [visible, setVisible] = useState(false);
@@ -27,16 +27,21 @@ const HowItWorks = () => {
   const workflowSteps = [
     {
       step: "1",
-      title: "Universal Cards Shipped to you",
+      title: "QR Codes or Paper Cards",
+      description: "Both Accepted",
       visual: (
-        <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-blue-100/50 rounded-2xl flex items-center justify-center border border-foreground/10">
-          <Package className="h-20 w-20 text-primary/40" strokeWidth={1.5} />
+        <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-blue-100/50 rounded-2xl flex items-center justify-center border border-foreground/10 relative">
+          <div className="flex gap-6">
+            <Smartphone className="h-16 w-16 text-primary/60" strokeWidth={1.5} />
+            <FileText className="h-16 w-16 text-primary/60" strokeWidth={1.5} />
+          </div>
         </div>
       )
     },
     {
       step: "2",
-      title: "Students fill them out",
+      title: "Every student included",
+      description: "Digital or paper—they choose",
       visual: (
         <div className="aspect-[4/3] bg-gradient-to-br from-emerald-50 to-green-100/50 rounded-2xl flex items-center justify-center border border-foreground/10">
           <Camera className="h-20 w-20 text-emerald-500/40" strokeWidth={1.5} />
@@ -45,7 +50,8 @@ const HowItWorks = () => {
     },
     {
       step: "3",
-      title: "You scan and export the data to your CRM",
+      title: "Unified export",
+      description: "All data, one export",
       visual: (
         <div className="aspect-[4/3] bg-gradient-to-br from-blue-50 to-indigo-100/50 rounded-2xl flex items-center justify-center border border-foreground/10">
           <Download className="h-20 w-20 text-blue-500/40" strokeWidth={1.5} />
@@ -61,7 +67,7 @@ const HowItWorks = () => {
         {/* Headline */}
         <div className={`text-center mb-16 ${visible ? 'animate-fade-in' : 'opacity-0'}`}>
           <h2 className="text-4xl md:text-5xl font-bold">
-            From fair to CRM in three steps
+            Two methods <span className="text-primary">One Platform</span>
           </h2>
         </div>
 
@@ -86,9 +92,14 @@ const HowItWorks = () => {
               </div>
 
               {/* Title */}
-              <h3 className="text-xl md:text-2xl font-bold text-center">
+              <h3 className="text-xl md:text-2xl font-bold text-center mb-2">
                 {step.title}
               </h3>
+
+              {/* Description */}
+              <p className="text-base text-foreground/60 text-center">
+                {step.description}
+              </p>
             </div>
           ))}
         </div>

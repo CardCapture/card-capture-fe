@@ -47,7 +47,7 @@ const SecondaryFeatures = () => {
           {/* Headline */}
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold">
-              Built for admissions teams
+              Admissions Ready <span className="text-primary">CRM Friendly</span>
             </h2>
           </div>
 

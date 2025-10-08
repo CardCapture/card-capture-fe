@@ -13,7 +13,7 @@ const FinalCTA = () => {
           Students deserve better
         </h2>
         <p className="text-xl md:text-2xl opacity-90 mb-4">
-          Built for college fairs Ready for every student
+          Built for college fairs, Ready for every student
         </p>
         <p className="text-sm opacity-75 mb-10">
           Also available with custom-branded inquiry cards for year-round recruitment
