@@ -1,8 +1,12 @@
 // src/pages/HomePage.tsx
 import { useEffect } from 'react';
 import Hero from '@/components/Hero';
+import Problem from '@/components/Problem';
+import Solution from '@/components/Solution';
 import HowItWorks from '@/components/HowItWorks';
-import Features from '@/components/Features';
+import Differentiator from '@/components/Differentiator';
+import SecondaryFeatures from '@/components/SecondaryFeatures';
+import FinalCTA from '@/components/Features';
 
 const HomePage = () => {
   useEffect(() => {
@@ -13,8 +17,12 @@ const HomePage = () => {
   return (
     <>
       <Hero />
+      <Problem />
+      <Solution />
       <HowItWorks />
-      <Features />
+      <Differentiator />
+      <SecondaryFeatures />
+      <FinalCTA />
     </>
   );
 };

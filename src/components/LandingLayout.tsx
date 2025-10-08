@@ -155,7 +155,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                 <span className="font-bold text-lg tracking-tight">CardCapture</span>
               </div>
               <p className="text-sm text-foreground/70">
-              Process cards in <b>minutes</b>, not hours. Contact leads in <b>hours</b>, not days
+              The only college fair registration system that works <b>with or without phones</b>
               </p>
             </div>
             <div>
