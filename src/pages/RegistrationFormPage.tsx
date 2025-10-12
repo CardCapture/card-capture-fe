@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MultiSelectAutocomplete } from '@/components/ui/multi-select-autocomplete';
 import { useToast } from '@/hooks/use-toast';
 import { RegistrationService } from '@/services/RegistrationService';
 
@@ -16,6 +17,12 @@ const autofillStyles = `
     transition: background-color 100000s ease-in-out 0s;
   }
 `;
+
+interface MajorItem {
+  id: string | number;
+  label: string;
+  value?: string;
+}
 
 interface FormData {
   first_name: string;
@@ -42,7 +49,7 @@ interface FormData {
   entry_term?: string;
   entry_year?: number;
   major?: string;
-  academic_interests?: string[];
+  academic_interests?: MajorItem[];
 }
 
 export default function RegistrationFormPage() {
@@ -57,6 +64,7 @@ export default function RegistrationFormPage() {
     email: '',
     email_opt_in: true,
     permission_to_text: false,
+    academic_interests: [],
   });
 
   // Add search states for typeahead
@@ -113,6 +121,25 @@ export default function RegistrationFormPage() {
       console.error('🔍 Major search error:', error);
       setMajorSuggestions([]);
       setShowMajorSuggestions(false);
+    }
+  };
+
+  // Search function for academic interests (uses same majors API)
+  const searchAcademicInterests = async (query: string): Promise<any[]> => {
+    if (query.length < 2) {
+      return [];
+    }
+
+    try {
+      console.log('🔍 Searching academic interests for:', query);
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiBaseUrl}/majors/search?q=${encodeURIComponent(query)}&limit=10`);
+      const data = await response.json();
+      console.log('🔍 Academic interests search results:', data);
+      return data.results || [];
+    } catch (error) {
+      console.error('🔍 Academic interests search error:', error);
+      return [];
     }
   };
 
@@ -200,25 +227,22 @@ export default function RegistrationFormPage() {
     setSubmitting(true);
 
     try {
-      // Prepare academic interests array from text
-      const academicInterestsText = (form as any).academic_interests_text;
+      // Prepare academic interests as array of strings (labels)
       const formData = {
         ...form,
-        academic_interests: academicInterestsText
-          ? academicInterestsText.split(',').map((s: string) => s.trim()).filter((s: string) => !!s)
-          : undefined,
+        academic_interests: form.academic_interests?.map(item => item.label) || [],
       };
 
       const result = await RegistrationService.submitRegistration(formData);
-      
+
       // Navigate to success page
-      navigate('/register/success', { 
-        state: { 
+      navigate('/register/success', {
+        state: {
           verified: result.verified,
           message: result.message,
           token: result.token,
           qrDataUri: result.qrDataUri
-        } 
+        }
       });
 
       toast({
@@ -589,15 +613,19 @@ export default function RegistrationFormPage() {
               </div>
 
               <div className="md:col-span-2">
-                <Label htmlFor="academic_interests_text">Academic Interests</Label>
-                <Input 
-                  id="academic_interests_text" 
-                  name="academic_interests_text" 
-                  placeholder="e.g., Computer Science, Biology" 
-                  value={(form as any).academic_interests_text || ''} 
-                  onChange={handleChange} 
+                <MultiSelectAutocomplete
+                  label="Academic Interests"
+                  value={form.academic_interests || []}
+                  onChange={(items) => setForm(prev => ({ ...prev, academic_interests: items }))}
+                  onSearch={searchAcademicInterests}
+                  mapResultToItem={(result) => ({
+                    id: result.id,
+                    label: result.cip_title,
+                    value: result.cip_code,
+                  })}
+                  placeholder="Search for majors you're interested in..."
+                  helpText="Search and select multiple majors you're interested in studying"
                 />
-                <p className="text-xs text-gray-500 mt-1">Separate multiple interests with commas</p>
               </div>
 
               <div>

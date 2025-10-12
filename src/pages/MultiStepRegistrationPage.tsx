@@ -9,6 +9,7 @@ import { FormInput } from '@/components/ui/form-input';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { SmartPhoneInput } from '@/components/ui/smart-phone-input';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
+import { MultiSelectAutocomplete } from '@/components/ui/multi-select-autocomplete';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -18,13 +19,19 @@ import { RegistrationService } from '@/services/RegistrationService';
 import { validators, combineValidators } from '@/utils/validation';
 import { cn } from '@/lib/utils';
 
+interface MajorItem {
+  id: string | number;
+  label: string;
+  value?: string;
+}
+
 interface RegistrationFormData {
   // Step 1: Personal Info
   first_name: string;
   last_name: string;
   preferred_first_name: string;
   date_of_birth: string;
-  
+
   // Step 2: Contact Info
   email: string;
   cell: string;
@@ -33,7 +40,7 @@ interface RegistrationFormData {
   city: string;
   state: string;
   zip_code: string;
-  
+
   // Step 3: School Info
   high_school: string;
   grade_level: string;
@@ -42,12 +49,12 @@ interface RegistrationFormData {
   gpa_scale: string;
   sat_score: string;
   act_score: string;
-  
+
   // Step 4: Academic Interests
   entry_term: string;
   entry_year: string;
   major: string;
-  academic_interests_text: string;
+  academic_interests: MajorItem[];
   email_opt_in: boolean;
   permission_to_text: boolean;
 }
@@ -74,7 +81,7 @@ const initialFormData: RegistrationFormData = {
   entry_term: '',
   entry_year: '',
   major: '',
-  academic_interests_text: '',
+  academic_interests: [],
   email_opt_in: true,
   permission_to_text: false,
 };
@@ -155,6 +162,26 @@ export default function MultiStepRegistrationPage() {
       setShowMajorSuggestions(false);
     }
   };
+
+  // Search function for academic interests (uses same majors API)
+  const searchAcademicInterests = async (query: string): Promise<any[]> => {
+    if (query.length < 2) {
+      return [];
+    }
+
+    try {
+      console.log('🔍 Searching academic interests for:', query);
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const response = await fetch(`${API_BASE_URL}/majors/search?q=${encodeURIComponent(query)}&limit=10`);
+      const data = await response.json();
+      console.log('🔍 Academic interests search results:', data);
+      return data.results || [];
+    } catch (error) {
+      console.error('🔍 Academic interests search error:', error);
+      return [];
+    }
+  };
+
   const [submitting, setSubmitting] = useState(false);
   const [stepErrors, setStepErrors] = useState<Record<number, string[]>>({});
   
@@ -280,14 +307,12 @@ export default function MultiStepRegistrationPage() {
     if (!canContinue(currentStep)) return;
 
     setSubmitting(true);
-    
+
     try {
       // Prepare form data for submission
       const submissionData = {
         ...formData,
-        academic_interests: formData.academic_interests_text
-          ? formData.academic_interests_text.split(',').map(s => s.trim()).filter(s => !!s)
-          : undefined,
+        academic_interests: formData.academic_interests?.map(item => item.label) || [],
         gpa: formData.gpa ? parseFloat(formData.gpa) : undefined,
         gpa_scale: formData.gpa_scale ? parseFloat(formData.gpa_scale) : undefined,
         sat_score: formData.sat_score ? parseInt(formData.sat_score) : undefined,
@@ -826,20 +851,19 @@ export default function MultiStepRegistrationPage() {
                   )}
                 </div>
                 
-                <div className="space-y-2">
-                  <Label>Academic Interests</Label>
-                  <textarea
-                    name="academic_interests_text"
-                    value={formData.academic_interests_text}
-                    onChange={(e) => updateData({ academic_interests_text: e.target.value })}
-                    placeholder="e.g., Computer Science, Biology, Environmental Science, Business"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-base min-h-[100px] resize-y"
-                    rows={3}
-                  />
-                  <p className="text-sm text-gray-500">
-                    Separate multiple interests with commas
-                  </p>
-                </div>
+                <MultiSelectAutocomplete
+                  label="Academic Interests"
+                  value={formData.academic_interests || []}
+                  onChange={(items) => updateData({ academic_interests: items })}
+                  onSearch={searchAcademicInterests}
+                  mapResultToItem={(result) => ({
+                    id: result.id,
+                    label: result.display_name || result.cip_title,
+                    value: result.cip_code,
+                  })}
+                  placeholder="Search for majors you're interested in..."
+                  helpText="Search and select multiple majors you're interested in studying"
+                />
                 
                 <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
                   <h3 className="font-medium text-gray-900">Communication Preferences</h3>
