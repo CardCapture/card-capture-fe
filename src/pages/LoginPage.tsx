@@ -23,7 +23,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showMFAFlow, setShowMFAFlow] = useState(false);
-  const { signInWithPassword, profile, user } = useAuth();
+  const { signInWithPassword, profile, user, refetchProfile } = useAuth();
   const navigate = useNavigate();
 
   // Use global loader instead of local loading state
@@ -54,17 +54,22 @@ const LoginPage = () => {
 
   const handleMFASuccess = async () => {
     console.log('=== MFA SUCCESS ===');
-    
+
     // MFA enrollment completed successfully
     console.log('MFA enrollment completed, checking auth state');
-    
-    // Wait a moment for auth state to propagate
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+
+    // Refetch profile to ensure mfa_verified_at is up-to-date
+    try {
+      await refetchProfile();
+      console.log('Profile refetched after MFA success');
+    } catch (error) {
+      console.error('Error refetching profile:', error);
+    }
+
     // Get the current session to ensure auth state is updated
     const { data: { session } } = await supabase.auth.getSession();
     console.log('Current session after MFA:', session);
-    
+
     if (session) {
       // Session is ready, redirect to /events
       console.log('Session confirmed, redirecting to /events');
@@ -74,7 +79,7 @@ const LoginPage = () => {
       console.log('No session found, attempting to refresh');
       window.location.href = '/events';
     }
-    
+
     setShowMFAFlow(false);
   };
 

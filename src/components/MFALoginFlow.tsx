@@ -30,17 +30,154 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   const [rememberDevice, setRememberDevice] = useState(true); // Default to true for better UX
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRateLimited, setIsRateLimited] = useState(false);
   const [isFirstPasswordLogin, setIsFirstPasswordLogin] = useState(false);
-  
-  const { signInWithPassword, profile, user } = useAuth();
+
+  const { signInWithPassword, profile, user, refetchProfile } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     console.log('=== MFA LOGIN FLOW MOUNTED ===');
     console.log('Email:', email);
     console.log('Password length:', password.length);
-    handleLogin();
+
+    // Check if we're already in a session (e.g., user refreshed during MFA)
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        console.log('MFALoginFlow: Existing session detected, checking MFA status instead of re-authenticating');
+        // User is already authenticated, don't call signInWithPassword again
+        // Instead, check their MFA status
+        await handleExistingSession(session);
+      } else {
+        // No existing session, proceed with normal login
+        handleLogin();
+      }
+    };
+
+    checkExistingSession();
   }, []);
+
+  const handleExistingSession = async (session: any) => {
+    console.log('=== HANDLE EXISTING SESSION ===');
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const userId = session.user.id;
+      setUserId(userId);
+
+      console.log('Existing session for user:', userId);
+
+      // Check if mfa_verified_at is null - this means user started a new login but hasn't completed MFA
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('mfa_verified_at')
+        .eq('id', userId)
+        .single();
+
+      console.log('Profile mfa_verified_at:', profile?.mfa_verified_at);
+
+      if (profile && profile.mfa_verified_at === null) {
+        // User has started a new login session but hasn't completed MFA yet
+        console.log('MFA verification pending for this session');
+
+        // Check if user has MFA enabled
+        const { data: mfaSettings, error: mfaError } = await supabase
+          .from('user_mfa_settings')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!mfaSettings || !mfaSettings.mfa_enabled) {
+          // User doesn't have MFA enabled - complete login
+          console.log('User does not have MFA enabled');
+          onSuccess();
+          return;
+        }
+
+        // Check device trust - if device is trusted, skip MFA
+        const deviceToken = localStorage.getItem('device_token');
+        if (deviceToken) {
+          console.log('Checking device trust with token:', deviceToken.substring(0, 8) + '...');
+          const checkEndpoint = USE_V2_MFA ? '/mfa2/check-device' : '/mfa/check-device';
+          const response = await fetch(`${API_BASE_URL}${checkEndpoint}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ device_token: deviceToken })
+          });
+
+          const deviceData = await response.json();
+          console.log('Device trust check result:', deviceData);
+
+          if (deviceData.trusted) {
+            // Device is trusted - skip MFA and mark as verified
+            console.log('Device is trusted on refresh, skipping MFA');
+
+            // Set mfa_verified_at for this trusted device session
+            try {
+              await supabase
+                .from('profiles')
+                .update({ mfa_verified_at: new Date().toISOString() })
+                .eq('id', userId);
+              console.log('Set mfa_verified_at for trusted device on refresh');
+
+              // Refetch profile to ensure AuthContext has the updated mfa_verified_at
+              await refetchProfile();
+              console.log('Refetched profile after setting mfa_verified_at');
+            } catch (error) {
+              console.error('Error setting mfa_verified_at:', error);
+            }
+
+            onSuccess();
+            return;
+          } else {
+            console.log('Device is NOT trusted - requiring MFA');
+          }
+        }
+
+        // Create MFA challenge (device not trusted or no device token)
+        console.log('Creating MFA challenge...');
+        const mfaEndpoint = USE_V2_MFA ? '/mfa2/challenge' : '/mfa/challenge';
+        const challengeResponse = await fetch(`${API_BASE_URL}${mfaEndpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({})
+        });
+
+        const challengeData = await challengeResponse.json();
+        console.log('Challenge response data:', challengeData);
+
+        if (!challengeData.mfa_required) {
+          console.log('MFA not required, calling onSuccess');
+          onSuccess();
+          return;
+        }
+
+        console.log('Challenge data received:', challengeData);
+        setFactorId(challengeData.factor_id || '');
+        setChallengeId(challengeData.challenge_id || '');
+        setPhoneLastFour(challengeData.phone_masked || '');
+        setStep('mfa-challenge');
+        return;
+      }
+
+      // mfa_verified_at is NOT null, user has already verified MFA for this session
+      console.log('MFA already verified for this session, allowing access');
+      onSuccess();
+
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     console.log('=== HANDLE LOGIN CALLED ===');
@@ -74,6 +211,17 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
       console.log('Login successful, user ID:', session.user.id);
       setUserId(session.user.id);
+
+      // Clear MFA verification status and device trust for this new session
+      try {
+        await supabase
+          .from('profiles')
+          .update({ mfa_verified_at: null })
+          .eq('id', session.user.id);
+        console.log('Cleared mfa_verified_at for new login session');
+      } catch (error) {
+        console.error('Error clearing mfa_verified_at:', error);
+      }
 
       // Step 2: Check if user has MFA enabled
       console.log('Checking MFA settings for user:', session.user.id);
@@ -119,8 +267,24 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         console.log('deviceData.trusted:', deviceData.trusted);
         console.log('deviceData.expired:', deviceData.expired);
         if (deviceData.trusted) {
-          // Device is trusted - skip MFA
+          // Device is trusted - skip MFA and mark as verified
           console.log('Device is trusted, skipping MFA');
+
+          // Set mfa_verified_at for this trusted device session
+          try {
+            await supabase
+              .from('profiles')
+              .update({ mfa_verified_at: new Date().toISOString() })
+              .eq('id', session.user.id);
+            console.log('Set mfa_verified_at for trusted device');
+
+            // Refetch profile to ensure AuthContext has the updated mfa_verified_at
+            await refetchProfile();
+            console.log('Refetched profile after setting mfa_verified_at');
+          } catch (error) {
+            console.error('Error setting mfa_verified_at:', error);
+          }
+
           onSuccess();
           return;
         } else {
@@ -171,27 +335,35 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   };
 
   const handleMFAVerify = async (code: string) => {
+    // Don't allow new attempts if rate limited
+    if (isRateLimited) {
+      return;
+    }
+
     setIsLoading(true);
-    setError(null);
+    // Don't clear error if already rate limited
+    if (!isRateLimited) {
+      setError(null);
+    }
 
     console.log('MFA Verify called with factorId:', factorId);
     console.log('Code:', code);
 
     try {
       const verifyEndpoint = USE_V2_MFA ? '/mfa2/verify' : '/mfa/verify';
-      
+
       // Prepare headers with current device token if available
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
       };
-      
+
       // Include current device token in headers for smart token management
       const currentDeviceToken = localStorage.getItem('device_token');
       if (currentDeviceToken) {
         headers['X-Device-Token'] = currentDeviceToken;
       }
-      
+
       const response = await fetch(`${API_BASE_URL}${verifyEndpoint}`, {
         method: 'POST',
         headers,
@@ -207,6 +379,12 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       const data = await response.json();
 
       if (!response.ok) {
+        // Check if this is a rate limit error
+        if (response.status === 429) {
+          setIsRateLimited(true);
+          setError(data.detail || 'Too many attempts. Please try again in 15 minutes.');
+          throw new Error(data.detail || 'Too many attempts. Please try again in 15 minutes.');
+        }
         throw new Error(data.detail || 'Invalid code');
       }
 
@@ -295,7 +473,7 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         isOpen={true}
         onComplete={handleMFAVerify}
         onResend={handleMFAResend}
-        isLoading={isLoading}
+        isLoading={isLoading || isRateLimited}
         error={error}
         phoneLastFour={phoneLastFour}
         rememberDevice={rememberDevice}
