@@ -44,6 +44,8 @@ const ProtectedRoute: React.FC = () => {
         }
 
         // If user has MFA enabled but hasn't verified this session, require MFA
+        // Note: If phone_number is missing, the login flow will detect this and
+        // redirect user through enrollment instead of challenge
         if (mfaSettings?.mfa_enabled && !profile.mfa_verified_at) {
           console.log("ProtectedRoute: MFA required but not verified");
           setRequiresMfa(true);

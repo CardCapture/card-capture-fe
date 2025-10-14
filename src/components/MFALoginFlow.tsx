@@ -32,6 +32,7 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [isFirstPasswordLogin, setIsFirstPasswordLogin] = useState(false);
+  const [enrollmentRequired, setEnrollmentRequired] = useState(false);
 
   const { signInWithPassword, profile, user, refetchProfile } = useAuth();
   const navigate = useNavigate();
@@ -157,6 +158,14 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         if (!challengeData.mfa_required) {
           console.log('MFA not required, calling onSuccess');
           onSuccess();
+          return;
+        }
+
+        // Check if user needs enrollment (corrupted state: MFA enabled but no phone)
+        if (challengeData.needs_enrollment) {
+          console.log('MFA enrollment required (missing phone number) - redirecting to enrollment');
+          setEnrollmentRequired(true);
+          setStep('mfa-enroll');
           return;
         }
 
@@ -316,6 +325,14 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         return;
       }
 
+      // Check if user needs enrollment (corrupted state: MFA enabled but no phone)
+      if (challengeData.needs_enrollment) {
+        console.log('MFA enrollment required (missing phone number) - redirecting to enrollment');
+        setEnrollmentRequired(true);
+        setStep('mfa-enroll');
+        return;
+      }
+
       console.log('Challenge data received:', challengeData);
       console.log('Setting factorId to:', challengeData.factor_id);
       console.log('Setting challengeId to:', challengeData.challenge_id);
@@ -462,7 +479,7 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         onClose={() => onSuccess()}
         onComplete={handleEnrollmentComplete}
         onSkip={handleEnrollmentSkip}
-        isRequired={false}
+        isRequired={enrollmentRequired} // Required if user has corrupted MFA state
       />
     );
   }
