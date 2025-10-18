@@ -7,7 +7,7 @@ import MFAChallengeModal from './MFAChallengeModal';
 import { supabase } from '@/lib/supabaseClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const USE_V2_MFA = true; // Toggle to use new robust MFA implementation
+const USE_V2_MFA = false; // Toggle to use new robust MFA implementation
 
 interface MFALoginFlowProps {
   email: string;
