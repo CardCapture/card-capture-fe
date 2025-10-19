@@ -19,6 +19,9 @@ const OTPInput: React.FC<OTPInputProps> = ({
 }) => {
   const [otp, setOtp] = useState<string[]>(new Array(length).fill(''));
   const [resendTimer, setResendTimer] = useState<number>(30);
+  const [attemptCount, setAttemptCount] = useState<number>(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -62,8 +65,30 @@ const OTPInput: React.FC<OTPInputProps> = ({
     }
   }, [resendTimer]);
 
+  // Effect to handle client-side rate limit lockout countdown
+  useEffect(() => {
+    if (lockoutUntil && lockoutUntil > Date.now()) {
+      const timer = setInterval(() => {
+        const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
+        if (remaining > 0) {
+          setClientError(`Too many attempts. Please wait ${remaining} seconds.`);
+        } else {
+          setLockoutUntil(null);
+          setClientError(null);
+          setAttemptCount(0);
+        }
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [lockoutUntil]);
+
   const handleChange = (index: number, value: string) => {
     if (isLoading) return;
+
+    // Check if user is in lockout period
+    if (lockoutUntil && lockoutUntil > Date.now()) {
+      return; // Prevent any input during lockout
+    }
     
     // Handle multi-character input (like auto-fill or paste)
     const digits = value.replace(/[^0-9]/g, '');
@@ -84,10 +109,10 @@ const OTPInput: React.FC<OTPInputProps> = ({
       const focusIndex = nextEmptyIndex === -1 ? Math.min(index + digits.length, length - 1) : nextEmptyIndex;
       inputRefs.current[focusIndex]?.focus();
       
-      // Auto-submit if complete
+      // Auto-submit if complete (with rate limit check)
       const otpString = newOtp.join('');
       if (otpString.length === length) {
-        onComplete(otpString);
+        handleVerificationAttempt(otpString);
       }
     } else {
       // Single digit
@@ -102,12 +127,40 @@ const OTPInput: React.FC<OTPInputProps> = ({
         inputRefs.current[index + 1]?.focus();
       }
 
-      // Check if all digits are filled
+      // Check if all digits are filled (with rate limit check)
       const otpString = newOtp.join('');
       if (otpString.length === length) {
-        onComplete(otpString);
+        handleVerificationAttempt(otpString);
       }
     }
+  };
+
+  // Client-side rate limiting for verification attempts
+  const handleVerificationAttempt = (code: string) => {
+    // Check if in lockout period
+    if (lockoutUntil && lockoutUntil > Date.now()) {
+      const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      setClientError(`Too many attempts. Please wait ${remaining} seconds.`);
+      return;
+    }
+
+    // Increment attempt counter
+    const newAttemptCount = attemptCount + 1;
+    setAttemptCount(newAttemptCount);
+
+    // Lock after 3 failed attempts (60 second lockout)
+    if (newAttemptCount >= 3) {
+      const lockoutTime = Date.now() + 60000; // 60 seconds
+      setLockoutUntil(lockoutTime);
+      setClientError('Too many attempts. Locked for 60 seconds.');
+      // Clear the OTP inputs
+      setOtp(new Array(length).fill(''));
+      return;
+    }
+
+    // Clear client error and pass to parent
+    setClientError(null);
+    onComplete(code);
   };
 
   const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
@@ -162,9 +215,9 @@ const OTPInput: React.FC<OTPInputProps> = ({
     const focusIndex = nextEmptyIndex === -1 ? length - 1 : nextEmptyIndex;
     inputRefs.current[focusIndex]?.focus();
     
-    // Auto-submit if complete
+    // Auto-submit if complete (with rate limit check)
     if (pastedData.length === length) {
-      onComplete(pastedData);
+      handleVerificationAttempt(pastedData);
     }
   };
 
@@ -212,9 +265,9 @@ const OTPInput: React.FC<OTPInputProps> = ({
             }
             setOtp(newOtp);
 
-            // Auto-submit if complete
+            // Auto-submit if complete (with rate limit check)
             if (value.length === length) {
-              onComplete(value);
+              handleVerificationAttempt(value);
             }
           }
         }}
@@ -233,19 +286,19 @@ const OTPInput: React.FC<OTPInputProps> = ({
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             onPaste={handlePaste}
-            disabled={isLoading}
+            disabled={isLoading || (lockoutUntil !== null && lockoutUntil > Date.now())}
             className={`
               w-12 h-14 sm:w-14 sm:h-16
               text-center text-xl font-bold
               border-2 rounded-lg
               transition-all duration-200
-              ${error 
-                ? 'border-red-500 bg-red-50' 
-                : digit 
-                  ? 'border-blue-500 bg-blue-50' 
+              ${error || clientError
+                ? 'border-red-500 bg-red-50'
+                : digit
+                  ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-300 hover:border-gray-400'
               }
-              ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
+              ${(isLoading || (lockoutUntil !== null && lockoutUntil > Date.now())) ? 'opacity-50 cursor-not-allowed' : ''}
               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
             `}
             autoComplete={index === 0 ? "one-time-code" : "off"}
@@ -256,9 +309,9 @@ const OTPInput: React.FC<OTPInputProps> = ({
         ))}
       </div>
 
-      {error && (
+      {(error || clientError) && (
         <div className="text-red-600 text-sm mt-2 text-center">
-          {error}
+          {clientError || error}
         </div>
       )}
 

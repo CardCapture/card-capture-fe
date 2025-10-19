@@ -58,9 +58,12 @@ const LoginPage = () => {
     // MFA enrollment completed successfully
     console.log('MFA enrollment completed, checking auth state');
 
-    // Refetch profile to ensure mfa_verified_at is up-to-date
+    // CRITICAL: Force refresh profile bypassing cache
+    // This ensures we get the fresh profile with updated mfa_verified_at from the database
+    // (Backend sets mfa_verified_at after successful MFA enrollment/verification)
     try {
-      await refetchProfile();
+      console.log('Force refetching profile after MFA success (bypass cache)');
+      await refetchProfile(true); // forceRefresh = true
       console.log('Profile refetched after MFA success');
     } catch (error) {
       console.error('Error refetching profile:', error);
@@ -69,6 +72,7 @@ const LoginPage = () => {
     // Get the current session to ensure auth state is updated
     const { data: { session } } = await supabase.auth.getSession();
     console.log('Current session after MFA:', session);
+    console.log('Session user ID:', session?.user?.id);
 
     if (session) {
       // Session is ready, redirect to /events

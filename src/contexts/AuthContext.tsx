@@ -7,6 +7,7 @@ import React, {
   ReactNode,
   useMemo,
   useCallback,
+  useRef,
 } from "react";
 // Add SignInWithPasswordCredentials import
 import {
@@ -15,6 +16,10 @@ import {
   SignInWithPasswordCredentials,
 } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
+
+// Profile cache configuration
+const PROFILE_CACHE_KEY = 'user_profile_cache';
+const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Enhanced types for permissions
 interface UserProfile {
@@ -37,7 +42,8 @@ interface AuthContextProps {
   signInWithPassword: (
     credentials: SignInWithPasswordCredentials
   ) => Promise<{ error: Error | null }>;
-  refetchProfile: () => Promise<void>;
+  refetchProfile: (forceRefresh?: boolean) => Promise<void>;
+  clearProfileCache: (userId?: string) => void;
   // --- End Add ---
   isSuperAdmin: boolean;
 }
@@ -52,17 +58,83 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Track previous session to prevent redundant fetches
+  const prevSessionRef = useRef<Session | null>(null);
+
+  // Helper to get cached profile
+  const getCachedProfile = useCallback((userId: string): UserProfile | null => {
+    try {
+      const cached = localStorage.getItem(`${PROFILE_CACHE_KEY}_${userId}`);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < PROFILE_CACHE_TTL) {
+          console.log("DEBUG: Using cached profile for user:", userId);
+          return data;
+        }
+        console.log("DEBUG: Cache expired for user:", userId);
+      }
+    } catch (error) {
+      console.error("Error reading profile cache:", error);
+    }
+    return null;
+  }, []);
+
+  // Helper to cache profile
+  const cacheProfile = useCallback((userId: string, profileData: UserProfile) => {
+    try {
+      localStorage.setItem(
+        `${PROFILE_CACHE_KEY}_${userId}`,
+        JSON.stringify({
+          data: profileData,
+          timestamp: Date.now(),
+        })
+      );
+    } catch (error) {
+      console.error("Error caching profile:", error);
+    }
+  }, []);
+
+  // Helper to clear profile cache
+  const clearProfileCache = useCallback((userId?: string) => {
+    try {
+      if (userId) {
+        localStorage.removeItem(`${PROFILE_CACHE_KEY}_${userId}`);
+      } else {
+        // Clear all profile caches
+        const keys = Object.keys(localStorage);
+        keys.forEach((key) => {
+          if (key.startsWith(PROFILE_CACHE_KEY)) {
+            localStorage.removeItem(key);
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error clearing profile cache:", error);
+    }
+  }, []);
+
   // Refetch profile function that can be called from outside
-  const refetchProfile = useCallback(async () => {
+  // Set forceRefresh=true to bypass cache (e.g., after MFA verification)
+  const refetchProfile = useCallback(async (forceRefresh: boolean = false) => {
     const currentSession = await supabase.auth.getSession();
     const userId = currentSession.data.session?.user?.id;
 
     if (!userId) {
       setProfile(null);
+      clearProfileCache();
       return;
     }
 
-    console.log("DEBUG: Refetching profile for user:", userId);
+    console.log("DEBUG: Refetching profile for user:", userId, "forceRefresh:", forceRefresh);
+
+    // Check cache first (unless forceRefresh is true)
+    if (!forceRefresh) {
+      const cachedProfile = getCachedProfile(userId);
+      if (cachedProfile) {
+        setProfile(cachedProfile);
+        return;
+      }
+    }
 
     try {
       const { data, error } = await supabase
@@ -85,23 +157,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       console.log("DEBUG: Profile refetched:", data);
       setProfile(data);
+      cacheProfile(userId, data);
     } catch (error) {
       console.error("Error in refetchProfile:", error);
       setProfile(null);
     }
-  }, []);
+  }, [getCachedProfile, cacheProfile, clearProfileCache]);
 
-  // Fetch user profile when session changes
+  // Fetch user profile when session changes (with caching and deduplication)
   useEffect(() => {
     const fetchProfile = async () => {
       if (!session?.user?.id) {
         setProfile(null);
+        clearProfileCache();
+        prevSessionRef.current = null;
         return;
       }
+
+      // Skip fetch if session hasn't actually changed (prevents redundant calls)
+      if (
+        prevSessionRef.current?.user?.id === session.user.id &&
+        prevSessionRef.current?.access_token === session.access_token
+      ) {
+        console.log("DEBUG: Session unchanged, skipping profile fetch");
+        return;
+      }
+
+      prevSessionRef.current = session;
 
       console.log("DEBUG: Fetching profile for user:", session.user.id);
       console.log("DEBUG: User metadata:", session.user.user_metadata);
       console.log("DEBUG: App metadata:", session.user.app_metadata);
+
+      // Try cache first
+      const cachedProfile = getCachedProfile(session.user.id);
+      if (cachedProfile) {
+        setProfile(cachedProfile);
+        return;
+      }
 
       try {
         const { data, error } = await supabase
@@ -124,6 +217,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
         console.log("DEBUG: Profile found:", data);
         setProfile(data);
+        cacheProfile(session.user.id, data);
       } catch (error) {
         console.error("Error in fetchProfile:", error);
         setProfile(null);
@@ -131,7 +225,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     };
 
     fetchProfile();
-  }, [session]);
+  }, [session, getCachedProfile, cacheProfile, clearProfileCache]);
 
   useEffect(() => {
     setLoading(true);
@@ -191,11 +285,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       console.log("No session to sign out from, just clearing local state");
     }
     // Always clear local state regardless
-    console.log("Clearing local state");
+    console.log("Clearing local state and cache");
     setSession(null);
     setUser(null);
     setProfile(null);
-  }, [session]);
+    clearProfileCache(); // Clear all cached profiles on logout
+    prevSessionRef.current = null;
+  }, [session, clearProfileCache]);
 
   // --- Add Function Implementation ---
   const signInWithPassword = useCallback(
@@ -227,9 +323,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       signOut,
       signInWithPassword, // <-- Add function to context value
       refetchProfile,
+      clearProfileCache, // <-- Export cache clearing function
       isSuperAdmin,
     }),
-    [session, user, profile, loading, signOut, signInWithPassword, refetchProfile, isSuperAdmin]
+    [session, user, profile, loading, signOut, signInWithPassword, refetchProfile, clearProfileCache, isSuperAdmin]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

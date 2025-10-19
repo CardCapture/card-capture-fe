@@ -1,12 +1,13 @@
 // src/hooks/useCards.ts
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { toast } from "@/lib/toast";
 import type { ProspectCard, CardStatus } from "@/types/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { CardService } from "@/services/CardService";
+import { debounce } from "@/utils/debounce";
 
 // Update the interface to use the new type
 interface UseCardsReturn {
@@ -26,7 +27,8 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export function useCards(): UseCardsReturn {
   const [cards, setCards] = useState<ProspectCard[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
+  const schoolId = profile?.school_id || null;
 
   // Add a ref to track if we're in the review modal
   const isInReviewModalRef = useRef<boolean>(false);
@@ -65,6 +67,12 @@ export function useCards(): UseCardsReturn {
     fetchCards();
   }, [fetchCards]);
 
+  // Create debounced fetchCards to prevent rapid consecutive calls
+  const debouncedFetchCards = useMemo(
+    () => debounce(fetchCards, 500), // 500ms debounce
+    [fetchCards]
+  );
+
   // Effect for Supabase real-time subscription
   useEffect(() => {
     if (!supabase) {
@@ -74,7 +82,12 @@ export function useCards(): UseCardsReturn {
       return;
     }
 
-    const channelName = "cards_changes";
+    if (!schoolId) {
+      console.warn("No school ID available, skipping realtime subscription");
+      return;
+    }
+
+    const channelName = `cards_changes_${schoolId}`;
     let channel: RealtimeChannel | null = null;
 
     const handleDbChange = (payload: {
@@ -84,12 +97,25 @@ export function useCards(): UseCardsReturn {
     }) => {
       console.log("Supabase change received:", payload);
 
-      // For simplicity and type safety, just refresh all cards on any change
-      // This ensures data consistency and avoids complex type casting
-      fetchCards();
+      // Additional client-side filtering to ensure change is relevant
+      const newRecord = payload.new;
+      const oldRecord = payload.old;
+
+      // Only refetch if the change is for our school
+      const isRelevant =
+        (newRecord && newRecord.school_id === schoolId) ||
+        (oldRecord && oldRecord.school_id === schoolId);
+
+      if (isRelevant) {
+        console.log("Relevant change detected for school:", schoolId);
+        // Use debounced fetch to prevent multiple rapid updates
+        debouncedFetchCards();
+      } else {
+        console.log("Ignoring change - not for our school");
+      }
     };
 
-    // Subscribe to both tables
+    // Subscribe to both tables with server-side filtering by school_id
     channel = supabase
       .channel(channelName)
       .on(
@@ -98,6 +124,7 @@ export function useCards(): UseCardsReturn {
           event: "*" as const,
           schema: "public",
           table: "reviewed_data",
+          filter: `school_id=eq.${schoolId}`, // Server-side filtering!
         },
         handleDbChange
       )
@@ -107,6 +134,7 @@ export function useCards(): UseCardsReturn {
           event: "*" as const,
           schema: "public",
           table: "student_school_interactions",
+          filter: `school_id=eq.${schoolId}`, // Server-side filtering!
         },
         handleDbChange
       )
@@ -142,7 +170,7 @@ export function useCards(): UseCardsReturn {
           );
       }
     };
-  }, [fetchCards]);
+  }, [fetchCards, schoolId, debouncedFetchCards]);
 
   const getStatusCount = useCallback(
     (status: CardStatus) => {

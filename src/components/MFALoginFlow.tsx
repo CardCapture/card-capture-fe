@@ -70,25 +70,30 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
       console.log('Existing session for user:', userId);
 
-      // Check if mfa_verified_at is null - this means user started a new login but hasn't completed MFA
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('mfa_verified_at')
-        .eq('id', userId)
-        .single();
+      // Parallelize profile and MFA settings queries for faster loading
+      console.log('Fetching profile and MFA settings in parallel...');
 
+      const [profileResult, mfaSettingsResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('mfa_verified_at')
+          .eq('id', userId)
+          .single(),
+        supabase
+          .from('user_mfa_settings')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle()
+      ]);
+
+      const { data: profile, error: profileError } = profileResult;
       console.log('Profile mfa_verified_at:', profile?.mfa_verified_at);
 
       if (profile && profile.mfa_verified_at === null) {
         // User has started a new login session but hasn't completed MFA yet
         console.log('MFA verification pending for this session');
 
-        // Check if user has MFA enabled
-        const { data: mfaSettings, error: mfaError } = await supabase
-          .from('user_mfa_settings')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
+        const { data: mfaSettings, error: mfaError } = mfaSettingsResult;
 
         if (!mfaSettings || !mfaSettings.mfa_enabled) {
           // User doesn't have MFA enabled - complete login
@@ -126,8 +131,8 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
                 .eq('id', userId);
               console.log('Set mfa_verified_at for trusted device on refresh');
 
-              // Refetch profile to ensure AuthContext has the updated mfa_verified_at
-              await refetchProfile();
+              // CRITICAL: Force refresh profile to bypass cache
+              await refetchProfile(true); // forceRefresh = true
               console.log('Refetched profile after setting mfa_verified_at');
             } catch (error) {
               console.error('Error setting mfa_verified_at:', error);
@@ -221,26 +226,26 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       console.log('Login successful, user ID:', session.user.id);
       setUserId(session.user.id);
 
-      // Clear MFA verification status and device trust for this new session
-      try {
-        await supabase
+      // Step 2: Parallelize independent queries for faster login
+      console.log('Fetching MFA settings in parallel with clearing verification...');
+
+      const [mfaSettingsResult] = await Promise.all([
+        // Fetch MFA settings
+        supabase
+          .from('user_mfa_settings')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle(),
+        // Clear MFA verification status (fire and forget style)
+        supabase
           .from('profiles')
           .update({ mfa_verified_at: null })
-          .eq('id', session.user.id);
-        console.log('Cleared mfa_verified_at for new login session');
-      } catch (error) {
-        console.error('Error clearing mfa_verified_at:', error);
-      }
+          .eq('id', session.user.id)
+          .then(() => console.log('Cleared mfa_verified_at for new login session'))
+          .catch((error) => console.error('Error clearing mfa_verified_at:', error))
+      ]);
 
-      // Step 2: Check if user has MFA enabled
-      console.log('Checking MFA settings for user:', session.user.id);
-      
-      const { data: mfaSettings, error: mfaError } = await supabase
-        .from('user_mfa_settings')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .maybeSingle(); // Use maybeSingle() instead of single() to handle no rows gracefully
-
+      const { data: mfaSettings, error: mfaError } = mfaSettingsResult;
       console.log('MFA Settings result:', mfaSettings, mfaError);
 
       if (!mfaSettings || !mfaSettings.mfa_enabled) {
@@ -287,8 +292,8 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
               .eq('id', session.user.id);
             console.log('Set mfa_verified_at for trusted device');
 
-            // Refetch profile to ensure AuthContext has the updated mfa_verified_at
-            await refetchProfile();
+            // CRITICAL: Force refresh profile to bypass cache
+            await refetchProfile(true); // forceRefresh = true
             console.log('Refetched profile after setting mfa_verified_at');
           } catch (error) {
             console.error('Error setting mfa_verified_at:', error);
@@ -421,6 +426,25 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         localStorage.setItem('device_expires', data.device_expires_at);
       } else {
         console.log('Device token not stored. rememberDevice:', rememberDevice, 'device_token present:', !!data.device_token);
+      }
+
+      // CRITICAL: Set mfa_verified_at in profiles after successful MFA verification
+      // This ensures the user can access protected routes
+      const currentSession = await supabase.auth.getSession();
+      const currentUserId = currentSession.data.session?.user?.id;
+
+      if (currentUserId) {
+        try {
+          console.log('Setting mfa_verified_at after successful MFA verification');
+          await supabase
+            .from('profiles')
+            .update({ mfa_verified_at: new Date().toISOString() })
+            .eq('id', currentUserId);
+          console.log('Successfully set mfa_verified_at for user:', currentUserId);
+        } catch (error) {
+          console.error('Error setting mfa_verified_at:', error);
+          // Don't block login if this fails - the backend might have already set it
+        }
       }
 
       onSuccess();

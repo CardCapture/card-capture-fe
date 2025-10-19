@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { debounce } from "@/utils/debounce";
 
 interface ProcessingJob {
   id: string;
@@ -133,12 +134,12 @@ export function useProcessingStatus(eventId?: string) {
         }, 2000); // Hide after 2 seconds
       }
 
-      // Set up aggressive polling if we have active processing
+      // Set up polling if we have active processing (reduced frequency for better performance)
       if (hasActiveCards && !pollingIntervalRef.current) {
-        console.log('useProcessingStatus: Starting aggressive polling for active processing');
-        pollingIntervalRef.current = setInterval(fetchProcessingStatus, 2000); // Poll every 2 seconds
+        console.log('useProcessingStatus: Starting polling for active processing');
+        pollingIntervalRef.current = setInterval(fetchProcessingStatus, 5000); // Poll every 5 seconds (reduced from 2)
       } else if (!hasActiveCards && pollingIntervalRef.current) {
-        console.log('useProcessingStatus: Stopping aggressive polling');
+        console.log('useProcessingStatus: Stopping polling');
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
@@ -149,6 +150,12 @@ export function useProcessingStatus(eventId?: string) {
     }
   }, [eventId, calculateTimeRemaining]);
 
+  // Create debounced fetchProcessingStatus to prevent rapid consecutive calls
+  const debouncedFetchProcessingStatus = useMemo(
+    () => debounce(fetchProcessingStatus, 1000), // 1 second debounce
+    [fetchProcessingStatus]
+  );
+
   // Setup real-time subscription
   useEffect(() => {
     if (!eventId || !supabase) return;
@@ -156,35 +163,34 @@ export function useProcessingStatus(eventId?: string) {
     console.log('useProcessingStatus: Setting up real-time subscription for event:', eventId);
 
     const channelName = `processing_status_${eventId}`;
-    
+
     const handleRealtimeChange = (payload: any) => {
       console.log('useProcessingStatus: Real-time change received:', payload);
-      
+
       // Check if change is relevant to our event
       const newRecord = payload.new as ProcessingJob | undefined;
       const oldRecord = payload.old as ProcessingJob | undefined;
-      
-      const isRelevant = 
-        newRecord?.event_id === eventId || 
+
+      const isRelevant =
+        newRecord?.event_id === eventId ||
         oldRecord?.event_id === eventId;
 
       if (isRelevant) {
         console.log('useProcessingStatus: Relevant change detected, refreshing status');
-        // Add a small delay to ensure database consistency
-        setTimeout(() => {
-          fetchProcessingStatus();
-        }, 100);
+        // Use debounced fetch to prevent multiple rapid updates
+        debouncedFetchProcessingStatus();
       }
     };
 
-    // Create real-time subscription - listen to all events on processing_jobs
-    // We'll filter by event_id in the handler to ensure we catch everything
+    // Create real-time subscription with server-side filtering for better performance
+    // Only listen to changes for our specific event
     const channel = supabase
       .channel(channelName)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'processing_jobs'
+        table: 'processing_jobs',
+        filter: `event_id=eq.${eventId}` // Server-side filtering!
       }, handleRealtimeChange)
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
@@ -192,10 +198,10 @@ export function useProcessingStatus(eventId?: string) {
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error(`useProcessingStatus: Real-time error: ${status}`, err);
           
-          // Setup polling fallback
+          // Setup polling fallback (reduced frequency)
           if (!pollingIntervalRef.current) {
             console.log('useProcessingStatus: Setting up polling fallback');
-            pollingIntervalRef.current = setInterval(fetchProcessingStatus, 3000);
+            pollingIntervalRef.current = setInterval(fetchProcessingStatus, 10000); // 10 seconds instead of 3
           }
         }
       });
@@ -223,7 +229,7 @@ export function useProcessingStatus(eventId?: string) {
         hideTimeoutRef.current = null;
       }
     };
-  }, [eventId, fetchProcessingStatus]);
+  }, [eventId, fetchProcessingStatus, debouncedFetchProcessingStatus]);
 
   return {
     status,
