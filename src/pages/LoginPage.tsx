@@ -42,14 +42,35 @@ const LoginPage = () => {
     e.preventDefault();
     showButtonLoader(LOADER_ID);
     setError(null);
-    
+
     console.log('=== LOGIN DEBUG ===');
     console.log('Email:', email);
-    console.log('About to show MFA flow');
-    
-    // Instead of directly signing in, show MFA flow which will handle everything
-    setShowMFAFlow(true);
-    hideButtonLoader(LOADER_ID);
+    console.log('Signing in with password (MFA temporarily disabled)');
+
+    try {
+      // Direct sign in - MFA temporarily disabled
+      const result = await signInWithPassword({ email, password });
+
+      if (result.error) {
+        setError(result.error.message || 'Login failed');
+        hideButtonLoader(LOADER_ID);
+        return;
+      }
+
+      // Wait for profile to load
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await refetchProfile(true);
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Navigate to app
+      const redirectPath = getDefaultRedirectPath(profile);
+      console.log('Login successful, redirecting to:', redirectPath);
+      navigate(redirectPath, { replace: true });
+      hideButtonLoader(LOADER_ID);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during login');
+      hideButtonLoader(LOADER_ID);
+    }
   };
 
   const handleMFASuccess = async () => {
@@ -84,17 +105,17 @@ const LoginPage = () => {
 
   const loading = isLoading(LOADER_ID);
 
-  // If MFA flow is active, show it instead of login form
-  if (showMFAFlow) {
-    return (
-      <MFAGuard
-        email={email}
-        password={password}
-        onError={handleMFAError}
-        onSuccess={handleMFASuccess}
-      />
-    );
-  }
+  // TEMPORARILY DISABLED - MFA flow bypassed for username/password only login
+  // if (showMFAFlow) {
+  //   return (
+  //     <MFAGuard
+  //       email={email}
+  //       password={password}
+  //       onError={handleMFAError}
+  //       onSuccess={handleMFASuccess}
+  //     />
+  //   );
+  // }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted p-4">

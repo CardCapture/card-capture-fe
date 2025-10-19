@@ -20,51 +20,55 @@ const ProtectedRoute: React.FC = () => {
     mfaVerifiedAt: profile?.mfa_verified_at,
   });
 
-  // Check if user needs MFA verification
+  // TEMPORARILY DISABLED - MFA verification check bypassed
   useEffect(() => {
-    const checkMfaStatus = async () => {
-      if (!user?.id || !profile) {
-        setMfaCheckLoading(false);
-        return;
-      }
+    // MFA is disabled - skip all checks
+    setRequiresMfa(false);
+    setMfaCheckLoading(false);
 
-      try {
-        // Check if user has MFA enabled
-        const { data: mfaSettings, error } = await supabase
-          .from("user_mfa_settings")
-          .select("mfa_enabled")
-          .eq("user_id", user.id)
-          .maybeSingle();
+    // const checkMfaStatus = async () => {
+    //   if (!user?.id || !profile) {
+    //     setMfaCheckLoading(false);
+    //     return;
+    //   }
 
-        if (error) {
-          console.error("Error checking MFA settings:", error);
-          setRequiresMfa(false);
-          setMfaCheckLoading(false);
-          return;
-        }
+    //   try {
+    //     // Check if user has MFA enabled
+    //     const { data: mfaSettings, error } = await supabase
+    //       .from("user_mfa_settings")
+    //       .select("mfa_enabled")
+    //       .eq("user_id", user.id)
+    //       .maybeSingle();
 
-        // If user has MFA enabled but hasn't verified this session, require MFA
-        // Note: If phone_number is missing, the login flow will detect this and
-        // redirect user through enrollment instead of challenge
-        if (mfaSettings?.mfa_enabled && !profile.mfa_verified_at) {
-          console.log("ProtectedRoute: MFA required but not verified");
-          setRequiresMfa(true);
-        } else {
-          setRequiresMfa(false);
-        }
-      } catch (error) {
-        console.error("Error in checkMfaStatus:", error);
-        setRequiresMfa(false);
-      } finally {
-        setMfaCheckLoading(false);
-      }
-    };
+    //     if (error) {
+    //       console.error("Error checking MFA settings:", error);
+    //       setRequiresMfa(false);
+    //       setMfaCheckLoading(false);
+    //       return;
+    //     }
 
-    if (!loading && user && profile) {
-      checkMfaStatus();
-    } else if (!loading && !user) {
-      setMfaCheckLoading(false);
-    }
+    //     // If user has MFA enabled but hasn't verified this session, require MFA
+    //     // Note: If phone_number is missing, the login flow will detect this and
+    //     // redirect user through enrollment instead of challenge
+    //     if (mfaSettings?.mfa_enabled && !profile.mfa_verified_at) {
+    //       console.log("ProtectedRoute: MFA required but not verified");
+    //       setRequiresMfa(true);
+    //     } else {
+    //       setRequiresMfa(false);
+    //     }
+    //   } catch (error) {
+    //     console.error("Error in checkMfaStatus:", error);
+    //     setRequiresMfa(false);
+    //   } finally {
+    //     setMfaCheckLoading(false);
+    //   }
+    // };
+
+    // if (!loading && user && profile) {
+    //   checkMfaStatus();
+    // } else if (!loading && !user) {
+    //   setMfaCheckLoading(false);
+    // }
   }, [user, profile, loading]);
 
   if (loading || mfaCheckLoading) {
