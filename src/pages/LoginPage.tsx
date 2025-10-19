@@ -56,7 +56,17 @@ const LoginPage = () => {
     console.log('=== MFA SUCCESS ===');
 
     // MFA flow completed successfully (profile already refreshed by MFAGuard)
-    console.log('MFA completed, redirecting to app');
+    console.log('MFA completed, waiting for profile to load before redirecting');
+
+    // Wait for profile state to update (MFAGuard has already called refetchProfile)
+    // Give React time to propagate the state update
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Re-fetch the latest profile to ensure we have the updated state
+    await refetchProfile(true);
+
+    // Small additional delay to ensure ProtectedRoute sees the updated state
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Navigate to appropriate page
     const defaultPath = getDefaultRedirectPath(profile);
