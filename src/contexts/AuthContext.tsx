@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         .from("profiles")
         .select("id, email, first_name, last_name, role, school_id, mfa_verified_at")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Error fetching user profile:", error);
@@ -151,6 +151,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           details: error.details,
           hint: error.hint,
         });
+        setProfile(null);
+        return;
+      }
+
+      if (!data) {
+        console.error("Profile not found for user:", userId, "- This may be an RLS policy issue");
         setProfile(null);
         return;
       }
@@ -201,7 +207,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           .from("profiles")
           .select("id, email, first_name, last_name, role, school_id, mfa_verified_at")
           .eq("id", session.user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error("Error fetching user profile:", error);
@@ -211,6 +217,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             details: error.details,
             hint: error.hint,
           });
+          setProfile(null);
+          return;
+        }
+
+        if (!data) {
+          console.error("Profile not found for user:", session.user.id, "- This may be an RLS policy issue");
           setProfile(null);
           return;
         }

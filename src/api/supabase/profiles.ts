@@ -19,14 +19,16 @@ export const profilesApi = {
       .from("profiles")
       .select("*")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
+      console.error("getProfile error:", error);
       throw new Error(`Failed to fetch profile: ${error.message}`);
     }
 
     if (!data) {
-      throw new Error("Profile not found");
+      console.error("getProfile: Profile not found for user:", userId);
+      throw new Error(`Profile not found for user ${userId}. This may be an RLS policy issue.`);
     }
 
     return data;
@@ -40,14 +42,16 @@ export const profilesApi = {
       .from("profiles")
       .select("school_id")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
+      console.error("getSchoolId error:", error);
       throw new Error(`Failed to fetch profile school_id: ${error.message}`);
     }
 
     if (!data?.school_id) {
-      throw new Error("No school ID found in profile");
+      console.error("getSchoolId: No school ID found for user:", userId);
+      throw new Error(`No school ID found in profile for user ${userId}. This may be an RLS policy issue.`);
     }
 
     return data.school_id;
@@ -65,10 +69,16 @@ export const profilesApi = {
       .update(updates)
       .eq("id", userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
+      console.error("updateProfile error:", error);
       throw new Error(`Failed to update profile: ${error.message}`);
+    }
+
+    if (!data) {
+      console.error("updateProfile: No data returned for user:", userId);
+      throw new Error(`Failed to update profile for user ${userId}. This may be an RLS policy issue.`);
     }
 
     return data;
