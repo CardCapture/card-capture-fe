@@ -79,14 +79,12 @@ const ProtectedRoute: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // If user needs MFA verification, sign them out to start fresh
+  // If user needs MFA verification, redirect to login (but don't sign them out)
+  // The login page will handle the MFA flow
   if (requiresMfa) {
-    console.log("ProtectedRoute: MFA required but not verified - signing out to force fresh login");
-    // Sign out the user to avoid infinite redirect loop
-    // This ensures they go through the full MFA flow
-    supabase.auth.signOut().then(() => {
-      console.log("ProtectedRoute: Signed out user, redirecting to login");
-    });
+    console.log("ProtectedRoute: MFA required but not verified - redirecting to login for MFA flow");
+    // Don't sign out - let the login page handle the MFA flow
+    // Signing out here causes issues when users are mid-MFA enrollment
     return <Navigate to="/login" replace />;
   }
 
