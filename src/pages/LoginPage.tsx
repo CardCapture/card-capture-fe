@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useLoader, ButtonLoader } from "@/contexts/LoaderContext";
-import MFALoginFlow from "@/components/MFALoginFlow";
+import MFAGuard from "@/components/MFAGuard";
 import { supabase } from "@/lib/supabaseClient";
 
 const LoginPage = () => {
@@ -55,34 +55,13 @@ const LoginPage = () => {
   const handleMFASuccess = async () => {
     console.log('=== MFA SUCCESS ===');
 
-    // MFA enrollment completed successfully
-    console.log('MFA enrollment completed, checking auth state');
+    // MFA flow completed successfully (profile already refreshed by MFAGuard)
+    console.log('MFA completed, redirecting to app');
 
-    // CRITICAL: Force refresh profile bypassing cache
-    // This ensures we get the fresh profile with updated mfa_verified_at from the database
-    // (Backend sets mfa_verified_at after successful MFA enrollment/verification)
-    try {
-      console.log('Force refetching profile after MFA success (bypass cache)');
-      await refetchProfile(true); // forceRefresh = true
-      console.log('Profile refetched after MFA success');
-    } catch (error) {
-      console.error('Error refetching profile:', error);
-    }
-
-    // Get the current session to ensure auth state is updated
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log('Current session after MFA:', session);
-    console.log('Session user ID:', session?.user?.id);
-
-    if (session) {
-      // Session is ready, redirect to /events
-      console.log('Session confirmed, redirecting to /events');
-      navigate('/events', { replace: true });
-    } else {
-      // If no session yet, try to refresh and redirect
-      console.log('No session found, attempting to refresh');
-      window.location.href = '/events';
-    }
+    // Navigate to appropriate page
+    const defaultPath = getDefaultRedirectPath(profile);
+    console.log('Redirecting to:', defaultPath);
+    navigate(defaultPath, { replace: true });
 
     setShowMFAFlow(false);
   };
@@ -98,16 +77,12 @@ const LoginPage = () => {
   // If MFA flow is active, show it instead of login form
   if (showMFAFlow) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted p-4">
-        <div className="w-full max-w-md">
-          <MFALoginFlow
-            email={email}
-            password={password}
-            onError={handleMFAError}
-            onSuccess={handleMFASuccess}
-          />
-        </div>
-      </div>
+      <MFAGuard
+        email={email}
+        password={password}
+        onError={handleMFAError}
+        onSuccess={handleMFASuccess}
+      />
     );
   }
 
