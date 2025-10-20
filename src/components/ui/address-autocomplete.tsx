@@ -252,7 +252,8 @@ export function AddressAutocomplete({
   const handlePredictionSelect = (prediction: Prediction) => {
     console.log('🔥 handlePredictionSelect called with:', prediction);
     setDisplayValue(prediction.description);
-    onChange(prediction.description);
+    // Don't call onChange here - let onAddressSelect handle all updates
+    // onChange(prediction.description);
     setShowDropdown(false);
     setPredictions([]);
     console.log('📍 Getting place details for:', prediction.place_id);
