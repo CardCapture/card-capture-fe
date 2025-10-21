@@ -17,13 +17,10 @@ export const configsApi = {
       .from("sftp_configs")
       .select("*")
       .eq("school_id", schoolId)
-      .single();
+      .maybeSingle(); // Use maybeSingle instead of single to handle 0 or 1 rows gracefully
 
     if (error) {
-      // Return null if no config exists, don't throw error
-      if (error.code === "PGRST116") {
-        return null;
-      }
+      console.error("Error fetching SFTP config:", error);
       throw new Error(`Failed to fetch SFTP config: ${error.message}`);
     }
 
