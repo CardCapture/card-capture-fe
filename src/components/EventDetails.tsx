@@ -290,6 +290,7 @@ const Dashboard = () => {
     handleFieldReview,
     handleReviewSave,
     handleFormChange,
+    handleFormBatchChange,
     localCardRef,
     selectedCardIdRef,
     imageKeyRef,
@@ -1242,6 +1243,7 @@ const Dashboard = () => {
                   fieldsToShow={fieldsToShow}
                   formData={formData}
                   handleFormChange={handleFormChange}
+                  handleFormBatchChange={handleFormBatchChange}
                   handleFieldReview={handleFieldReview}
                   selectedTab={selectedTab}
                   dataFieldsMap={dataFieldsMap}

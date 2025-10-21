@@ -24,6 +24,7 @@ interface AddressAutocompleteProps {
     city?: string;
     state?: string;
   };
+  autoFocus?: boolean;
 }
 
 interface Prediction {
@@ -31,18 +32,19 @@ interface Prediction {
   place_id: string;
 }
 
-export function AddressAutocomplete({ 
-  label, 
-  value, 
-  onChange, 
+export function AddressAutocomplete({
+  label,
+  value,
+  onChange,
   onAddressSelect,
-  error, 
-  success, 
+  error,
+  success,
   helpText,
   className,
   required = false,
   locationContext,
-  ...props 
+  autoFocus = false,
+  ...props
 }: AddressAutocompleteProps) {
   console.log('🎯 AddressAutocomplete rendered with:', { value, locationContext });
   
@@ -52,6 +54,7 @@ export function AddressAutocomplete({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0, bottom: 0 });
+  const [isSelectingFromDropdown, setIsSelectingFromDropdown] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -123,7 +126,7 @@ export function AddressAutocomplete({
     }
   };
 
-  const getPlaceDetails = async (placeId: string) => {
+  const getPlaceDetails = async (placeId: string, predictionDescription?: string) => {
     console.log('🏠 Getting place details for placeId:', placeId);
     try {
       const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
@@ -139,18 +142,20 @@ export function AddressAutocomplete({
         const place = await response.json();
         console.log('📦 Place details response:', place);
         const components = place.addressComponents || [];
-        
+
         let street = '';
         let street2 = '';
         let city = '';
         let state = '';
         let zipCode = '';
+        let hasStreetNumber = false;
 
         components.forEach((component: any) => {
           const types = component.types || [];
-          
+
           if (types.includes('street_number')) {
             street = component.longText + ' ';
+            hasStreetNumber = true;
           } else if (types.includes('route')) {
             street += component.longText;
           } else if (types.includes('subpremise')) {
@@ -164,22 +169,55 @@ export function AddressAutocomplete({
           }
         });
 
+        // If Google didn't provide a street number, try to extract it from the prediction description
+        if (!hasStreetNumber && predictionDescription) {
+          console.log('⚠️ No street number in place details, extracting from prediction:', predictionDescription);
+          // Extract the house number from the beginning of the prediction description
+          // e.g., "18829 Star Ranch Boulevard, Hutto, TX" -> "18829"
+          const match = predictionDescription.match(/^(\d+)\s+/);
+          if (match) {
+            const houseNumber = match[1];
+            street = houseNumber + ' ' + street.trim();
+            console.log('✅ Extracted house number from prediction:', houseNumber);
+          }
+        }
+
+        // Combine street and street2 (apt/suite) into a single address line
+        // Format: "123 Main St Apt 4" or "123 Main St" if no apt
+        const fullStreetAddress = street2
+          ? `${street.trim()} ${street2}`.trim()
+          : street.trim();
+
         const addressData = {
-          street: street.trim(),
-          street2,
+          street: fullStreetAddress,
+          street2: '', // Clear street2 since we combined it into street
           city,
           state,
           zipCode
         };
-        
+
         console.log('🏡 Extracted address data:', addressData);
+        console.log('🔍 Component details:', { street, street2, city, state, zipCode, fullStreetAddress });
+        console.log('📦 Raw components from Google:', components);
+
+        // Update the display value to show the full street address including apt/suite
+        console.log('🔄 Setting displayValue to:', addressData.street);
+        setDisplayValue(addressData.street);
 
         if (onAddressSelect) {
-          console.log('✅ Calling onAddressSelect callback');
+          console.log('✅ Calling onAddressSelect callback with:', addressData);
           onAddressSelect(addressData);
         } else {
-          console.log('⚠️ No onAddressSelect callback provided');
+          // Only call onChange if onAddressSelect is not provided
+          console.log('⚠️ No onAddressSelect callback provided, using onChange');
+          onChange(addressData.street);
         }
+
+        // Clear the flag after selection is complete
+        setTimeout(() => {
+          setIsSelectingFromDropdown(false);
+          console.log('🔄 Cleared isSelectingFromDropdown flag');
+        }, 100);
       } else {
         console.error('Place details error:', response.status, response.statusText);
       }
@@ -235,7 +273,14 @@ export function AddressAutocomplete({
     const input = e.target.value;
     console.log('📝 AddressAutocomplete input changed:', input);
     setDisplayValue(input);
-    onChange(input);
+    
+    // Only call onChange if we're not in the process of selecting from dropdown
+    if (!isSelectingFromDropdown) {
+      onChange(input);
+    } else {
+      console.log('🚫 Skipping onChange - selecting from dropdown');
+    }
+    
     setSelectedIndex(-1);
     
     if (input.length >= 3) {
@@ -251,13 +296,14 @@ export function AddressAutocomplete({
 
   const handlePredictionSelect = (prediction: Prediction) => {
     console.log('🔥 handlePredictionSelect called with:', prediction);
-    setDisplayValue(prediction.description);
+    // Set flag to prevent onChange from interfering
+    setIsSelectingFromDropdown(true);
+    // Don't set displayValue here - let getPlaceDetails set it to just the street address
     // Don't call onChange here - let onAddressSelect handle all updates
-    // onChange(prediction.description);
     setShowDropdown(false);
     setPredictions([]);
     console.log('📍 Getting place details for:', prediction.place_id);
-    getPlaceDetails(prediction.place_id);
+    getPlaceDetails(prediction.place_id, prediction.description);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -304,8 +350,18 @@ export function AddressAutocomplete({
 
   // Update display value when prop value changes
   useEffect(() => {
+    console.log('🔄 useEffect: value prop changed from', displayValue, 'to', value);
     setDisplayValue(value);
   }, [value]);
+
+  // Auto-focus and select text when autoFocus is true
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+      console.log('🎯 Auto-focused and selected address input');
+    }
+  }, [autoFocus]);
 
   // Update dropdown position on scroll/resize when dropdown is open
   useEffect(() => {

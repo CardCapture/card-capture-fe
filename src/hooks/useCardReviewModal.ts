@@ -38,41 +38,41 @@ export function useCardReviewModal(
       // Special handling for address field - mark all address-related fields as reviewed
       if (fieldKey === 'address') {
         const addressFields = ['address', 'city', 'state', 'zip_code'];
-        const allAddressFieldsReviewed = addressFields.every(field => 
+        const allAddressFieldsReviewed = addressFields.every(field =>
           updatedCard.fields[field]?.reviewed === true
         );
-        
-        // Toggle all address fields together
-        addressFields.forEach(field => {
-          const currentValue = formData[field] ?? 
-            selectedCardForReview.fields[field]?.value ?? "";
-          
-          // Ensure the field exists
-          if (!updatedCard.fields[field]) {
-            updatedCard.fields[field] = {
-              ...defaultField,
-              value: currentValue,
-              requires_human_review: true,
-            };
-          }
-          
-          updatedCard.fields[field] = {
-            ...updatedCard.fields[field],
-            value: currentValue,
-            reviewed: !allAddressFieldsReviewed,
-            requires_human_review: allAddressFieldsReviewed,
-            review_notes: allAddressFieldsReviewed ? "Marked as needing review" : "Manually reviewed",
-          };
-        });
-        
-        // Update form data for all address fields
+
+        // Update form data for all address fields - use functional update to get current state
         setFormData((prev) => {
           const newFormData = { ...prev };
+
+          // Toggle all address fields together
           addressFields.forEach(field => {
-            const currentValue = formData[field] ?? 
+            // Use prev (current formData) instead of the closure's formData
+            const currentValue = prev[field] ??
               selectedCardForReview.fields[field]?.value ?? "";
+
+            // Ensure the field exists
+            if (!updatedCard.fields[field]) {
+              updatedCard.fields[field] = {
+                ...defaultField,
+                value: currentValue,
+                requires_human_review: true,
+              };
+            }
+
+            updatedCard.fields[field] = {
+              ...updatedCard.fields[field],
+              value: currentValue,
+              reviewed: !allAddressFieldsReviewed,
+              requires_human_review: allAddressFieldsReviewed,
+              review_notes: allAddressFieldsReviewed ? "Marked as needing review" : "Manually reviewed",
+            };
+
+            // Keep the current value in formData
             newFormData[field] = currentValue;
           });
+
           return newFormData;
         });
         
@@ -86,36 +86,39 @@ export function useCardReviewModal(
           "Field Review Status Updated"
         );
       } else {
-        // Regular field handling
-        const currentValue =
-          formData[fieldKey] ??
-          selectedCardForReview.fields[fieldKey]?.value ??
-          "";
-        
-        // Ensure the field exists in the card fields
-        if (!updatedCard.fields[fieldKey]) {
+        // Regular field handling - use functional update to get current formData
+        setFormData((prev) => {
+          const currentValue =
+            prev[fieldKey] ??
+            selectedCardForReview.fields[fieldKey]?.value ??
+            "";
+
+          // Ensure the field exists in the card fields
+          if (!updatedCard.fields[fieldKey]) {
+            updatedCard.fields[fieldKey] = {
+              ...defaultField,
+              value: currentValue,
+              requires_human_review: true,
+            };
+          }
+
+          const currentReviewed = updatedCard.fields[fieldKey].reviewed;
           updatedCard.fields[fieldKey] = {
-            ...defaultField,
+            ...updatedCard.fields[fieldKey],
             value: currentValue,
-            requires_human_review: true,
+            reviewed: !currentReviewed,
+            requires_human_review: currentReviewed,
+            review_notes: currentReviewed ? "Marked as needing review" : "Manually reviewed",
           };
-        }
-        
-        const currentReviewed = updatedCard.fields[fieldKey].reviewed;
-        updatedCard.fields[fieldKey] = {
-          ...updatedCard.fields[fieldKey],
-          value: currentValue,
-          reviewed: !currentReviewed,
-          requires_human_review: currentReviewed,
-          review_notes: currentReviewed ? "Marked as needing review" : "Manually reviewed",
-        };
-        
-        setSelectedCardForReview(updatedCard);
-        localCardRef.current = updatedCard;
-        setFormData((prev) => ({
-          ...prev,
-          [fieldKey]: currentValue,
-        }));
+
+          setSelectedCardForReview(updatedCard);
+          localCardRef.current = updatedCard;
+
+          return {
+            ...prev,
+            [fieldKey]: currentValue,
+          };
+        });
         toast.success(
           `${dataFieldsMap.get(fieldKey) || fieldKey} has been ${
             updatedCard.fields[fieldKey].reviewed ? "marked as reviewed" : "marked as needing review"
@@ -136,8 +139,12 @@ export function useCardReviewModal(
         if (!updatedFields[field]) {
           updatedFields[field] = { ...defaultField };
         }
-        
-        if (updatedFields[field].requires_human_review) {
+
+        // Address fields should NOT be marked as reviewed on text input
+        // They should only be marked as reviewed when selected from dropdown (via handleFormBatchChange)
+        const isAddressField = ['address', 'city', 'state', 'zip_code'].includes(field);
+
+        if (updatedFields[field].requires_human_review && !isAddressField) {
           updatedFields[field] = {
             ...updatedFields[field],
             value,
@@ -151,6 +158,41 @@ export function useCardReviewModal(
             value,
           };
         }
+
+        return { ...prev, fields: updatedFields };
+      });
+    }
+  };
+
+  const handleFormBatchChange = (updates: Record<string, string>) => {
+    console.log('🔄 handleFormBatchChange called with:', updates);
+    setFormData((prev) => ({ ...prev, ...updates }));
+    if (selectedCardForReview) {
+      setSelectedCardForReview((prev) => {
+        if (!prev) return prev;
+        const updatedFields = { ...prev.fields };
+        
+        // Update all fields in the batch
+        Object.entries(updates).forEach(([field, value]) => {
+          if (!updatedFields[field]) {
+            updatedFields[field] = { ...defaultField };
+          }
+          
+          if (updatedFields[field].requires_human_review) {
+            updatedFields[field] = {
+              ...updatedFields[field],
+              value,
+              reviewed: true,
+              requires_human_review: false,
+              review_notes: "Manually reviewed",
+            };
+          } else {
+            updatedFields[field] = {
+              ...updatedFields[field],
+              value,
+            };
+          }
+        });
         
         return { ...prev, fields: updatedFields };
       });
@@ -158,16 +200,29 @@ export function useCardReviewModal(
   };
 
   useEffect(() => {
+    // Only rebuild formData when we're selecting a different card, not when the card object updates
+    const currentCardId = selectedCardForReview?.document_id || null;
+    const previousCardId = selectedCardIdRef.current;
+
+    // If the card ID hasn't changed, don't rebuild formData
+    // This prevents overwriting user edits when the card object updates due to field changes
+    if (currentCardId === previousCardId && previousCardId !== null) {
+      return;
+    }
+
+    // Update the ref to track the current card ID
+    selectedCardIdRef.current = currentCardId;
+
     if (selectedCardForReview && reviewFieldOrder) {
       const initialFormData: Record<string, string> = {};
-      
+
       // Only use fields that are in reviewFieldOrder or in the card's fields
       // This ensures we only show fields configured for the school
       const cardDataFields = Object.keys(selectedCardForReview.fields);
-      
+
       // Start with the review field order from the school configuration
       const enhancedFieldOrder = [...reviewFieldOrder];
-      
+
       // Add any fields from the card data that aren't already in the order
       // But only if they actually exist in the card (not hardcoded canonical fields)
       cardDataFields.forEach(field => {
@@ -175,19 +230,19 @@ export function useCardReviewModal(
           enhancedFieldOrder.push(field);
         }
       });
-      
+
       // Populate form data with the fields we actually have
       enhancedFieldOrder.forEach((fieldKey) => {
         if (selectedCardForReview.fields?.[fieldKey]) {
           initialFormData[fieldKey] = selectedCardForReview.fields[fieldKey]?.value ?? "";
         }
       });
-      
+
       // Always include CEEB code if it exists in the card
       if (selectedCardForReview.fields?.ceeb_code) {
         initialFormData["ceeb_code"] = selectedCardForReview.fields.ceeb_code.value ?? "";
       }
-      
+
       // Preserve existing form data for fields that are already set to avoid losing user input
       setFormData(prevFormData => {
         const mergedFormData = { ...initialFormData };
@@ -284,6 +339,7 @@ export function useCardReviewModal(
     handleFieldReview,
     handleReviewSave,
     handleFormChange,
+    handleFormBatchChange,
     localCardRef,
     selectedCardIdRef,
     imageKeyRef,
