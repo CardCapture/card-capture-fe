@@ -45,10 +45,10 @@ const LoginPage = () => {
 
     console.log('=== LOGIN DEBUG ===');
     console.log('Email:', email);
-    console.log('Signing in with password (MFA temporarily disabled)');
+    console.log('Signing in with password - MFA flow enabled');
 
     try {
-      // Direct sign in - MFA temporarily disabled
+      // Sign in with password - then hand off to MFA flow
       const result = await signInWithPassword({ email, password });
 
       if (result.error) {
@@ -57,15 +57,10 @@ const LoginPage = () => {
         return;
       }
 
-      // Wait for profile to load
-      await new Promise(resolve => setTimeout(resolve, 200));
-      await refetchProfile(true);
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Navigate to app
-      const redirectPath = getDefaultRedirectPath(profile);
-      console.log('Login successful, redirecting to:', redirectPath);
-      navigate(redirectPath, { replace: true });
+      // Authentication successful - trigger MFA flow
+      // MFAGuard will check device trust and show 2FA challenge if needed
+      console.log('Password authentication successful, starting MFA flow');
+      setShowMFAFlow(true);
       hideButtonLoader(LOADER_ID);
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
@@ -105,17 +100,17 @@ const LoginPage = () => {
 
   const loading = isLoading(LOADER_ID);
 
-  // TEMPORARILY DISABLED - MFA flow bypassed for username/password only login
-  // if (showMFAFlow) {
-  //   return (
-  //     <MFAGuard
-  //       email={email}
-  //       password={password}
-  //       onError={handleMFAError}
-  //       onSuccess={handleMFASuccess}
-  //     />
-  //   );
-  // }
+  // MFA flow enabled - will check device trust and require 2FA if needed
+  if (showMFAFlow) {
+    return (
+      <MFAGuard
+        email={email}
+        password={password}
+        onError={handleMFAError}
+        onSuccess={handleMFASuccess}
+      />
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted p-4">
