@@ -37,6 +37,7 @@ interface ReviewFormProps {
   fieldsToShow: string[];
   formData: Record<string, string>;
   handleFormChange: (field: string, value: string) => void;
+  handleFormBatchChange?: (updates: Record<string, string>) => void;
   handleFieldReview: (fieldKey: string, e: React.MouseEvent) => void;
   selectedTab: string;
   dataFieldsMap: Map<string, string>;
@@ -52,6 +53,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   fieldsToShow,
   formData,
   handleFormChange,
+  handleFormBatchChange,
   handleFieldReview,
   selectedTab,
   dataFieldsMap,
@@ -668,6 +670,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             onCityChange={(value) => handleFormChange("city", value)}
             onStateChange={(value) => handleFormChange("state", value)}
             onZipCodeChange={(value) => handleFormChange("zip_code", value)}
+            onBatchChange={handleFormBatchChange}
             addressFieldData={addressData}
             cityFieldData={cityData}
             stateFieldData={stateData}
