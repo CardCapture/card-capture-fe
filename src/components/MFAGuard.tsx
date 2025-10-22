@@ -96,9 +96,25 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
         }
       }
 
-      // Step 3: Check if user has MFA configured
-      console.log('[MFAGuard] Step 3: Checking MFA configuration');
-      const needsEnrollment = await checkMFAStatus(userId);
+      // Step 3: Check if user is exempt from MFA
+      console.log('[MFAGuard] Step 3: Checking MFA status');
+      const { data: mfaSettings } = await supabase
+        .from('user_mfa_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      // Check for exemption first
+      if (mfaSettings?.mfa_exempt === true) {
+        console.log('[MFAGuard] User is exempt from MFA - granting access');
+        await refetchProfile(true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        handleSuccess();
+        return;
+      }
+
+      // Check if user needs enrollment
+      const needsEnrollment = !mfaSettings || !mfaSettings.mfa_enabled || !mfaSettings.phone_number;
 
       if (needsEnrollment) {
         console.log('[MFAGuard] User needs enrollment');
