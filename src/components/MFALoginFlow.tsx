@@ -95,6 +95,13 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
         const { data: mfaSettings, error: mfaError } = mfaSettingsResult;
 
+        // If user is explicitly exempt from MFA, skip entirely
+        if (mfaSettings?.mfa_exempt === true) {
+          console.log('User is exempt from MFA - skipping MFA');
+          onSuccess();
+          return;
+        }
+
         if (!mfaSettings || !mfaSettings.mfa_enabled) {
           // User doesn't have MFA enabled - complete login
           console.log('User does not have MFA enabled');
@@ -247,6 +254,14 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
       const { data: mfaSettings, error: mfaError } = mfaSettingsResult;
       console.log('MFA Settings result:', mfaSettings, mfaError);
+
+      // If user is explicitly exempt from MFA, skip entirely
+      // This is for shared accounts like admissions@mc.edu
+      if (mfaSettings?.mfa_exempt === true) {
+        console.log('User is exempt from MFA - skipping MFA and enrollment');
+        onSuccess();
+        return;
+      }
 
       if (!mfaSettings || !mfaSettings.mfa_enabled) {
         // User doesn't have MFA enabled - prompt for enrollment

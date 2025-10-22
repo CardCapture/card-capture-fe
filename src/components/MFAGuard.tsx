@@ -96,9 +96,25 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
         }
       }
 
-      // Step 3: Check if user has MFA configured
-      console.log('[MFAGuard] Step 3: Checking MFA configuration');
-      const needsEnrollment = await checkMFAStatus(userId);
+      // Step 3: Check if user is exempt from MFA
+      console.log('[MFAGuard] Step 3: Checking MFA status');
+      const { data: mfaSettings } = await supabase
+        .from('user_mfa_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      // Check for exemption first
+      if (mfaSettings?.mfa_exempt === true) {
+        console.log('[MFAGuard] User is exempt from MFA - granting access');
+        await refetchProfile(true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        handleSuccess();
+        return;
+      }
+
+      // Check if user needs enrollment
+      const needsEnrollment = !mfaSettings || !mfaSettings.mfa_enabled || !mfaSettings.phone_number;
 
       if (needsEnrollment) {
         console.log('[MFAGuard] User needs enrollment');
@@ -147,10 +163,17 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
         .eq('user_id', userId)
         .maybeSingle();
 
+      // If user is explicitly exempt from MFA, skip enrollment
+      // This is for shared accounts like admissions@mc.edu
+      if (mfaSettings?.mfa_exempt === true) {
+        console.log('[MFAGuard] User is exempt from MFA - skipping enrollment');
+        return false; // Don't need enrollment
+      }
+
       // User needs enrollment if:
       // 1. No MFA settings exist
       // 2. MFA not enabled
-      // 3. No phone number
+      // 3. MFA enabled but no phone number (corrupted state)
       const needsEnrollment =
         !mfaSettings ||
         !mfaSettings.mfa_enabled ||
