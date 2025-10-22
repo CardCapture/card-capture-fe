@@ -147,10 +147,17 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
         .eq('user_id', userId)
         .maybeSingle();
 
+      // If user is explicitly exempt from MFA, skip enrollment
+      // This is for shared accounts like admissions@mc.edu
+      if (mfaSettings?.mfa_exempt === true) {
+        console.log('[MFAGuard] User is exempt from MFA - skipping enrollment');
+        return false; // Don't need enrollment
+      }
+
       // User needs enrollment if:
       // 1. No MFA settings exist
       // 2. MFA not enabled
-      // 3. No phone number
+      // 3. MFA enabled but no phone number (corrupted state)
       const needsEnrollment =
         !mfaSettings ||
         !mfaSettings.mfa_enabled ||
