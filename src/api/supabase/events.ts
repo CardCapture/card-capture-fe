@@ -67,14 +67,12 @@ export const eventsApi = {
    */
   async getReviewedData(schoolId?: string): Promise<ProspectCard[]> {
     // Fetch only columns needed for stats to reduce payload size
-    let query = supabase
+    // Note: Not filtering by school_id here as events are already scoped to schools
+    // and we filter by event_id on a per-event basis
+    const query = supabase
       .from("reviewed_data")
       .select("id, review_status, exported_at, event_id")
       .neq("review_status", "deleted");
-
-    if (schoolId) {
-      query = query.eq("school_id", schoolId);
-    }
 
     const { data, error } = await query;
 

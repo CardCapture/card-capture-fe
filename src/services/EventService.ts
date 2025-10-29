@@ -1,7 +1,9 @@
 import { eventsApi } from "@/api/supabase/events";
 import { backendEventsApi } from "@/api/backend/events";
+import { cardsApi } from "@/api/backend/cards";
 import { getEventCardStats } from "@/lib/getEventCardStats";
 import type { Event, EventWithStats } from "@/types/event";
+import type { ProspectCard } from "@/types/card";
 
 export class EventService {
   /**
@@ -11,36 +13,15 @@ export class EventService {
     schoolId?: string
   ): Promise<EventWithStats[]> {
     try {
-      console.log("EventService: Fetching events and stats", { schoolId });
+      console.log("EventService: Fetching events with stats (optimized)", { schoolId });
 
-      // Fetch events and reviewed data in parallel
-      const [eventsData, reviewedData] = await Promise.all([
-        eventsApi.getEvents(schoolId),
-        eventsApi.getReviewedData(schoolId),
-      ]);
+      // Use optimized backend endpoint that calculates stats server-side
+      // This is much faster than fetching all cards and calculating client-side
+      const eventsWithStats = await backendEventsApi.getEventsWithStats(schoolId);
 
-      console.log("EventService: Raw events data from Supabase:", eventsData);
-      console.log("EventService: schoolId used for query:", schoolId);
-      console.log("EventService: Number of events returned:", eventsData.length);
-
-      // Process the data to include stats
-      const eventsWithStats: EventWithStats[] = eventsData.map((event) => {
-        const cards =
-          reviewedData?.filter((card) => card.event_id === event.id) || [];
-
-        console.log("EventService: Processing event stats", {
-          eventName: event.name,
-          eventId: event.id,
-          school_id: event.school_id,
-          cardCount: cards.length,
-        });
-
-        const stats = getEventCardStats(cards);
-
-        return {
-          ...event,
-          stats,
-        };
+      console.log("EventService: Fetched events with stats:", {
+        count: eventsWithStats.length,
+        totalCards: eventsWithStats.reduce((sum, e) => sum + (e.stats?.total_cards || 0), 0)
       });
 
       return eventsWithStats;
@@ -57,10 +38,10 @@ export class EventService {
     try {
       console.log("EventService: Fetching single event with stats", { eventId });
 
-      // Fetch event and reviewed data for this specific event
-      const [eventData, reviewedData] = await Promise.all([
+      // Fetch event and cards from backend API (includes both V1 and V2 tables)
+      const [eventData, cards] = await Promise.all([
         eventsApi.getEventById(eventId),
-        eventsApi.getReviewedDataForEvent(eventId),
+        cardsApi.getCardsByEvent(eventId), // Use backend API to get cards from both tables
       ]);
 
       if (!eventData) {
@@ -68,9 +49,9 @@ export class EventService {
       }
 
       console.log("EventService: Single event data:", eventData);
-      console.log("EventService: Cards for event:", reviewedData?.length || 0);
+      console.log("EventService: Cards for event:", cards?.length || 0);
 
-      const stats = getEventCardStats(reviewedData || []);
+      const stats = getEventCardStats(cards as ProspectCard[] || []);
 
       return {
         ...eventData,

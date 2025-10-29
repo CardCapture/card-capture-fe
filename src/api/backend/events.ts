@@ -1,10 +1,29 @@
 import { authFetch } from "@/lib/authFetch";
-import type { Event } from "@/types/event";
+import type { Event, EventWithStats } from "@/types/event";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export const backendEventsApi = {
+  /**
+   * Get events with statistics (optimized server-side calculation)
+   */
+  async getEventsWithStats(schoolId?: string): Promise<EventWithStats[]> {
+    const url = new URL(`${API_BASE_URL}/events-with-stats`);
+    if (schoolId) {
+      url.searchParams.append("school_id", schoolId);
+    }
+
+    const response = await authFetch(url.toString());
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch events with stats (${response.status})`);
+    }
+
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  },
+
   /**
    * Create a new event
    */
