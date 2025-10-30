@@ -29,7 +29,7 @@ import {
 import { useEvents } from "@/hooks/useEvents";
 import type { Event, EventWithStats } from "@/types/event";
 import { CreateEventModal } from "./CreateEventModal";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -89,6 +89,7 @@ type EventTab = "upcoming" | "completed" | "archived";
 const DashboardCopy = () => {
   // External Hooks
   const router = useNavigate();
+  const location = useLocation();
   const { session } = useAuth();
   const { schoolId } = useProfile();
   const {
@@ -142,6 +143,16 @@ const DashboardCopy = () => {
       }))
     );
   }, [events]);
+
+  // Restore the previously selected tab when returning from event details
+  useEffect(() => {
+    const state = location.state as { previousTab?: EventTab };
+    if (state?.previousTab) {
+      setSelectedTab(state.previousTab);
+      // Clear the state so it doesn't persist on subsequent navigations
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Fetch events on mount and when schoolId changes
   useEffect(() => {
@@ -208,9 +219,10 @@ const DashboardCopy = () => {
       if (Object.keys(rowSelection).length > 0) {
         return;
       }
-      router(`/events/${event.id}`);
+      // Pass the current tab in state so we can return to it
+      router(`/events/${event.id}`, { state: { previousTab: selectedTab } });
     },
-    [router, rowSelection]
+    [router, rowSelection, selectedTab]
   );
 
   // Helper to get local date (year, month, day only) for more consistent comparison

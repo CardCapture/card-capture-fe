@@ -1,4 +1,5 @@
 import React, { memo, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,19 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   onEditEvent,
   onRefreshCards,
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get the previous tab from location state (passed when navigating to this event)
+  const previousTab = (location.state as { previousTab?: string })?.previousTab;
+
+  // Handler for breadcrumb back navigation
+  const handleBackToEvents = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    // Navigate back to events list, preserving the tab if available
+    navigate('/events', { state: { previousTab } });
+  }, [navigate, previousTab]);
+
   // Memoize tab click handlers to prevent unnecessary re-renders
   const handleNeedsReviewClick = useCallback(() => {
     setSelectedTab("needs_review");
@@ -93,7 +107,11 @@ const EventHeader: React.FC<EventHeaderProps> = ({
         >
           <ol className="flex items-center space-x-1">
             <li className="flex items-center">
-              <a href="/events" className="text-blue-600 hover:underline">
+              <a
+                href="/events"
+                onClick={handleBackToEvents}
+                className="text-blue-600 hover:underline cursor-pointer"
+              >
                 Events
               </a>
               <ChevronRight className="mx-1 w-3 h-3 text-gray-400" />
