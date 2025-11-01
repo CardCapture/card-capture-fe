@@ -1,6 +1,9 @@
 import { schoolsApi, type SchoolData } from "@/api/supabase/schools";
 import { backendSchoolsApi } from "@/api/backend/schools";
 import { configsApi, type SFTPConfig } from "@/api/supabase/configs";
+import { authFetch } from "@/lib/authFetch";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export interface CardField {
   key: string;
@@ -237,5 +240,60 @@ export class SchoolService {
     }
 
     return [];
+  }
+
+  /**
+   * Get notification settings for a school
+   */
+  static async getNotificationSettings(schoolId: string): Promise<{
+    notification_email: string | null;
+    notifications_enabled: boolean;
+  }> {
+    try {
+      const response = await authFetch(
+        `${API_BASE_URL}/schools/${schoolId}/notification-settings`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to get notification settings");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("SchoolService: Failed to get notification settings", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update notification settings for a school
+   */
+  static async updateNotificationSettings(
+    schoolId: string,
+    settings: {
+      notification_email?: string | null;
+      notifications_enabled?: boolean;
+    }
+  ): Promise<void> {
+    try {
+      const response = await authFetch(
+        `${API_BASE_URL}/schools/${schoolId}/notification-settings`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(settings),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update notification settings");
+      }
+    } catch (error) {
+      console.error("SchoolService: Failed to update notification settings", error);
+      throw error;
+    }
   }
 }
