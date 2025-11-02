@@ -81,7 +81,8 @@ const ProtectedRoute: React.FC = () => {
     // If not loading and no user exists, redirect to login page
     // 'replace' prevents adding the protected route to browser history
     // Pass the current location so we can redirect back after login
-    console.log("ProtectedRoute: Redirecting to login (no user)");
+    console.log("ProtectedRoute: Redirecting to login (no user), saving path:", location.pathname);
+    console.log("ProtectedRoute: Full location:", location);
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
