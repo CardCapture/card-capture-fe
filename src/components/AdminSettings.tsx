@@ -40,6 +40,7 @@ import SettingsPreferences from "./SettingsPreferences";
 import { Link, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/lib/toast";
 import { updateSchoolCardFields } from "@/lib/api";
 import { CardFieldPreferences } from "@/components/CardFieldPreferences";
@@ -183,6 +184,13 @@ const AdminSettings: React.FC = () => {
   const [initialSchoolName, setInitialSchoolName] = useState<string>("");
   const [schoolNameInput, setSchoolNameInput] = useState<string>("");
 
+  // Notification settings state
+  const [notificationEmail, setNotificationEmail] = useState<string>("");
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
+  const [initialNotificationEmail, setInitialNotificationEmail] = useState<string>("");
+  const [initialNotificationsEnabled, setInitialNotificationsEnabled] = useState<boolean>(false);
+  const [isNotificationSettingsDirty, setIsNotificationSettingsDirty] = useState(false);
+
   // SFTP state
   const [sftpConfig, setSftpConfig] = useState<SFTPConfig>({
     host: "",
@@ -242,6 +250,38 @@ const AdminSettings: React.FC = () => {
       setSchoolNameInput(school.name);
     }
   }, [school?.name, initialSchoolName]);
+
+  // Load notification settings when school data is available
+  useEffect(() => {
+    const loadNotificationSettings = async () => {
+      if (!schoolId) return;
+
+      try {
+        const settings = await SchoolService.getNotificationSettings(schoolId);
+        const email = settings.notification_email || "";
+        const enabled = settings.notifications_enabled || false;
+
+        setNotificationEmail(email);
+        setNotificationsEnabled(enabled);
+        setInitialNotificationEmail(email);
+        setInitialNotificationsEnabled(enabled);
+      } catch (error) {
+        console.error("Error loading notification settings:", error);
+      }
+    };
+
+    if (activeTab === "account-settings") {
+      loadNotificationSettings();
+    }
+  }, [schoolId, activeTab]);
+
+  // Track changes to notification settings
+  useEffect(() => {
+    const isDirty =
+      notificationEmail !== initialNotificationEmail ||
+      notificationsEnabled !== initialNotificationsEnabled;
+    setIsNotificationSettingsDirty(isDirty);
+  }, [notificationEmail, notificationsEnabled, initialNotificationEmail, initialNotificationsEnabled]);
 
   useEffect(() => {
     if (activeTab === "user-management" && session?.access_token) {
@@ -501,47 +541,112 @@ const AdminSettings: React.FC = () => {
     case "account-settings":
       heading = "Account Settings";
       content = (
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Information</CardTitle>
-            <CardDescription>
-              Update your account settings and preferences.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="school_name">School Name</Label>
-              <Input
-                id="school_name"
-                value={schoolNameInput}
-                onChange={(e) => {
-                  setSchoolNameInput(e.target.value);
-                  setIsSchoolNameDirty(e.target.value !== initialSchoolName);
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Information</CardTitle>
+              <CardDescription>
+                Update your account settings and preferences.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="school_name">School Name</Label>
+                <Input
+                  id="school_name"
+                  value={schoolNameInput}
+                  onChange={(e) => {
+                    setSchoolNameInput(e.target.value);
+                    setIsSchoolNameDirty(e.target.value !== initialSchoolName);
+                  }}
+                  placeholder="Enter your school name"
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="justify-end">
+              <Button
+                onClick={async () => {
+                  if (!school?.id) return;
+                  try {
+                    await updateSchool({ name: schoolNameInput });
+                    setInitialSchoolName(schoolNameInput);
+                    setIsSchoolNameDirty(false);
+                    toast.saved();
+                  } catch (error) {
+                    console.error("Error updating school:", error);
+                    toast.error("Failed to save account settings");
+                  }
                 }}
-                placeholder="Enter your school name"
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="justify-end">
-            <Button
-              onClick={async () => {
-                if (!school?.id) return;
-                try {
-                  await updateSchool({ name: schoolNameInput });
-                  setInitialSchoolName(schoolNameInput);
-                  setIsSchoolNameDirty(false);
-                  toast.saved();
-                } catch (error) {
-                  console.error("Error updating school:", error);
-                  toast.error("Failed to save account settings");
-                }
-              }}
-              disabled={schoolLoading || !isSchoolNameDirty}
-            >
-              {schoolLoading ? "Saving..." : "Save Changes"}
-            </Button>
-          </CardFooter>
-        </Card>
+                disabled={schoolLoading || !isSchoolNameDirty}
+              >
+                {schoolLoading ? "Saving..." : "Save Changes"}
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Card Scan Notifications</CardTitle>
+              <CardDescription>
+                Receive hourly email notifications when events have new card scans.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between space-x-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="notifications_enabled">Enable Notifications</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Receive email alerts for new card scans
+                  </p>
+                </div>
+                <Switch
+                  id="notifications_enabled"
+                  checked={notificationsEnabled}
+                  onCheckedChange={setNotificationsEnabled}
+                />
+              </div>
+
+              {notificationsEnabled && (
+                <div className="space-y-2">
+                  <Label htmlFor="notification_email">Notification Email</Label>
+                  <Input
+                    id="notification_email"
+                    type="email"
+                    value={notificationEmail}
+                    onChange={(e) => setNotificationEmail(e.target.value)}
+                    placeholder="admissions@school.edu"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    We'll send hourly digests to this email when events have new card scans.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="justify-end">
+              <Button
+                onClick={async () => {
+                  if (!school?.id) return;
+                  try {
+                    await SchoolService.updateNotificationSettings(school.id, {
+                      notification_email: notificationEmail || null,
+                      notifications_enabled: notificationsEnabled,
+                    });
+                    setInitialNotificationEmail(notificationEmail);
+                    setInitialNotificationsEnabled(notificationsEnabled);
+                    setIsNotificationSettingsDirty(false);
+                    toast.saved();
+                  } catch (error) {
+                    console.error("Error updating notification settings:", error);
+                    toast.error("Failed to save notification settings");
+                  }
+                }}
+                disabled={!isNotificationSettingsDirty}
+              >
+                Save Notification Settings
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
       );
       break;
     case "field-preferences":

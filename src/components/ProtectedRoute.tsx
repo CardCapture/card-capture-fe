@@ -1,11 +1,12 @@
 // src/components/ProtectedRoute.tsx
 import React, { useEffect, useState } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext"; // Import the useAuth hook
 import { supabase } from "@/lib/supabaseClient";
 
 const ProtectedRoute: React.FC = () => {
   const { user, profile, loading, isSuperAdmin } = useAuth(); // Get user session, profile, and loading state
+  const location = useLocation(); // Get current location to preserve redirect path
   const [mfaCheckLoading, setMfaCheckLoading] = useState(true);
   const [requiresMfa, setRequiresMfa] = useState(false);
 
@@ -79,8 +80,10 @@ const ProtectedRoute: React.FC = () => {
   if (!user) {
     // If not loading and no user exists, redirect to login page
     // 'replace' prevents adding the protected route to browser history
-    console.log("ProtectedRoute: Redirecting to login (no user)");
-    return <Navigate to="/login" replace />;
+    // Pass the current location so we can redirect back after login
+    console.log("ProtectedRoute: Redirecting to login (no user), saving path:", location.pathname);
+    console.log("ProtectedRoute: Full location:", location);
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   // If user needs MFA verification, redirect to login (but don't sign them out)
@@ -89,7 +92,7 @@ const ProtectedRoute: React.FC = () => {
     console.log("ProtectedRoute: MFA required but not verified - redirecting to login for MFA flow");
     // Don't sign out - let the login page handle the MFA flow
     // Signing out here causes issues when users are mid-MFA enrollment
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   // If user is SuperAdmin, redirect to SuperAdmin dashboard
