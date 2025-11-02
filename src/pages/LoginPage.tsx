@@ -1,6 +1,6 @@
 // src/pages/LoginPage.tsx
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDefaultRedirectPath } from "@/utils/roleRedirect";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,10 @@ const LoginPage = () => {
   const [showMFAFlow, setShowMFAFlow] = useState(false);
   const { signInWithPassword, profile, user, refetchProfile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get the redirect path from location state (set by ProtectedRoute)
+  const from = (location.state as any)?.from || null;
 
   // Use global loader instead of local loading state
   const { showButtonLoader, hideButtonLoader, isLoading } = useLoader();
@@ -33,10 +37,12 @@ const LoginPage = () => {
   // Redirect if user is already logged in, but not during MFA flow
   useEffect(() => {
     if (user && profile && !showMFAFlow) {
-      const redirectPath = getDefaultRedirectPath(profile);
+      // Use saved redirect path if available, otherwise use default
+      const redirectPath = from || getDefaultRedirectPath(profile);
+      console.log('User already logged in, redirecting to:', redirectPath);
       navigate(redirectPath, { replace: true });
     }
-  }, [user, profile, navigate, showMFAFlow]);
+  }, [user, profile, navigate, showMFAFlow, from]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -84,10 +90,10 @@ const LoginPage = () => {
     // Small additional delay to ensure ProtectedRoute sees the updated state
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Navigate to appropriate page
-    const defaultPath = getDefaultRedirectPath(profile);
-    console.log('Redirecting to:', defaultPath);
-    navigate(defaultPath, { replace: true });
+    // Navigate to appropriate page - use saved redirect path if available
+    const redirectPath = from || getDefaultRedirectPath(profile);
+    console.log('Redirecting to:', redirectPath, '(from saved path:', from, ')');
+    navigate(redirectPath, { replace: true });
 
     setShowMFAFlow(false);
   };
