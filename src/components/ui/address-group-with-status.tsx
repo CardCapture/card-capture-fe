@@ -65,17 +65,33 @@ export function AddressGroupWithStatus({
     minChangeThreshold: 2,
   });
 
-  // Simplified approach: Check if address was verified by Google Maps during pipeline processing
-  // Look for explicit verification indicators rather than trying to track sources
+  // Check if address was verified by Google Maps during pipeline processing
+  // IMPORTANT: ALL four components (address, city, state, zip) must be verified
+  // to show the green "verified" badge
   const wasVerifiedDuringProcessing = (
-    addressFieldData && 
+    // All four components must exist
+    addressFieldData &&
+    cityFieldData &&
+    stateFieldData &&
+    zipCodeFieldData &&
+    // All four must have values
+    addressFieldData.value &&
+    cityFieldData.value &&
+    stateFieldData.value &&
+    zipCodeFieldData.value &&
+    // None should require human review
     !addressFieldData.requires_human_review &&
+    !cityFieldData.requires_human_review &&
+    !stateFieldData.requires_human_review &&
+    !zipCodeFieldData.requires_human_review &&
     (
-      // Direct indicators of Google Maps verification
-      (addressFieldData.review_notes && addressFieldData.review_notes.toLowerCase().includes('confirmed valid')) ||
-      (addressFieldData.source === "smart_validation") ||
-      (addressFieldData.source === "address_validation") ||
-      (addressFieldData.source === "google_maps")
+      // Check that ALL components have Google Maps verification sources
+      (
+        (addressFieldData.source === "google_maps_verified" || addressFieldData.source === "google_maps_disambiguated") &&
+        (cityFieldData.source === "google_maps_verified" || cityFieldData.source === "google_maps_disambiguated") &&
+        (stateFieldData.source === "google_maps_verified" || stateFieldData.source === "google_maps_disambiguated") &&
+        (zipCodeFieldData.source === "google_maps_verified" || zipCodeFieldData.source === "google_maps_disambiguated")
+      )
     )
   );
   

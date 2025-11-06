@@ -84,8 +84,6 @@ export function AddressGroupSimple({
   // Cards that are "reviewed" are ready for export
   const isReadyForExport = reviewStatus === "ready_for_export" || reviewStatus === "reviewed";
 
-  // If ready for export, address is verified by definition
-
   // Helper to mark all address fields as reviewed when validation succeeds
   const handleValidationSuccess = () => {
     console.log("✅ Address validated successfully, marking fields as reviewed");
@@ -101,23 +99,33 @@ export function AddressGroupSimple({
       console.log("⏭️ Address already reviewed, skipping toggle");
     }
   };
-  
-  // Simplified state - only track if ready for export cards should show as verified
-  const [showAsVerified, setShowAsVerified] = useState(false);
 
-
-  // Simple state management for ready-for-export cards
-  useEffect(() => {
-    if (isReadyForExport) {
-      setShowAsVerified(true);
-    }
-  }, [isReadyForExport]);
-
-
+  // Check if address was actually verified by Google Maps during pipeline processing
+  // IMPORTANT: ALL four components (address, city, state, zip) must be verified
+  // to show the green "verified" badge
+  const wasVerifiedByGoogleMaps = (
+    // All four components must exist
+    addressFieldData &&
+    cityFieldData &&
+    stateFieldData &&
+    zipCodeFieldData &&
+    // All four must have values
+    addressFieldData.value &&
+    cityFieldData.value &&
+    stateFieldData.value &&
+    zipCodeFieldData.value &&
+    // Check that ALL components have Google Maps verification sources
+    (
+      (addressFieldData.source === "google_maps_verified" || addressFieldData.source === "google_maps_disambiguated") &&
+      (cityFieldData.source === "google_maps_verified" || cityFieldData.source === "google_maps_disambiguated") &&
+      (stateFieldData.source === "google_maps_verified" || stateFieldData.source === "google_maps_disambiguated") &&
+      (zipCodeFieldData.source === "google_maps_verified" || zipCodeFieldData.source === "google_maps_disambiguated")
+    )
+  );
 
   // Simple logic for showing address status
   const showNeedsReviewMessage = addressFieldData?.requires_human_review && !addressFieldData?.reviewed;
-  const showVerifiedMessage = addressFieldData?.reviewed || showAsVerified;
+  const showVerifiedMessage = addressFieldData?.reviewed || wasVerifiedByGoogleMaps;
 
   // Handler for clicking "Edit Address" message
   const handleEditAddressClick = (e: React.MouseEvent) => {
