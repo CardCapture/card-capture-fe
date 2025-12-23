@@ -59,6 +59,11 @@ const RegistrationSuccessPage = React.lazy(() => import("./pages/RegistrationSuc
 const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage"));
 const MagicLinkVerifyPage = React.lazy(() => import("./pages/MagicLinkVerifyPage"));
 
+// Recruiter self-service signup pages
+const RecruiterSignupPage = React.lazy(() => import("./pages/RecruiterSignupPage"));
+const EventSelectionPage = React.lazy(() => import("./pages/EventSelectionPage"));
+const SignupSuccessPage = React.lazy(() => import("./pages/SignupSuccessPage"));
+
 // --- CSS Import ---
 import "./App.css";
 
@@ -112,6 +117,19 @@ function App() {
                   <Route path="/register/form" element={<MultiStepRegistrationPage />} />
                   <Route path="/register/success" element={<RegistrationSuccessPage />} />
                   <Route path="/register/verify-email" element={<VerifyEmailPage />} />
+                </Route>
+
+                {/* Recruiter self-service signup flow (minimal layout) */}
+                <Route
+                  element={
+                    <MinimalLayout>
+                      <Outlet />
+                    </MinimalLayout>
+                  }
+                >
+                  <Route path="/signup" element={<RecruiterSignupPage />} />
+                  <Route path="/signup/select-event" element={<EventSelectionPage />} />
+                  <Route path="/signup/success" element={<SignupSuccessPage />} />
                 </Route>
 
                 {/* SuperAdmin routes */}
