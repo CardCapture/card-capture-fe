@@ -1,41 +1,35 @@
 /**
- * Event selection page for recruiter signup flow.
- * User selects events to purchase access for $25 each.
+ * Event purchase page for authenticated admin users.
+ * Allows admins to purchase access to TACROA events at $25 each.
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
 } from '@/components/ui/card';
-import { Calendar, MapPin, Clock, Search, Loader2, ChevronLeft, ChevronRight, Check, CalendarX, X, ShoppingCart } from 'lucide-react';
+import { Calendar, MapPin, Clock, Search, Loader2, ChevronLeft, ChevronRight, Check, CalendarX, X, ShoppingCart, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabaseClient';
-import recruiterSignupService, { UniversalEvent } from '@/services/RecruiterSignupService';
-
-interface SignupData {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  schoolSelection: {
-    type: 'existing' | 'new';
-    school_id?: string;
-    school_name?: string;
-  };
-}
+import recruiterSignupService, { UniversalEvent, purchaseEventsAsAdmin } from '@/services/RecruiterSignupService';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/hooks/useRole';
 
 const PRICE_PER_EVENT = 25;
 
-const EventSelectionPage: React.FC = () => {
+const PurchaseEventsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { profile } = useAuth();
+  const { isAdmin } = useRole();
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [signupData, setSignupData] = useState<SignupData | null>(null);
+
+  // Check for cancelled payment
+  const wasCancelled = searchParams.get('cancelled') === 'true';
 
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,20 +43,12 @@ const EventSelectionPage: React.FC = () => {
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Load signup data from session storage
+  // Verify admin access
   useEffect(() => {
-    const storedData = sessionStorage.getItem('recruiterSignupData');
-    if (!storedData) {
-      // No signup data, redirect back to signup
-      navigate('/signup');
-      return;
+    if (!isAdmin) {
+      navigate('/events');
     }
-    try {
-      setSignupData(JSON.parse(storedData));
-    } catch {
-      navigate('/signup');
-    }
-  }, [navigate]);
+  }, [isAdmin, navigate]);
 
   // Search events when page loads or search changes
   useEffect(() => {
@@ -157,19 +143,16 @@ const EventSelectionPage: React.FC = () => {
 
   // Select/deselect event (supports multiple selection)
   const handleEventSelect = (event: UniversalEvent) => {
-    // Clear any previous error when user interacts
     setError(null);
     setSelectedEvents(prev => {
       const isAlreadySelected = prev.some(e => e.id === event.id);
       if (isAlreadySelected) {
-        // Deselect this event
         const newSelection = prev.filter(e => e.id !== event.id);
         if (newSelection.length === 0) {
           setSheetOpen(false);
         }
         return newSelection;
       } else {
-        // Add this event to selection
         return [...prev, event];
       }
     });
@@ -187,7 +170,7 @@ const EventSelectionPage: React.FC = () => {
   };
 
   const handleContinueToPayment = async () => {
-    if (selectedEvents.length === 0 || !signupData) {
+    if (selectedEvents.length === 0) {
       setError('Please select at least one event');
       return;
     }
@@ -196,29 +179,12 @@ const EventSelectionPage: React.FC = () => {
     setError(null);
 
     try {
-      // Send all selected event IDs
-      const response = await recruiterSignupService.signup({
-        email: signupData.email,
-        password: signupData.password,
-        first_name: signupData.firstName,
-        last_name: signupData.lastName,
-        school_selection: signupData.schoolSelection,
-        universal_event_ids: selectedEvents.map(e => e.id),
-      });
-
-      // Clear the stored signup data
-      sessionStorage.removeItem('recruiterSignupData');
-
-      // Set the auth session so user is logged in when they return from Stripe
-      await supabase.auth.setSession({
-        access_token: response.access_token,
-        refresh_token: response.refresh_token,
-      });
+      const response = await purchaseEventsAsAdmin(selectedEvents.map(e => e.id));
 
       // Redirect to Stripe checkout
       window.location.href = response.checkout_url;
     } catch (err: any) {
-      setError(err.message || 'Failed to process signup. Please try again.');
+      setError(err.message || 'Failed to create checkout session. Please try again.');
       setLoading(false);
     }
   };
@@ -288,9 +254,9 @@ const EventSelectionPage: React.FC = () => {
     );
   };
 
-  if (!signupData) {
+  if (!isAdmin) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -299,7 +265,7 @@ const EventSelectionPage: React.FC = () => {
   const panelOpen = sheetOpen && selectedEvents.length > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div className="min-h-screen bg-background">
       <div className="flex">
         {/* Main content area - shrinks when panel is open */}
         <div
@@ -310,18 +276,25 @@ const EventSelectionPage: React.FC = () => {
         >
           <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="text-center mb-8">
-              <Link to="/" className="inline-flex items-center gap-2 mb-6">
-                <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">CC</span>
-                </div>
-                <span className="font-bold text-xl tracking-tight">CardCapture</span>
-              </Link>
-              <h1 className="text-3xl font-bold">Select Your Events</h1>
-              <p className="text-muted-foreground mt-2">$25 per event. Select one or more events to purchase.</p>
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold">Purchase Events</h1>
+              <p className="text-muted-foreground mt-2">
+                Select TACROA events to add to your account. $25 per event.
+              </p>
             </div>
 
-            {/* Search and filters */}
+            {/* Cancelled payment alert */}
+            {wasCancelled && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 mb-6 flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-800">Payment cancelled</p>
+                  <p className="text-sm text-amber-700">Your payment was cancelled. Select events below to try again.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Search */}
             <Card className="mb-6">
               <CardContent className="pt-6">
                 <div className="flex gap-4">
@@ -439,7 +412,7 @@ const EventSelectionPage: React.FC = () => {
         {/* Right side panel - fixed position */}
         <div
           className={cn(
-            "fixed right-0 top-0 h-full w-[380px] bg-background border-l shadow-lg transition-transform duration-300 ease-in-out flex flex-col",
+            "fixed right-0 top-0 h-full w-[380px] bg-background border-l shadow-lg transition-transform duration-300 ease-in-out flex flex-col z-40",
             panelOpen ? "translate-x-0" : "translate-x-full"
           )}
         >
@@ -508,11 +481,6 @@ const EventSelectionPage: React.FC = () => {
             {error && (
               <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
                 <p className="text-sm text-destructive">{error}</p>
-                {error.toLowerCase().includes('already registered') && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    <a href="/auth" className="text-primary hover:underline">Click here to login</a> to your existing account.
-                  </p>
-                )}
               </div>
             )}
             <div className="flex items-center justify-between">
@@ -554,4 +522,4 @@ const EventSelectionPage: React.FC = () => {
   );
 };
 
-export default EventSelectionPage;
+export default PurchaseEventsPage;

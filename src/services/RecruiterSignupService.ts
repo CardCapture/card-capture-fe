@@ -46,7 +46,7 @@ export interface RecruiterSignupRequest {
     school_id?: string;
     school_name?: string;
   };
-  universal_event_id: string;
+  universal_event_ids: string[];
 }
 
 export interface RecruiterSignupResponse {
@@ -189,6 +189,57 @@ class RecruiterSignupService {
     }
     return response.json();
   }
+}
+
+export interface AdminPurchaseResponse {
+  checkout_session_id: string;
+  checkout_url: string;
+}
+
+/**
+ * Purchase events as an authenticated admin.
+ * Uses the auth token from localStorage.
+ */
+export async function purchaseEventsAsAdmin(
+  eventIds: string[],
+  token?: string
+): Promise<AdminPurchaseResponse> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // Get auth token
+  const authToken = token || getStoredAuthToken();
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/events/purchase`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ universal_event_ids: eventIds }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to create checkout session');
+  }
+
+  return response.json();
+}
+
+function getStoredAuthToken(): string | null {
+  try {
+    const storedSession = localStorage.getItem('supabase.auth.token');
+    if (storedSession) {
+      const session = JSON.parse(storedSession);
+      return session?.access_token;
+    }
+  } catch (error) {
+    console.warn('Failed to get stored session:', error);
+  }
+  return null;
 }
 
 export const recruiterSignupService = new RecruiterSignupService();

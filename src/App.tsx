@@ -64,6 +64,9 @@ const RecruiterSignupPage = React.lazy(() => import("./pages/RecruiterSignupPage
 const EventSelectionPage = React.lazy(() => import("./pages/EventSelectionPage"));
 const SignupSuccessPage = React.lazy(() => import("./pages/SignupSuccessPage"));
 
+// Admin event purchase page
+const PurchaseEventsPage = React.lazy(() => import("./pages/PurchaseEventsPage"));
+
 // --- CSS Import ---
 import "./App.css";
 
@@ -181,6 +184,16 @@ function App() {
                       element={
                         <RoleProtectedRoute requiredPermission="canAccessScanPage">
                           <ScanPage />
+                        </RoleProtectedRoute>
+                      }
+                    />
+
+                    {/* Admin-only route for purchasing events */}
+                    <Route
+                      path="/purchase-events"
+                      element={
+                        <RoleProtectedRoute requiredPermission="isAdmin">
+                          <PurchaseEventsPage />
                         </RoleProtectedRoute>
                       }
                     />
