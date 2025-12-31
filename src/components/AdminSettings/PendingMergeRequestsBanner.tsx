@@ -91,7 +91,7 @@ export function PendingMergeRequestsBanner({ onUserMerged }: PendingMergeRequest
       setRequests(response.requests);
     } catch (error) {
       console.error("Error fetching requests:", error);
-      toast.error("Failed to load merge requests");
+      toast.error("Failed to load link requests");
     } finally {
       setLoading(false);
     }
@@ -178,7 +178,7 @@ export function PendingMergeRequestsBanner({ onUserMerged }: PendingMergeRequest
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-medium text-amber-900">
-                  Pending User Merge Requests
+                  Pending User Link Requests
                 </span>
                 <Badge
                   variant="secondary"
@@ -214,7 +214,7 @@ export function PendingMergeRequestsBanner({ onUserMerged }: PendingMergeRequest
               Account Link Request
             </DialogTitle>
             <DialogDescription>
-              This user wants to join your CardCapture account. Approve to see their event’s scans.
+              Review recruiters who want to join your CardCapture account. Approve to see their scans.
             </DialogDescription>
           </DialogHeader>
 
@@ -257,21 +257,62 @@ export function PendingMergeRequestsBanner({ onUserMerged }: PendingMergeRequest
                           </div>
                         </div>
 
-                        {/* Event Info */}
-                        <div className="flex items-center gap-2 text-muted-foreground mt-3 text-sm">
-                          <Calendar className="w-4 h-4" />
-                          <div>
-                            <p className="font-medium text-foreground">
-                              {request.universal_event?.name}
-                              <span className="ml-2 text-green-600">
-                                ${((request.event_purchase?.amount || 2500) / 100).toFixed(0)}
-                              </span>
-                            </p>
-                            <p>
-                              {request.universal_event?.event_date
-                                ? formatDate(request.universal_event.event_date)
-                                : "Date TBD"}
-                            </p>
+                        {/* Events Info */}
+                        <div className="mt-3 text-sm">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                            <Calendar className="w-4 h-4" />
+                            <span>
+                              {(request.purchased_events?.length || 1) === 1
+                                ? "Event"
+                                : `${request.purchased_events?.length} Events`}
+                            </span>
+                          </div>
+                          <div className="space-y-2 ml-6">
+                            {request.purchased_events && request.purchased_events.length > 0 ? (
+                              request.purchased_events.map((pe, index) => (
+                                <div key={pe.event.id || index} className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium text-foreground">
+                                      {pe.event.name}
+                                    </p>
+                                    <p className="text-muted-foreground text-xs">
+                                      {pe.event.event_date
+                                        ? formatDate(pe.event.event_date)
+                                        : "Date TBD"}
+                                    </p>
+                                  </div>
+                                  <span className="text-green-600 font-medium">
+                                    ${((pe.purchase?.amount || 2500) / 100).toFixed(0)}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              // Fallback to single event (backwards compatibility)
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-foreground">
+                                    {request.universal_event?.name}
+                                  </p>
+                                  <p className="text-muted-foreground text-xs">
+                                    {request.universal_event?.event_date
+                                      ? formatDate(request.universal_event.event_date)
+                                      : "Date TBD"}
+                                  </p>
+                                </div>
+                                <span className="text-green-600 font-medium">
+                                  ${((request.event_purchase?.amount || 2500) / 100).toFixed(0)}
+                                </span>
+                              </div>
+                            )}
+                            {/* Total if multiple events */}
+                            {request.purchased_events && request.purchased_events.length > 1 && (
+                              <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                                <p className="font-medium text-foreground">Total</p>
+                                <span className="text-green-600 font-semibold">
+                                  ${((request.total_amount || 0) / 100).toFixed(0)}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -326,8 +367,8 @@ export function PendingMergeRequestsBanner({ onUserMerged }: PendingMergeRequest
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirmAction?.type === "approve"
-                ? "Approve Merge Request"
-                : "Reject Merge Request"}
+                ? "Approve Link Request"
+                : "Reject Link Request"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.type === "approve" ? (
@@ -344,7 +385,9 @@ export function PendingMergeRequestsBanner({ onUserMerged }: PendingMergeRequest
                   <ul className="list-disc ml-4 mt-2">
                     <li>Add them to your school's user list</li>
                     <li>Give them access to school events and data</li>
-                    <li>Transfer their purchased event to your school</li>
+                    <li>
+                      Transfer their purchased {(confirmAction.request.purchased_events?.length || 1) === 1 ? "event" : `${confirmAction.request.purchased_events?.length} events`} to your school
+                    </li>
                   </ul>
                 </>
               ) : (

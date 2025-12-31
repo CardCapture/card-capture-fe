@@ -25,6 +25,11 @@ export interface LinkRequestPurchase {
   completed_at?: string;
 }
 
+export interface PurchasedEvent {
+  event: LinkRequestEvent;
+  purchase: LinkRequestPurchase;
+}
+
 export interface LinkRequest {
   id: string;
   requester_user_id: string;
@@ -41,6 +46,9 @@ export interface LinkRequest {
   event_purchase?: LinkRequestPurchase;
   target_school?: { id: string; name: string };
   reviewer?: LinkRequestRequester;
+  // All events purchased by the requester
+  purchased_events?: PurchasedEvent[];
+  total_amount?: number;
 }
 
 export interface LinkRequestsResponse {

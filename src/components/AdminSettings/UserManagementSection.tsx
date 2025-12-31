@@ -206,7 +206,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
 
   return (
     <>
-      {/* Pending Merge Requests Banner */}
+      {/* Pending Link Requests Banner */}
       <PendingMergeRequestsBanner onUserMerged={fetchUsers} />
 
       <Card className="bg-white shadow-sm rounded-xl p-0">
