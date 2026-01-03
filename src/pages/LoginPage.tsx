@@ -190,6 +190,15 @@ const LoginPage = () => {
                   {loading ? "Signing In..." : "Sign In"}
                 </Button>
               </ButtonLoader>
+              <div className="text-center text-sm text-muted-foreground">
+                New user?{" "}
+                <Link
+                  to="/signup"
+                  className="text-primary hover:underline font-medium"
+                >
+                  Create an account
+                </Link>
+              </div>
             </CardFooter>
           </form>
         </Card>

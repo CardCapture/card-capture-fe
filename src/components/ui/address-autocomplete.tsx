@@ -231,41 +231,19 @@ export function AddressAutocomplete({
     if (inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-      const scrollY = window.scrollY || window.pageYOffset;
 
-      // Check if we're on mobile (viewport width < 768px)
-      const isMobile = window.innerWidth < 768;
-
-      // For mobile, check if dropdown would go off screen
+      // For dropdown, check if it would go off screen
       const spaceBelow = viewportHeight - rect.bottom;
       const dropdownHeight = Math.min(240, predictions.length * 48); // Estimate height
 
-      console.log('📏 Calculating dropdown position:', {
-        rect,
-        viewportHeight,
-        spaceBelow,
-        dropdownHeight,
-        isMobile
+      // Since we use position: fixed, use viewport-relative coordinates (no scroll offset)
+      // Position directly below input, or above if not enough space below
+      setDropdownPosition({
+        top: spaceBelow >= dropdownHeight ? rect.bottom + 4 : 0, // 4px gap below input
+        left: rect.left,
+        width: rect.width,
+        bottom: spaceBelow < dropdownHeight ? viewportHeight - rect.top + 4 : 0 // 4px gap above input
       });
-
-      // On mobile, use absolute positioning relative to viewport
-      if (isMobile) {
-        // Position directly below input, accounting for fixed positioning
-        setDropdownPosition({
-          top: rect.bottom,
-          left: rect.left,
-          width: rect.width,
-          bottom: spaceBelow < dropdownHeight ? rect.top - dropdownHeight - 4 : 0
-        });
-      } else {
-        // Desktop: use scroll-aware positioning
-        setDropdownPosition({
-          top: rect.bottom + scrollY,
-          left: rect.left,
-          width: rect.width,
-          bottom: 0
-        });
-      }
     }
   };
 
@@ -460,14 +438,13 @@ export function AddressAutocomplete({
         </div>
 
         {/* Portal-based Dropdown to escape overflow containers */}
-        {console.log('🚨 DROPDOWN CHECK:', { showDropdown, predictions: predictions.length, willRender: showDropdown && predictions.length > 0, position: dropdownPosition })}
         {showDropdown && predictions.length > 0 && typeof document !== 'undefined' && createPortal(
           <div
             ref={dropdownRef}
             className="bg-white border border-gray-300 rounded-lg shadow-lg overflow-y-auto"
             style={{
               position: 'fixed',
-              top: dropdownPosition.bottom ? 'auto' : `${dropdownPosition.top}px`,
+              top: dropdownPosition.top ? `${dropdownPosition.top}px` : 'auto',
               bottom: dropdownPosition.bottom ? `${dropdownPosition.bottom}px` : 'auto',
               left: `${dropdownPosition.left}px`,
               width: `${dropdownPosition.width}px`,
@@ -475,8 +452,6 @@ export function AddressAutocomplete({
               zIndex: 99999,
               pointerEvents: 'auto',
               cursor: 'default',
-              // Add transform for mobile to ensure proper positioning
-              transform: window.innerWidth < 768 && dropdownPosition.bottom ? 'translateY(-4px)' : 'none'
             }}
             onMouseDown={(e) => {
               e.preventDefault(); // Prevent blur on input

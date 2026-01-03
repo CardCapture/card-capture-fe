@@ -79,8 +79,8 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
               </Link>
               
               {user ? (
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   size="sm"
                   className="ml-3"
                   onClick={handleDashboardClick}
@@ -90,7 +90,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
               ) : (
                 <Link to="/login" className="ml-3">
                   <Button variant="default" size="sm">
-                    Login
+                    Login / Sign Up
                   </Button>
                 </Link>
               )}
@@ -121,8 +121,8 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                 Schedule a Demo
               </Link>
               {user ? (
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   size="sm"
                   className="w-full"
                   onClick={() => {
@@ -133,7 +133,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                   Go to Dashboard
                 </Button>
               ) : (
-                <NavLink to="/login">Login</NavLink>
+                <NavLink to="/login">Login / Sign Up</NavLink>
               )}
             </nav>
           )}

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InviteUserDialog } from "../InviteUserDialog";
 import { EditUserModal } from "../EditUserModal";
+import { PendingMergeRequestsBanner } from "./PendingMergeRequestsBanner";
 import { UserProfile } from "@/api/backend/users";
 import { useBulkUserSelection } from "@/hooks/useBulkUserSelection";
 import { UserService } from "@/services/UserService";
@@ -205,6 +206,9 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
 
   return (
     <>
+      {/* Pending Link Requests Banner */}
+      <PendingMergeRequestsBanner onUserMerged={fetchUsers} />
+
       <Card className="bg-white shadow-sm rounded-xl p-0">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">

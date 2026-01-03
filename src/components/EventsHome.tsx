@@ -29,7 +29,7 @@ import {
 import { useEvents } from "@/hooks/useEvents";
 import type { Event, EventWithStats } from "@/types/event";
 import { CreateEventModal } from "./CreateEventModal";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -90,6 +90,7 @@ const DashboardCopy = () => {
   // External Hooks
   const router = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { session } = useAuth();
   const { schoolId } = useProfile();
   const {
@@ -127,6 +128,7 @@ const DashboardCopy = () => {
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isVerifyingPurchase, setIsVerifyingPurchase] = useState(false);
 
   // Refs
   const eventsRef = useRef<{ fetchEvents: () => Promise<void> } | null>(null);
@@ -160,6 +162,46 @@ const DashboardCopy = () => {
     console.log("EventsHome: fetchEvents function:", fetchEvents);
     fetchEvents();
   }, [fetchEvents, schoolId]);
+
+  // Handle purchase verification after returning from Stripe checkout
+  useEffect(() => {
+    const purchaseStatus = searchParams.get("purchase");
+    const sessionId = searchParams.get("session_id");
+
+    if (purchaseStatus === "success" && sessionId && session?.access_token && !isVerifyingPurchase) {
+      setIsVerifyingPurchase(true);
+
+      const verifyPurchase = async () => {
+        try {
+          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+          const response = await fetch(`${apiBaseUrl}/events/verify-purchase/${sessionId}`, {
+            headers: {
+              "Authorization": `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.status === "completed") {
+              toast.success(result.message || "Events added successfully!", "Purchase Complete");
+              // Refresh events list to show new events
+              fetchEvents();
+            }
+          } else {
+            console.error("Purchase verification failed:", await response.text());
+          }
+        } catch (error) {
+          console.error("Error verifying purchase:", error);
+        } finally {
+          // Clear the query params regardless of outcome
+          setSearchParams({});
+          setIsVerifyingPurchase(false);
+        }
+      };
+
+      verifyPurchase();
+    }
+  }, [searchParams, session?.access_token, isVerifyingPurchase, setSearchParams, fetchEvents]);
 
   // Control global loader based on events loading state
   useEffect(() => {

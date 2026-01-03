@@ -59,6 +59,17 @@ const RegistrationSuccessPage = React.lazy(() => import("./pages/RegistrationSuc
 const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage"));
 const MagicLinkVerifyPage = React.lazy(() => import("./pages/MagicLinkVerifyPage"));
 
+// Recruiter self-service signup pages
+const RecruiterSignupPage = React.lazy(() => import("./pages/RecruiterSignupPage"));
+const EventSelectionPage = React.lazy(() => import("./pages/EventSelectionPage"));
+const SignupSuccessPage = React.lazy(() => import("./pages/SignupSuccessPage"));
+
+// Admin event purchase page
+const PurchaseEventsPage = React.lazy(() => import("./pages/PurchaseEventsPage"));
+
+// Public event submission page
+const CreateEventPage = React.lazy(() => import("./pages/CreateEventPage"));
+
 // --- CSS Import ---
 import "./App.css";
 
@@ -91,6 +102,7 @@ function App() {
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/magic-link" element={<MagicLinkPage />} />
+                  <Route path="/create-event" element={<CreateEventPage />} />
 
                   {/* Legacy student registration (keeping for backwards compatibility) */}
                   <Route path="/register-legacy" element={<StudentSignupPage />} />
@@ -112,6 +124,19 @@ function App() {
                   <Route path="/register/form" element={<MultiStepRegistrationPage />} />
                   <Route path="/register/success" element={<RegistrationSuccessPage />} />
                   <Route path="/register/verify-email" element={<VerifyEmailPage />} />
+                </Route>
+
+                {/* Recruiter self-service signup flow (minimal layout) */}
+                <Route
+                  element={
+                    <MinimalLayout>
+                      <Outlet />
+                    </MinimalLayout>
+                  }
+                >
+                  <Route path="/signup" element={<RecruiterSignupPage />} />
+                  <Route path="/signup/select-event" element={<EventSelectionPage />} />
+                  <Route path="/signup/success" element={<SignupSuccessPage />} />
                 </Route>
 
                 {/* SuperAdmin routes */}
@@ -163,6 +188,16 @@ function App() {
                       element={
                         <RoleProtectedRoute requiredPermission="canAccessScanPage">
                           <ScanPage />
+                        </RoleProtectedRoute>
+                      }
+                    />
+
+                    {/* Admin-only route for purchasing events */}
+                    <Route
+                      path="/purchase-events"
+                      element={
+                        <RoleProtectedRoute requiredPermission="isAdmin">
+                          <PurchaseEventsPage />
                         </RoleProtectedRoute>
                       }
                     />

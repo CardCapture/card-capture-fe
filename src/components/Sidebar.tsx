@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, Camera, Cog, Menu, X } from 'lucide-react'
+import { CalendarDays, Camera, Cog, Menu, X, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useLocation, Link } from 'react-router-dom'
@@ -14,12 +14,13 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
   const isMobile = useIsMobile()
-  const { canAccessScanPage, canAccessEventsPage, canAccessSettings } = useRole()
+  const { canAccessScanPage, canAccessEventsPage, canAccessSettings, isAdmin } = useRole()
 
   // Filter navigation items based on permissions
   const navItems = [
     { href: '/events', label: 'Events', icon: <CalendarDays />, canAccess: canAccessEventsPage },
     { href: '/scan', label: 'Scan', icon: <Camera />, canAccess: canAccessScanPage },
+    { href: '/purchase-events', label: 'Purchase Events', icon: <ShoppingCart />, canAccess: isAdmin },
   ].filter(item => item.canAccess)
 
   const bottomItems = [
