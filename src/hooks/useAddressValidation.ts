@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "@/lib/toast";
+import { authFetch } from "@/lib/authFetch";
 
 // Type definitions for the 4-state validation system
 type ValidationState = "verified" | "can_be_verified" | "no_house_number" | "not_verified" | "loading";
@@ -128,7 +129,7 @@ export function useAddressValidation(
         console.log("🔗 Full validation URL:", validationUrl);
         console.log("🔗 Environment variables:", import.meta.env);
         
-        const response = await fetch(validationUrl, {
+        const response = await authFetch(validationUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

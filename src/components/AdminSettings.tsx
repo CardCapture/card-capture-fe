@@ -66,7 +66,7 @@ import { useSchool } from "@/hooks/useSchool";
 import { UserManagementSection } from "./AdminSettings/UserManagementSection";
 import { IntegrationsSection } from "./AdminSettings/IntegrationsSection";
 import { MajorsSection } from "./AdminSettings/MajorsSection";
-import { CRMEventsSection } from "./AdminSettings/CRMEventsSection-basic";
+import { CRMEventsSection } from "./AdminSettings/CRMEventsSection";
 import { SubscriptionSection } from "./AdminSettings/SubscriptionSection";
 import { UserProfile } from "@/api/backend/users";
 

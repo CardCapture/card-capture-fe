@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import type { ProspectCard } from "@/types/card";
 import { standardizeState } from "@/utils/stateUtils";
+import { authFetch } from "@/lib/authFetch";
 
 export function useCardTableActions(
   filteredCards: ProspectCard[],
@@ -24,10 +25,10 @@ export function useCardTableActions(
         return;
       }
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${apiBaseUrl}/archive-cards`, {
+      const response = await authFetch(`${apiBaseUrl}/archive-cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           document_ids: idsToArchive,
           status: "archived",
           review_status: "archived"
@@ -62,7 +63,7 @@ export function useCardTableActions(
         return;
       }
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${apiBaseUrl}/mark-exported`, {
+      const response = await authFetch(`${apiBaseUrl}/mark-exported`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ document_ids: idsToExport }),
@@ -135,7 +136,7 @@ export function useCardTableActions(
       }));
 
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${apiBaseUrl}/export-to-slate`, {
+      const response = await authFetch(`${apiBaseUrl}/export-to-slate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -150,9 +151,9 @@ export function useCardTableActions(
       }
 
       const result = await response.json();
-      
+
       // Mark cards as exported in the database
-      const markExportedResponse = await fetch(`${apiBaseUrl}/mark-exported`, {
+      const markExportedResponse = await authFetch(`${apiBaseUrl}/mark-exported`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ document_ids: idsToExport }),
@@ -195,7 +196,7 @@ export function useCardTableActions(
         return;
       }
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(`${apiBaseUrl}/delete-cards`, {
+      const response = await authFetch(`${apiBaseUrl}/delete-cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ document_ids: idsToDelete }),
@@ -230,7 +231,7 @@ export function useCardTableActions(
       }
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       // Send a single batch request to move all cards at once
-      const response = await fetch(`${apiBaseUrl}/move-cards`, {
+      const response = await authFetch(`${apiBaseUrl}/move-cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ document_ids: idsToMove, status: "reviewed" }),
@@ -276,7 +277,7 @@ export function useCardTableActions(
         });
         const apiBaseUrl =
           import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-        const response = await fetch(`${apiBaseUrl}/mark-exported`, {
+        const response = await authFetch(`${apiBaseUrl}/mark-exported`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ document_ids: selectedIds }),
