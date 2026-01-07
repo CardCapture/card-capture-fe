@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -19,6 +19,8 @@ import { CreateEventModal } from '@/components/CreateEventModal';
 import CameraCapture from '@/components/card-scanner/CameraCapture';
 import { ScanStatusCard } from '@/components/ScanStatusCard';
 import imageCompression from 'browser-image-compression';
+import { OfflineBanner } from '@/components/OfflineBanner';
+import { SyncStatusBadge } from '@/components/SyncStatusBadge';
 
 const ScanPage: React.FC = () => {
   const { events, fetchEvents } = useEvents();
@@ -32,7 +34,7 @@ const ScanPage: React.FC = () => {
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const { uploadCard } = useCardUpload();
+  const { uploadCard, isOnline } = useCardUpload();
   const [forceShowProcessing, setForceShowProcessing] = useState(false);
 
   // Fetch events on mount
@@ -118,14 +120,20 @@ const ScanPage: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      // Use the uploadCard hook
-      const data = await uploadCard(file, selectedEventId, selectedEvent.school_id);
-      setDocumentId(data.document_id);
-      setForceShowProcessing(true); // Force show processing status
-      toast.success("Card captured successfully. Processing in background...");
+      // Use the uploadCard hook (with event name for offline queue)
+      const data = await uploadCard(file, selectedEventId, selectedEvent.school_id, selectedEvent.name);
 
-      // Reset force show processing after a delay to allow natural processing status to take over
-      setTimeout(() => setForceShowProcessing(false), 3000);
+      if (data.queued) {
+        // Card was queued for offline sync
+        setForceShowProcessing(false);
+      } else {
+        setDocumentId(data.document_id || null);
+        setForceShowProcessing(true); // Force show processing status
+        toast.success("Card captured successfully. Processing in background...");
+
+        // Reset force show processing after a delay to allow natural processing status to take over
+        setTimeout(() => setForceShowProcessing(false), 3000);
+      }
     } catch (error: any) {
       console.error("Upload error details:", {
         error,
@@ -227,8 +235,14 @@ const ScanPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl">
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl sm:text-2xl font-bold mb-4">Scan Card</h1>
-        
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold">Scan Card</h1>
+          <SyncStatusBadge />
+        </div>
+
+        {/* Offline Banner */}
+        <OfflineBanner className="mb-4" />
+
         {/* Event Selection */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">

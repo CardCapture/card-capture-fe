@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Camera, ArrowLeft } from 'lucide-react';
 import { useCameraPermission } from '@/hooks/useCameraPermission';
+import { Capacitor } from '@capacitor/core';
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 interface CameraCaptureProps {
   onCapture: (imageDataUrl: string) => void;
@@ -14,7 +16,46 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [isNativeCapturing, setIsNativeCapturing] = useState(false);
   const { hasPermission, requestPermission } = useCameraPermission();
+
+  // Use native camera on mobile platforms
+  const useNativeCamera = Capacitor.isNativePlatform();
+
+  // Handle native camera capture
+  const captureWithNativeCamera = async () => {
+    try {
+      setIsNativeCapturing(true);
+      const photo = await CapacitorCamera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera,
+        correctOrientation: true,
+      });
+
+      if (photo.dataUrl) {
+        onCapture(photo.dataUrl);
+      } else {
+        setError('Failed to capture photo');
+      }
+    } catch (err: any) {
+      if (err.message?.includes('cancelled') || err.message?.includes('canceled')) {
+        onCancel();
+      } else {
+        setError('Camera error: ' + (err.message || 'Unknown error'));
+      }
+    } finally {
+      setIsNativeCapturing(false);
+    }
+  };
+
+  // Auto-trigger native camera when component mounts on native platform
+  useEffect(() => {
+    if (useNativeCamera) {
+      captureWithNativeCamera();
+    }
+  }, [useNativeCamera]);
 
   // Detect orientation changes
   useEffect(() => {
@@ -35,8 +76,11 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
     };
   }, []);
 
-  // Initialize camera
+  // Initialize camera (web only)
   useEffect(() => {
+    // Skip web camera initialization on native platforms
+    if (useNativeCamera) return;
+
     let localStream: MediaStream | null = null;
     let cancelled = false;
 
@@ -70,7 +114,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
         localStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [useNativeCamera]);
 
   // Assign stream to video element
   useEffect(() => {
@@ -95,6 +139,42 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
     }
     onCapture(imageDataUrl);
   };
+
+  // Show loading state for native camera
+  if (useNativeCamera && isNativeCapturing) {
+    return (
+      <div className="relative w-full h-full bg-black rounded-xl overflow-hidden flex flex-col items-center justify-center">
+        <div className="text-white text-center">
+          <Camera className="h-12 w-12 mx-auto mb-4 animate-pulse" />
+          <p>Opening camera...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // On native platforms, we use the system camera UI
+  // This component only renders briefly while waiting for the native camera
+  if (useNativeCamera && !error) {
+    return (
+      <div className="relative w-full h-full bg-black rounded-xl overflow-hidden flex flex-col items-center justify-center">
+        <button
+          type="button"
+          className="absolute top-4 left-4 z-20 bg-black/60 rounded-full p-2 text-white hover:bg-black/80"
+          onClick={onCancel}
+          aria-label="Back"
+        >
+          <ArrowLeft className="h-6 w-6" />
+        </button>
+        <Button
+          onClick={captureWithNativeCamera}
+          className="bg-green-600 hover:bg-green-700 text-white"
+        >
+          <Camera className="mr-2 h-5 w-5" />
+          Open Camera
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-full bg-black rounded-xl overflow-hidden flex flex-col">
