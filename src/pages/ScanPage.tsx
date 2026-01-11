@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Camera, X, Calendar, AlertCircle, Upload, Loader2, ArrowLeft, Plus } from 'lucide-react';
+import { Camera, X, Calendar, AlertCircle, Upload, Loader2, ArrowLeft, Plus, QrCode, CheckCircle, ChevronLeft } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { useEvents } from '@/hooks/useEvents';
 import { Progress } from "@/components/ui/progress";
@@ -21,10 +21,13 @@ import { ScanStatusCard } from '@/components/ScanStatusCard';
 import imageCompression from 'browser-image-compression';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { SyncStatusBadge } from '@/components/SyncStatusBadge';
+import { StudentService } from '@/services';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ScanPage: React.FC = () => {
   const { events, fetchEvents } = useEvents();
   const navigate = useNavigate();
+  const { session } = useAuth();
   const [selectedEventId, setSelectedEventId] = useState<string | undefined>(undefined);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -36,6 +39,8 @@ const ScanPage: React.FC = () => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { uploadCard, isOnline } = useCardUpload();
   const [forceShowProcessing, setForceShowProcessing] = useState(false);
+  const [isProcessingQR, setIsProcessingQR] = useState(false);
+  const [qrSuccess, setQrSuccess] = useState(false);
 
   // Fetch events on mount
   useEffect(() => {
@@ -168,6 +173,46 @@ const ScanPage: React.FC = () => {
     if (event.target) event.target.value = '';
   };
 
+  // Handle QR code detection
+  const handleQRDetected = async (token: string) => {
+    if (!selectedEventId) {
+      toast.error("Please select an event first");
+      setIsCameraOpen(false);
+      return;
+    }
+
+    console.log('Processing QR token:', token);
+    setIsProcessingQR(true);
+    setQrSuccess(false);
+
+    try {
+      await StudentService.scanStudent(
+        token.trim(),
+        selectedEventId,
+        undefined,
+        undefined,
+        session?.access_token || undefined
+      );
+
+      setQrSuccess(true);
+      toast.success("Student added successfully!");
+
+      // Auto-close after success and allow scanning another
+      setTimeout(() => {
+        setQrSuccess(false);
+        setIsProcessingQR(false);
+        setIsCameraOpen(false);
+      }, 1500);
+
+    } catch (error: any) {
+      console.error('QR scan error:', error);
+      const errorMessage = error?.message || 'Failed to process QR code';
+      toast.error(errorMessage);
+      setIsProcessingQR(false);
+      setIsCameraOpen(false);
+    }
+  };
+
   // Select an event
   const handleEventChange = (id: string) => {
     if (id === "create-new") {
@@ -196,13 +241,33 @@ const ScanPage: React.FC = () => {
   if (isCameraOpen) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col z-50">
-        {/* Event selector in top-right corner - responsive */}
-        <div className="absolute top-4 right-4 z-10">
+        {/* Header bar with back button, QR Ready badge (center), and Event selector */}
+        <div className="relative flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-sm z-20">
+          {/* Back button */}
+          <button
+            type="button"
+            className="bg-black/60 rounded-full p-2 text-white hover:bg-black/80 z-10"
+            onClick={() => {
+              setIsCameraOpen(false);
+              navigate('/scan');
+            }}
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-6 w-6" />
+          </button>
+
+          {/* QR Ready badge - absolutely centered */}
+          <div className="absolute left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm rounded-full px-3 py-2 flex items-center gap-2">
+            <QrCode className="h-5 w-5 text-green-400" />
+            <span className="text-sm text-white whitespace-nowrap">QR Ready</span>
+          </div>
+
+          {/* Event selector */}
           <Select value={selectedEventId} onValueChange={handleEventChange}>
-            <SelectTrigger className="w-[160px] sm:w-[200px] bg-black/70 backdrop-blur-sm text-white border-white/20 text-xs sm:text-sm">
+            <SelectTrigger className="w-auto max-w-[180px] sm:max-w-[300px] bg-black/60 backdrop-blur-sm text-white border-white/20 text-xs sm:text-sm z-10">
               <SelectValue placeholder="Select event">
                 {selectedEvent ? (
-                  <span className="truncate">{selectedEvent.name}</span>
+                  <span>{selectedEvent.name}</span>
                 ) : (
                   "Select event"
                 )}
@@ -217,15 +282,35 @@ const ScanPage: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
+
         {/* Camera Capture Component */}
         <div className="flex-1 flex items-center justify-center p-4">
-          <CameraCapture
-            onCapture={handleImageCaptured}
-            onCancel={() => {
-              setIsCameraOpen(false);
-              navigate('/scan');
-            }}
-          />
+          {isProcessingQR ? (
+            // QR Processing overlay
+            <div className="flex flex-col items-center justify-center text-white">
+              {qrSuccess ? (
+                <>
+                  <CheckCircle className="h-16 w-16 text-green-400 mb-4" />
+                  <p className="text-xl font-semibold">Student Added!</p>
+                </>
+              ) : (
+                <>
+                  <Loader2 className="h-12 w-12 animate-spin mb-4" />
+                  <p className="text-lg">Processing QR code...</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <CameraCapture
+              onCapture={handleImageCaptured}
+              onCancel={() => {
+                setIsCameraOpen(false);
+                navigate('/scan');
+              }}
+              onQRDetected={handleQRDetected}
+              hideBackButton={true}
+            />
+          )}
         </div>
       </div>
     );
