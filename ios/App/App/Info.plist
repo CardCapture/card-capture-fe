@@ -53,5 +53,14 @@
 	<string>CardCapture needs photo library access to select card images</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>CardCapture needs permission to save captured card images</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>CardCapture needs local network access to connect to the development server</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

@@ -182,16 +182,30 @@ export function useCardsOverride(eventId?: string) {
       }
     };
 
-    const subscriptionOptions = {
-      event: "*" as const,
-      schema: "public",
-      table: "reviewed_data",
-    };
-
-    // Subscribe to realtime changes
+    // Subscribe to realtime changes on both tables
+    // V1 legacy cards go to reviewed_data, V2 universal cards go to student_school_interactions
     channel = supabase
       .channel(channelName)
-      .on("postgres_changes", subscriptionOptions, handleDbChange)
+      .on(
+        "postgres_changes",
+        {
+          event: "*" as const,
+          schema: "public",
+          table: "reviewed_data",
+          filter: `event_id=eq.${eventId}`,
+        },
+        handleDbChange
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*" as const,
+          schema: "public",
+          table: "student_school_interactions",
+          filter: `event_id=eq.${eventId}`,
+        },
+        handleDbChange
+      )
       .subscribe((status, err) => {
         if (status === "SUBSCRIBED") {
           console.log(
