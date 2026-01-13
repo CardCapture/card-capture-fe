@@ -19,6 +19,7 @@ import {
   Settings,
   Mail,
   Building2,
+  Megaphone,
 } from "lucide-react";
 
 function DocSection({
@@ -70,6 +71,172 @@ function Highlight({ children }: { children: React.ReactNode }) {
     <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">
       {children}
     </span>
+  );
+}
+
+function PromotingYourEventSection() {
+  const [selectedEmail, setSelectedEmail] = useState<"announcement" | "reminder" | "dayOf" | "dayOfCards">("announcement");
+
+  const emails = {
+    announcement: {
+      subject: "College Fair Coming Up - Register with CardCapture!",
+      body: `Dear Students,
+
+We're excited to announce our upcoming College Fair on [DATE] at [LOCATION]! This is a great opportunity to meet with college representatives and learn about programs that interest you.
+
+This year, we're using CardCapture to make connecting with colleges easier than ever. Here's what you need to do:
+
+1. Visit cardcapture.io/register before the fair
+2. Create your profile (takes about 2 minutes)
+3. You'll receive a personal QR code on your phone
+
+At the fair, simply show your QR code to any college recruiter and they'll instantly have your contact information - no forms to fill out, no waiting in line!
+
+If you have any questions, please reach out to [COUNSELOR NAME] at [EMAIL].
+
+See you at the fair!
+
+[YOUR SCHOOL NAME] Counseling Office`
+    },
+    reminder: {
+      subject: "Reminder: College Fair This Week - Get Your QR Code Ready!",
+      body: `Dear Students,
+
+Just a friendly reminder that our College Fair is coming up on [DATE]!
+
+If you haven't already, please register at cardcapture.io/register to get your personal QR code. This will save you time at the fair and ensure colleges can follow up with you about programs you're interested in.
+
+What to bring:
+- Your phone with your CardCapture QR code ready
+- Questions for the college representatives
+- An open mind about your future!
+
+Already registered? Great! Make sure you can access your QR code before the event.
+
+We look forward to seeing you there!
+
+[YOUR SCHOOL NAME] Counseling Office`
+    },
+    dayOf: {
+      subject: "Today's the Day! College Fair Tips & QR Code Reminder",
+      body: `Dear Students,
+
+The College Fair is TODAY! Here are some quick tips to make the most of your experience:
+
+Before you arrive:
+- Open cardcapture.io/register and have your QR code ready
+- Make a list of colleges you want to visit
+- Prepare a few questions to ask recruiters
+
+At the fair:
+- Show your QR code to each college representative you meet
+- Take notes about programs that interest you
+- Don't be afraid to ask questions!
+
+Can't find your QR code? No worries - just visit cardcapture.io/register on your phone to access it.
+
+Have a great time exploring your future!
+
+[YOUR SCHOOL NAME] Counseling Office`
+    },
+    dayOfCards: {
+      subject: "Today's the Day! College Fair Tips",
+      body: `Dear Students,
+
+The College Fair is TODAY! Here are some quick tips to make the most of your experience:
+
+Before you arrive:
+- If you registered online, have your QR code ready at cardcapture.io/register
+- Make a list of colleges you want to visit
+- Prepare a few questions to ask recruiters
+
+At the fair:
+- Show your QR code to each college representative you meet
+- Take notes about programs that interest you
+- Don't be afraid to ask questions!
+
+Don't have a QR code? No problem! We'll have inquiry cards available at the entrance. Just fill one out and hand it to each college recruiter you visit - they'll scan it and have your information instantly.
+
+Have a great time exploring your future!
+
+[YOUR SCHOOL NAME] Counseling Office`
+    }
+  };
+
+  return (
+    <Card className="mb-6">
+      <CardContent className="pt-6">
+        <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Megaphone className="w-5 h-5 text-blue-600" />
+          Promoting Your Event
+        </h3>
+        <p className="text-gray-600 mb-4">
+          Help your students get the most out of the college fair by sending them information ahead of time.
+          Here are some ready-to-use email templates you can customize and send to your students.
+        </p>
+
+        {/* Email Tabs */}
+        <div className="border rounded-lg overflow-hidden">
+          <div className="flex flex-wrap border-b bg-gray-50">
+            <button
+              onClick={() => setSelectedEmail("announcement")}
+              className={`flex-1 min-w-[140px] px-3 py-3 text-sm font-medium transition-colors ${
+                selectedEmail === "announcement"
+                  ? "bg-white text-blue-600 border-b-2 border-blue-600 -mb-px"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Announcement
+            </button>
+            <button
+              onClick={() => setSelectedEmail("reminder")}
+              className={`flex-1 min-w-[140px] px-3 py-3 text-sm font-medium transition-colors ${
+                selectedEmail === "reminder"
+                  ? "bg-white text-blue-600 border-b-2 border-blue-600 -mb-px"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Week Before
+            </button>
+            <button
+              onClick={() => setSelectedEmail("dayOf")}
+              className={`flex-1 min-w-[140px] px-3 py-3 text-sm font-medium transition-colors ${
+                selectedEmail === "dayOf"
+                  ? "bg-white text-blue-600 border-b-2 border-blue-600 -mb-px"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Day Of (QR Only)
+            </button>
+            <button
+              onClick={() => setSelectedEmail("dayOfCards")}
+              className={`flex-1 min-w-[140px] px-3 py-3 text-sm font-medium transition-colors ${
+                selectedEmail === "dayOfCards"
+                  ? "bg-white text-blue-600 border-b-2 border-blue-600 -mb-px"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Day Of (w/ Cards)
+            </button>
+          </div>
+
+          <div className="p-4">
+            <div className="mb-3">
+              <span className="text-sm font-medium text-gray-500">Subject: </span>
+              <span className="text-sm text-gray-900">{emails[selectedEmail].subject}</span>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                {emails[selectedEmail].body}
+              </pre>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">
+              Tip: Replace the bracketed text [LIKE THIS] with your specific event details.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -207,9 +374,21 @@ export default function DocsPage() {
                 <div className="space-y-4">
                   <div className="border-l-4 border-blue-500 pl-4">
                     <h4 className="font-semibold text-gray-900">Before the Fair</h4>
+                    <p className="text-gray-600 mb-3">
+                      When creating your event, you can choose between two registration methods - or use both!
+                    </p>
+                    <ul className="space-y-2 text-gray-600 mb-3">
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-500 mt-1">•</span>
+                        <span><strong>QR Codes:</strong> Students register online at cardcapture.io/register before the fair and receive a personal QR code on their phone.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-500 mt-1">•</span>
+                        <span><strong>Paper Inquiry Cards:</strong> If you select this option when creating your event, you'll receive a box of universal inquiry cards to hand out at the event.</span>
+                      </li>
+                    </ul>
                     <p className="text-gray-600">
-                      Students can register online ahead of time and receive a personal QR code. This is optional -
-                      students who don't register beforehand can still participate using paper cards.
+                      Either way works great - many events use both options to maximize student participation.
                     </p>
                   </div>
 
@@ -273,6 +452,43 @@ export default function DocsPage() {
                   </div>
                 </div>
               </DocSection>
+
+              <DocSection title="Distributing Event Information" icon={Mail}>
+                <p className="text-gray-600 mb-4">
+                  Getting students prepared before the event makes everything run smoother.
+                </p>
+                <div className="space-y-4">
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <QrCode className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <h4 className="font-semibold text-gray-900">For QR Code Events</h4>
+                    </div>
+                    <p className="text-gray-600">
+                      Share the <Highlight>cardcapture.io/register</Highlight> link with your students before the event.
+                      They'll create a profile and receive a personal QR code on their phone. This saves time at the fair
+                      and ensures universities get accurate contact information.
+                    </p>
+                  </div>
+
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-green-600" />
+                      </div>
+                      <h4 className="font-semibold text-gray-900">For Paper Card Events</h4>
+                    </div>
+                    <p className="text-gray-600">
+                      You'll receive a box of inquiry cards before your event. Hand these out to students as they enter
+                      or before the event begins. No data uploads needed - students simply fill out the card and present
+                      it to university recruiters. No struggle to get students registered, no technology barriers.
+                    </p>
+                  </div>
+                </div>
+              </DocSection>
+
+              <PromotingYourEventSection />
 
               <Card className="bg-blue-600 text-white">
                 <CardContent className="pt-6 text-center">

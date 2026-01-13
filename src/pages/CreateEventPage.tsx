@@ -25,6 +25,7 @@ import {
   Calendar,
   MapPin,
   User,
+  FileText,
 } from "lucide-react";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { toast } from "@/lib/toast";
@@ -56,6 +57,8 @@ interface FormData {
   state: string;
   zip: string;
   description: string;
+  needs_inquiry_cards: boolean;
+  expected_students: string;
 }
 
 const initialFormData: FormData = {
@@ -72,6 +75,8 @@ const initialFormData: FormData = {
   state: "TX",
   zip: "",
   description: "",
+  needs_inquiry_cards: false,
+  expected_students: "",
 };
 
 // Format phone number as user types: (555) 123-4567
@@ -84,6 +89,15 @@ const formatPhoneNumber = (value: string): string => {
   if (digits.length <= 3) return `(${digits}`;
   if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+};
+
+// Format number with commas: 5000 -> 5,000
+const formatNumberWithCommas = (value: string): string => {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 0) return "";
+  // Add commas for thousands
+  return parseInt(digits, 10).toLocaleString("en-US");
 };
 
 const CreateEventPage: React.FC = () => {
@@ -143,6 +157,18 @@ const CreateEventPage: React.FC = () => {
       }
     }
 
+    // Validate expected students if inquiry cards are requested
+    if (formData.needs_inquiry_cards && !formData.expected_students.trim()) {
+      newErrors.expected_students = "Please enter expected number of students";
+    } else if (formData.expected_students) {
+      const num = parseInt(formData.expected_students.replace(/,/g, ""), 10);
+      if (isNaN(num) || num < 1) {
+        newErrors.expected_students = "Please enter a valid number";
+      } else if (num > 50000) {
+        newErrors.expected_students = "Number seems too high";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -172,6 +198,8 @@ const CreateEventPage: React.FC = () => {
         ...(formData.state && { state: formData.state }),
         ...(formData.zip && { zip: formData.zip }),
         ...(formData.description && { description: formData.description }),
+        needs_inquiry_cards: formData.needs_inquiry_cards,
+        ...(formData.expected_students && { expected_students: parseInt(formData.expected_students.replace(/,/g, ""), 10) }),
       };
 
       await submitEvent(submissionData);
@@ -479,6 +507,76 @@ const CreateEventPage: React.FC = () => {
                     value={formData.description}
                     onChange={(e) => updateField("description", e.target.value)}
                   />
+                </div>
+              </div>
+
+              {/* Inquiry Cards Section */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  Paper Inquiry Cards
+                </h3>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-gray-700 text-sm">
+                    CardCapture supports both QR code registration and universal inquiry cards. If you'd like inquiry cards,
+                    select yes and tell us how many students you expect.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Do you need paper inquiry cards?</Label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="needs_inquiry_cards"
+                          checked={!formData.needs_inquiry_cards}
+                          onChange={() => {
+                            updateField("needs_inquiry_cards", false);
+                            updateField("expected_students", "");
+                          }}
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span className="text-gray-700">No, QR codes only</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="needs_inquiry_cards"
+                          checked={formData.needs_inquiry_cards}
+                          onChange={() => updateField("needs_inquiry_cards", true)}
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span className="text-gray-700">Yes, I need inquiry cards</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {formData.needs_inquiry_cards && (
+                    <div className="space-y-2">
+                      <Label htmlFor="expected_students">
+                        How many students do you anticipate attending?{" "}
+                        <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="expected_students"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="e.g., 1,500"
+                        value={formData.expected_students}
+                        onChange={(e) => updateField("expected_students", formatNumberWithCommas(e.target.value))}
+                        className={errors.expected_students ? "border-red-500" : ""}
+                      />
+                      {errors.expected_students && (
+                        <p className="text-sm text-red-500">{errors.expected_students}</p>
+                      )}
+                      <p className="text-sm text-gray-500">
+                        This helps us prepare the right number of cards for your event.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
