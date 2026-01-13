@@ -161,38 +161,15 @@ const GetStartedPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="university">Institution *</Label>
+                  <Label htmlFor="university">School/Organization *</Label>
                   <Input
                     id="university"
-                    placeholder="Your institution's name"
+                    placeholder="Your school/organization's name"
                     value={formData.university}
                     onChange={(e) => setFormData({ ...formData, university: e.target.value })}
                     required
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="enrollment">Total Enrollment</Label>
-                  <div className="relative">
-                    <select
-                      id="enrollment"
-                      value={formData.enrollment}
-                      onChange={(e) => setFormData({ ...formData, enrollment: e.target.value })}
-                      required
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 pr-8 py-2 text-base text-foreground font-sans ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm appearance-none"
-                    >
-                      <option value="" disabled className="text-muted-foreground">Select total enrollment</option>
-                      <option value="Less than 2,000">Less than 2,000</option>
-                      <option value="2,000-5,000">2,000-5,000</option>
-                      <option value="5,000-12,000">5,000-12,000</option>
-                      <option value="More than 12,000">More than 12,000</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="message">Message</Label>
                   <Textarea
