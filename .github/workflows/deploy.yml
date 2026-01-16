@@ -3,7 +3,6 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches: [main, staging]
-    # Trigger on any changes to these paths
     paths:
       - "src/**"
       - "public/**"
@@ -13,6 +12,7 @@ on:
       - "tailwind.config.ts"
       - "postcss.config.js"
       - ".github/workflows/**"
+      - "e2e/**"
   pull_request:
     branches: [main, staging]
     paths:
@@ -23,12 +23,70 @@ on:
       - "vite.config.ts"
       - "tailwind.config.ts"
       - "postcss.config.js"
+      - "e2e/**"
 
-  # Allow manual triggering
   workflow_dispatch:
 
 jobs:
+  # Run unit tests first
+  unit_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
+        continue-on-error: true
+
+  # Run E2E tests on pull requests
+  e2e_tests:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e:ci
+        env:
+          TEST_BASE_URL: http://localhost:3000
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # Build and deploy (depends on unit tests passing)
   build_and_deploy:
+    needs: [unit_tests]
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || github.ref_name == 'staging' && 'staging' }}
     env:
@@ -56,14 +114,14 @@ jobs:
         run: |
           echo "Checking if secrets are available..."
           if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ]; then
-            echo "⚠️ VITE_SUPABASE_URL secret not found"
+            echo "Warning: VITE_SUPABASE_URL secret not found"
           else
-            echo "✅ VITE_SUPABASE_URL found"
+            echo "VITE_SUPABASE_URL found"
           fi
           if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
-            echo "⚠️ FIREBASE_SERVICE_ACCOUNT secret not found"
+            echo "Warning: FIREBASE_SERVICE_ACCOUNT secret not found"
           else
-            echo "✅ FIREBASE_SERVICE_ACCOUNT found"
+            echo "FIREBASE_SERVICE_ACCOUNT found"
           fi
       - name: Debug - Echo environment variable values
         run: |
@@ -80,6 +138,7 @@ jobs:
           echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env.production
           echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env.production
           echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env.production
+          echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" >> .env.production
 
       - name: Build project
         run: npm run build

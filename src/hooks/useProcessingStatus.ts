@@ -21,7 +21,7 @@ interface ProcessingStatus {
   isProcessing: boolean;
 }
 
-export function useProcessingStatus(eventId?: string) {
+export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
   const [status, setStatus] = useState<ProcessingStatus>({
     queued: 0,
     processing: 0,
@@ -37,6 +37,11 @@ export function useProcessingStatus(eventId?: string) {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchTimeRef = useRef<number>(0);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const wasProcessingRef = useRef<boolean>(false);
+  const onCompleteRef = useRef(onComplete);
+
+  // Keep onComplete ref up to date
+  onCompleteRef.current = onComplete;
 
   // Calculate time remaining based on queued + processing cards
   const calculateTimeRemaining = useCallback((queued: number, processing: number): string => {
@@ -128,11 +133,21 @@ export function useProcessingStatus(eventId?: string) {
       // This gives the UI a moment to update before hiding completely
       if (!hasActiveCards && !hasFailedCards && completed > 0) {
         console.log('useProcessingStatus: All processing complete, hiding in 2 seconds');
+
+        // Trigger onComplete callback when transitioning from processing to complete
+        if (wasProcessingRef.current && onCompleteRef.current) {
+          console.log('useProcessingStatus: Calling onComplete callback to refresh cards');
+          onCompleteRef.current();
+        }
+
         hideTimeoutRef.current = setTimeout(() => {
           setStatus(prev => ({ ...prev, isProcessing: false }));
           hideTimeoutRef.current = null;
         }, 2000); // Hide after 2 seconds
       }
+
+      // Track whether we were processing for the next status check
+      wasProcessingRef.current = hasActiveCards;
 
       // Set up polling if we have active processing (reduced frequency for better performance)
       if (hasActiveCards && !pollingIntervalRef.current) {

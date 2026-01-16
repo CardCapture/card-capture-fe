@@ -70,6 +70,9 @@ const PurchaseEventsPage = React.lazy(() => import("./pages/PurchaseEventsPage")
 // Public event submission page
 const CreateEventPage = React.lazy(() => import("./pages/CreateEventPage"));
 
+// Documentation page
+const DocsPage = React.lazy(() => import("./pages/DocsPage"));
+
 // --- CSS Import ---
 import "./App.css";
 
@@ -103,6 +106,7 @@ function App() {
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/magic-link" element={<MagicLinkPage />} />
                   <Route path="/create-event" element={<CreateEventPage />} />
+                  <Route path="/docs" element={<DocsPage />} />
 
                   {/* Legacy student registration (keeping for backwards compatibility) */}
                   <Route path="/register-legacy" element={<StudentSignupPage />} />

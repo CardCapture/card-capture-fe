@@ -30,10 +30,6 @@ const LoginPage = () => {
   // Get the redirect path from location state (set by ProtectedRoute)
   const from = (location.state as any)?.from || null;
 
-  // Debug logging
-  console.log('LoginPage: location.state =', location.state);
-  console.log('LoginPage: from =', from);
-
   // Use global loader instead of local loading state
   const { showButtonLoader, hideButtonLoader, isLoading } = useLoader();
   const LOADER_ID = "login-button";

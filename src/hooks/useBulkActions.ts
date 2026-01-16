@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { toast } from "@/lib/toast";
+import { authFetch } from "@/lib/authFetch";
 
 export function useBulkActions(
   fetchCards: () => void,
@@ -43,7 +44,7 @@ export function useBulkActions(
         endpoint: `${apiBaseUrl}${endpoints[action]}`
       });
       
-      const response = await fetch(`${apiBaseUrl}${endpoints[action]}`, {
+      const response = await authFetch(`${apiBaseUrl}${endpoints[action]}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payloads[action]),

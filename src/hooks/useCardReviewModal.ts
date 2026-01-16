@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { ProspectCard } from "@/types/card";
 import { toast } from "@/lib/toast";
+import { supabase } from "@/lib/supabaseClient";
 
 export function useCardReviewModal(
   cards,
@@ -297,11 +298,19 @@ export function useCardReviewModal(
         })
       );
       const allRequiredReviewed = Object.values(updatedFields).filter(f => f.requires_human_review).length === 0;
+
+      // Get auth token for API call
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
       const response = await fetch(
         `${apiBaseUrl}/save-review/${selectedCardForReview.document_id}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`
+          },
           body: JSON.stringify({
             fields: updatedFields,
             status: allRequiredReviewed ? "reviewed" : "needs_review",

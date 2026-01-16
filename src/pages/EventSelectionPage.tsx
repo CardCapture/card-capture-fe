@@ -371,9 +371,9 @@ const EventSelectionPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* All Events Section */}
+                {/* Upcoming Events Section */}
                 <div className="mb-6">
-                  <h2 className="text-lg font-semibold mb-4">All Events</h2>
+                  <h2 className="text-lg font-semibold mb-4">Upcoming Events</h2>
                   {otherEvents.length === 0 && todayEvents.length === 0 ? (
                     <Card>
                       <CardContent className="py-12 text-center">

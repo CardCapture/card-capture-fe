@@ -11,16 +11,18 @@ interface CompactProcessingStatusProps {
   onRetryFailed?: () => Promise<void> | void;
   onStopProcessing?: () => Promise<void> | void;
   onDismissFailure?: () => Promise<void> | void;
+  onCardsRefresh?: () => void;
 }
 
-export function CompactProcessingStatus({ 
-  eventId, 
+export function CompactProcessingStatus({
+  eventId,
   className = "",
   onRetryFailed,
   onStopProcessing,
-  onDismissFailure
+  onDismissFailure,
+  onCardsRefresh
 }: CompactProcessingStatusProps) {
-  const { status, loading, refresh } = useProcessingStatus(eventId);
+  const { status, loading, refresh } = useProcessingStatus(eventId, onCardsRefresh);
   const [isRetrying, setIsRetrying] = useState(false);
   const [isStopping, setStopping] = useState(false);
 

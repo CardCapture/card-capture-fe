@@ -170,15 +170,30 @@ const EventHeader: React.FC<EventHeaderProps> = ({
               </div>
             </div>
             
-            {/* Processing Status - Absolutely positioned to not affect header height */}
+            {/* Processing Status - Desktop: Absolutely positioned top-right */}
             {selectedEvent && (
               <div className="absolute top-4 right-4 sm:top-6 sm:right-6 hidden sm:block">
-                <CompactProcessingStatus 
+                <CompactProcessingStatus
                   eventId={selectedEvent.id}
                   className="min-w-[240px]"
                   onRetryFailed={handleRetryFailed}
                   onStopProcessing={handleStopProcessing}
                   onDismissFailure={handleDismissFailure}
+                  onCardsRefresh={onRefreshCards}
+                />
+              </div>
+            )}
+
+            {/* Processing Status - Mobile: Block element below title */}
+            {selectedEvent && (
+              <div className="block sm:hidden w-full">
+                <CompactProcessingStatus
+                  eventId={selectedEvent.id}
+                  className="w-full"
+                  onRetryFailed={handleRetryFailed}
+                  onStopProcessing={handleStopProcessing}
+                  onDismissFailure={handleDismissFailure}
+                  onCardsRefresh={onRefreshCards}
                 />
               </div>
             )}

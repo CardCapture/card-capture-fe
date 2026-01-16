@@ -40,11 +40,9 @@ export const cardsApi = {
    * Upload card manually
    */
   async uploadCardManually(cardData: Record<string, string>): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/cards/manual`, {
+    const response = await authFetch(`${API_BASE_URL}/cards/manual`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(cardData),
     });
 
@@ -57,7 +55,7 @@ export const cardsApi = {
    * Archive cards
    */
   async archiveCards(documentIds: string[]): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/archive-cards`, {
+    const response = await authFetch(`${API_BASE_URL}/archive-cards`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -76,7 +74,7 @@ export const cardsApi = {
    * Mark cards as exported
    */
   async markCardsAsExported(documentIds: string[]): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/mark-exported`, {
+    const response = await authFetch(`${API_BASE_URL}/mark-exported`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ document_ids: documentIds }),
@@ -98,7 +96,7 @@ export const cardsApi = {
       fields: Record<string, unknown>;
     }>
   ): Promise<unknown> {
-    const response = await fetch(`${API_BASE_URL}/export-to-slate`, {
+    const response = await authFetch(`${API_BASE_URL}/export-to-slate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -121,7 +119,7 @@ export const cardsApi = {
    * Delete cards permanently
    */
   async deleteCards(documentIds: string[]): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/delete-cards`, {
+    const response = await authFetch(`${API_BASE_URL}/delete-cards`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ document_ids: documentIds }),
@@ -139,7 +137,7 @@ export const cardsApi = {
     documentIds: string[],
     status: string = "reviewed"
   ): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/move-cards`, {
+    const response = await authFetch(`${API_BASE_URL}/move-cards`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ document_ids: documentIds, status }),
@@ -166,7 +164,7 @@ export const cardsApi = {
       throw new Error(`Unknown bulk action: ${action}`);
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await authFetch(`${API_BASE_URL}${endpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ document_ids: documentIds }),

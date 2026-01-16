@@ -8,16 +8,18 @@ interface ProcessingStatusBarProps {
   eventId: string;
   eventName: string;
   onRetryFailed?: () => void;
+  onComplete?: () => void;
   className?: string;
 }
 
-export function ProcessingStatusBar({ 
-  eventId, 
-  eventName, 
+export function ProcessingStatusBar({
+  eventId,
+  eventName,
   onRetryFailed,
+  onComplete,
   className = ""
 }: ProcessingStatusBarProps) {
-  const { status, loading } = useProcessingStatus(eventId);
+  const { status, loading } = useProcessingStatus(eventId, onComplete);
 
   // Don't render if no processing is happening
   if (!status.isProcessing && !loading) {

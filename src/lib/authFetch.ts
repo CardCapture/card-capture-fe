@@ -1,16 +1,4 @@
-// Get session from localStorage to avoid React hooks restrictions
-function getStoredSession() {
-  try {
-    const storedSession = localStorage.getItem("supabase.auth.token");
-    if (storedSession) {
-      const session = JSON.parse(storedSession);
-      return session?.access_token;
-    }
-  } catch (error) {
-    console.warn("Failed to get stored session:", error);
-  }
-  return null;
-}
+import { supabase } from "@/lib/supabaseClient";
 
 export async function authFetch(
   input: RequestInfo,
@@ -19,16 +7,20 @@ export async function authFetch(
 ) {
   const headers = new Headers(init.headers || {});
 
-  // Use provided token, or fallback to stored session token
-  const authToken = token || getStoredSession();
+  // Use provided token, or get from Supabase session
+  let authToken = token;
+  if (!authToken) {
+    const { data: { session } } = await supabase.auth.getSession();
+    authToken = session?.access_token;
+  }
 
   if (authToken) {
     headers.set("Authorization", `Bearer ${authToken}`);
   }
 
-  return fetch(input, { 
-    ...init, 
+  return fetch(input, {
+    ...init,
     headers,
-    credentials: 'include'  // Include cookies in cross-origin requests
+    credentials: 'include'
   });
 }

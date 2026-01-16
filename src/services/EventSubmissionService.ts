@@ -19,6 +19,8 @@ export interface EventSubmissionData {
   state?: string;
   zip?: string;
   description?: string;
+  needs_inquiry_cards?: boolean;
+  expected_students?: number;
 }
 
 export interface EventSubmissionResponse {
