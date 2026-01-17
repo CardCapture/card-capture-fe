@@ -388,7 +388,7 @@ const ReviewImagePanel = ({
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         style={{
-          touchAction: "none", // Prevent default touch actions
+          touchAction: "pan-y pinch-zoom", // Allow vertical scrolling, prevent conflicts
           minHeight: "300px",
           userSelect: "none", // Prevent text selection
           WebkitUserSelect: "none", // Safari
@@ -405,10 +405,11 @@ const ReviewImagePanel = ({
             style={{
               position: "absolute",
               top: "50%",
-              left: "50%", 
+              left: "50%",
               transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) rotate(${rotation}deg) scale(${internalZoom * externalZoom})`,
               transformOrigin: "center",
               transition: (draggingRef.current || touchStartRef.current) ? "none" : "transform 0.2s",
+              touchAction: "none", // Prevent touch conflicts on image manipulation area
             }}
           >
             <img

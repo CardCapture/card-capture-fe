@@ -1018,6 +1018,23 @@ const Dashboard = () => {
   const [majorsList, setMajorsList] = useState<string[]>([]);
   const [loadingMajors, setLoadingMajors] = useState(false);
 
+  // --- Dynamic viewport zoom control for mobile ---
+  // Disables zoom when review modal is open to prevent scroll/zoom conflicts
+  useEffect(() => {
+    if (isReviewModalOpen) {
+      const viewport = document.querySelector('meta[name="viewport"]');
+      const originalContent = viewport?.getAttribute('content') || 'width=device-width, initial-scale=1.0';
+
+      // Disable zoom while modal is open
+      viewport?.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+
+      return () => {
+        // Restore original viewport on cleanup
+        viewport?.setAttribute('content', originalContent);
+      };
+    }
+  }, [isReviewModalOpen]);
+
   // --- Fetch majors for mapped_major dropdown ---
   // ✅ OPTIMIZED: Memoize school_id and fetch only when needed
   const schoolIdForMajors = selectedEvent?.school_id;
@@ -1180,7 +1197,7 @@ const Dashboard = () => {
 
         {/* Review Modal Dialog */}
         <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
-          <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-7xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] md:w-[calc(100%-4rem)] h-[calc(100vh-2rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-8rem)] rounded-lg overflow-hidden flex flex-col p-0">
+          <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-7xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] md:w-[calc(100%-4rem)] h-[calc(100dvh-2rem)] sm:h-[calc(100dvh-4rem)] md:h-[calc(100dvh-8rem)] rounded-lg overflow-hidden flex flex-col p-0">
             <DialogHeader className="flex-shrink-0">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b gap-3 sm:gap-0">
                 <div className="space-y-1">
@@ -1221,41 +1238,45 @@ const Dashboard = () => {
                 </div>
               </div>
             </DialogHeader>
-            <div className="flex-1 overflow-hidden">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 h-full">
-                {/* Image Panel - Mobile: Full width, Desktop: Half width */}
-                <ReviewImagePanel
-                  imagePath={(() => {
-                    // Always use original image - trimming has been removed from pipeline
-                    const originalPath = selectedCardForReview?.image_path;
-                    const finalPath = originalPath || "";
-                    // Debug logging removed for production
-                    return finalPath;
-                  })()}
-                  zoom={zoom}
-                  zoomIn={zoomIn}
-                  zoomOut={zoomOut}
-                  selectedCardId={selectedCardForReview?.id}
-                />
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 overscroll-contain">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 min-h-0 px-3 sm:px-6 pb-4">
+                {/* Image Panel - Mobile: Full width with height constraint, Desktop: Half width */}
+                <div className="min-w-0 overflow-x-hidden max-h-[40dvh] lg:max-h-none">
+                  <ReviewImagePanel
+                    imagePath={(() => {
+                      // Always use original image - trimming has been removed from pipeline
+                      const originalPath = selectedCardForReview?.image_path;
+                      const finalPath = originalPath || "";
+                      // Debug logging removed for production
+                      return finalPath;
+                    })()}
+                    zoom={zoom}
+                    zoomIn={zoomIn}
+                    zoomOut={zoomOut}
+                    selectedCardId={selectedCardForReview?.id}
+                  />
+                </div>
                 {/* Form Fields Panel - Mobile: Full width, Desktop: Half width */}
-                <ReviewForm
-                  selectedCardForReview={selectedCardForReview}
-                  fieldsToShow={fieldsToShow}
-                  formData={formData}
-                  handleFormChange={handleFormChange}
-                  handleFormBatchChange={handleFormBatchChange}
-                  handleFieldReview={handleFieldReview}
-                  selectedTab={selectedTab}
-                  dataFieldsMap={dataFieldsMap}
-                  majorsList={majorsList}
-                  loadingMajors={loadingMajors}
-                  onCardUpdated={fetchCards}
-                  cardFields={cardFields}
-                  isModalOpen={isReviewModalOpen}
-                />
+                <div className="min-w-0 overflow-x-hidden">
+                  <ReviewForm
+                    selectedCardForReview={selectedCardForReview}
+                    fieldsToShow={fieldsToShow}
+                    formData={formData}
+                    handleFormChange={handleFormChange}
+                    handleFormBatchChange={handleFormBatchChange}
+                    handleFieldReview={handleFieldReview}
+                    selectedTab={selectedTab}
+                    dataFieldsMap={dataFieldsMap}
+                    majorsList={majorsList}
+                    loadingMajors={loadingMajors}
+                    onCardUpdated={fetchCards}
+                    cardFields={cardFields}
+                    isModalOpen={isReviewModalOpen}
+                  />
+                </div>
               </div>
             </div>
-            <DialogFooter className="px-4 sm:px-6 py-3 border-t flex-shrink-0">
+            <DialogFooter className="px-4 sm:px-6 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t flex-shrink-0 bg-white sticky bottom-0 z-10">
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:justify-end">
                 <Button
                   type="button"

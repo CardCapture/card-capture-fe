@@ -220,9 +220,9 @@ export function AddressGroupSimple({
   };
 
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-2 ${className} overflow-hidden`}>
       {/* Street Address with Google Maps Autocomplete */}
-      <div className="w-full max-w-sm">
+      <div className="w-full sm:max-w-sm">
         {!disabled ? (
           <AddressAutocomplete
             label=""
@@ -231,7 +231,7 @@ export function AddressGroupSimple({
               onAddressChange(value);
             }}
             onAddressSelect={handleAddressAutocomplete}
-            className="h-10 sm:h-8 text-sm"
+            className="h-10 sm:h-8 text-sm w-full"
             locationContext={{
               zipCode: zipCode,
               city: city,
@@ -250,15 +250,15 @@ export function AddressGroupSimple({
           />
         )}
       </div>
-      
-      {/* City, State, Zip Row */}
-      <div className="flex gap-2">
+
+      {/* City, State, Zip Row - Responsive layout */}
+      <div className="flex flex-wrap sm:flex-nowrap gap-2">
         <Input
           type="text"
           value={city}
           onChange={(e) => onCityChange(e.target.value)}
           placeholder="City"
-          className="w-32 h-10 sm:h-8 text-sm"
+          className="flex-1 min-w-0 sm:w-32 sm:flex-none h-10 sm:h-8 text-sm"
           disabled={disabled}
         />
         <Input
@@ -266,7 +266,7 @@ export function AddressGroupSimple({
           value={state}
           onChange={(e) => onStateChange(e.target.value)}
           placeholder="State"
-          className="w-16 h-10 sm:h-8 text-sm"
+          className="w-16 sm:w-16 h-10 sm:h-8 text-sm"
           disabled={disabled}
         />
         <Input
@@ -274,7 +274,7 @@ export function AddressGroupSimple({
           value={zipCode}
           onChange={(e) => onZipCodeChange(e.target.value)}
           placeholder="Zip"
-          className="w-20 h-10 sm:h-8 text-sm"
+          className="w-20 sm:w-20 h-10 sm:h-8 text-sm"
           disabled={disabled}
         />
       </div>
