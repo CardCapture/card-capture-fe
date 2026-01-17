@@ -318,7 +318,7 @@ const ScanPage: React.FC = () => {
 
   // Otherwise, render the landing view
   return (
-    <div className="container mx-auto px-4 py-4 sm:py-8 max-w-2xl">
+    <div className="min-h-screen w-full overflow-x-hidden px-4 py-4 sm:py-8 max-w-2xl mx-auto">
       <div className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl sm:text-2xl font-bold">Scan Card</h1>

@@ -590,32 +590,32 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
     return groups;
   }, [fieldsToShow]);
 
-  // Get appropriate width for different field types
+  // Get appropriate width for different field types - responsive for mobile
   const getFieldWidth = (fieldKey: string) => {
     switch (fieldKey) {
       case 'email':
-        return 'w-80'; // Longer for emails
+        return 'w-full sm:w-80'; // Full width on mobile, longer on desktop
       case 'name':
       case 'first_name':
       case 'last_name':
-        return 'w-56'; // Medium for names
+        return 'w-full sm:w-56'; // Full width on mobile
       case 'middle_initial':
       case 'preferred_first_name':
-        return 'w-48'; // Shorter for initials/preferred names
+        return 'w-full sm:w-48'; // Full width on mobile
       case 'cell':
       case 'home_phone':
       case 'phone':
-        return 'w-44'; // Phone number width
+        return 'w-full sm:w-44'; // Full width on mobile
       case 'date_of_birth':
       case 'birthday':
-        return 'w-36'; // Date width
+        return 'w-full sm:w-36'; // Full width on mobile
       case 'gpa':
       case 'class_rank':
-        return 'w-24'; // Small numeric fields
+        return 'w-full sm:w-24'; // Full width on mobile
       case 'state':
-        return 'w-20'; // Very short for state codes
+        return 'w-full sm:w-20'; // Full width on mobile
       default:
-        return 'w-64'; // Default medium width
+        return 'w-full sm:w-64'; // Full width on mobile
     }
   };
 
@@ -639,9 +639,9 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
     const showRedIcon = hasAnyReviewNeeded && !hasAnyAddressReviewed && !isSignupSheet; // Hide red icons for signup sheets or reviewed addresses
     
     return (
-      <div key="address-group" className="flex items-start gap-4 py-1">
-        {/* Label - Fixed Width */}
-        <Label className="w-32 text-right text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1 justify-end shrink-0 pt-2">
+      <div key="address-group" className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 py-2 sm:py-1">
+        {/* Label - Full width on mobile, fixed width on desktop */}
+        <Label className="w-full sm:w-32 text-left sm:text-right text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1 sm:justify-end shrink-0 sm:pt-2">
           {showRedIcon && (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
@@ -658,9 +658,9 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           )}
           Address:
         </Label>
-        
-        {/* Address Fields - Natural Widths */}
-        <div className="flex-1">
+
+        {/* Address Fields - Full width on mobile */}
+        <div className="flex-1 w-full">
           <AddressGroupSimple
             address={formData.address || ""}
             city={formData.city || ""}
@@ -686,7 +686,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
   };
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3 sm:p-4 overflow-y-auto">
+    <div className="bg-gray-50 rounded-lg p-3 sm:p-4 overflow-x-hidden w-full max-w-full">
       {/* AI Failure Banner */}
       {hasAIFailure && (
         <div className="mb-4">
@@ -720,7 +720,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       )}
 
       
-      <div className="space-y-2">
+      <div className="space-y-2 w-full max-w-full overflow-x-hidden">
         {selectedCardForReview ? (
           <>
             {groupedFields.map((group, index) => {
@@ -813,12 +813,12 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
               return (
                 <div
                   key={fieldKey}
-                  className="flex items-center gap-4 py-1"
+                  className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 py-2 sm:py-1"
                 >
-                  {/* Label - Fixed Width */}
+                  {/* Label - Full width on mobile, fixed width on desktop */}
                   <Label
                     htmlFor={fieldKey}
-                    className="w-32 text-right text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1 justify-end shrink-0"
+                    className="w-full sm:w-32 text-left sm:text-right text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1 sm:justify-end shrink-0"
                   >
                     {showRedIcon && (
                       <TooltipProvider delayDuration={100}>
@@ -837,43 +837,46 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                     {label}:
                   </Label>
                   
-                  {/* Field - Natural Width Based on Content Type */}
-                  <div className={`${getFieldWidth(actualFieldKey)}`}>
-                    {renderFieldInput(fieldKey, actualFieldKey, isReviewed, needsReview && !isReviewed)}
-                  </div>
-                  
-                  {/* Status Zone - Next to Field */}
-                  <div className="flex items-center gap-2">
-                    {showReviewCircle && (
-                    <TooltipProvider delayDuration={100}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className={`h-10 w-10 sm:h-8 sm:w-8 p-1 ${
-                              isReviewed
-                                ? "text-green-500"
-                                : "text-gray-400 hover:text-gray-600"
-                            }`}
-                            onClick={(e) =>
-                              handleFieldReview(actualFieldKey, e)
-                            }
-                          >
-                            <CheckCircle className="h-5 w-5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p>
-                            {isReviewed
-                              ? "Mark as needing review"
-                              : "Mark as reviewed"}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    )}
+                  {/* Field and Status Zone - Flex row on mobile */}
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {/* Field - Full width on mobile */}
+                    <div className={`flex-1 sm:flex-none ${getFieldWidth(actualFieldKey)}`}>
+                      {renderFieldInput(fieldKey, actualFieldKey, isReviewed, needsReview && !isReviewed)}
+                    </div>
+
+                    {/* Status Zone - Next to Field */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {showReviewCircle && (
+                        <TooltipProvider delayDuration={100}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={`h-10 w-10 sm:h-8 sm:w-8 p-1 ${
+                                  isReviewed
+                                    ? "text-green-500"
+                                    : "text-gray-400 hover:text-gray-600"
+                                }`}
+                                onClick={(e) =>
+                                  handleFieldReview(actualFieldKey, e)
+                                }
+                              >
+                                <CheckCircle className="h-5 w-5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">
+                              <p>
+                                {isReviewed
+                                  ? "Mark as needing review"
+                                  : "Mark as reviewed"}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
