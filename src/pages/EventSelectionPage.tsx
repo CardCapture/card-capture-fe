@@ -1,6 +1,6 @@
 /**
  * Event selection page for recruiter signup flow.
- * User selects events to purchase access for $25 each.
+ * User selects events to purchase access for $17 each.
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -28,7 +28,7 @@ interface SignupData {
   };
 }
 
-const PRICE_PER_EVENT = 25;
+const PRICE_PER_EVENT = 17;
 
 const EventSelectionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -280,7 +280,7 @@ const EventSelectionPage: React.FC = () => {
               </div>
             </div>
             <div className="text-right">
-              <span className="text-lg font-semibold text-primary">$25</span>
+              <span className="text-lg font-semibold text-primary">$17</span>
             </div>
           </div>
         </CardContent>
@@ -318,7 +318,7 @@ const EventSelectionPage: React.FC = () => {
                 <span className="font-bold text-xl tracking-tight">CardCapture</span>
               </Link>
               <h1 className="text-3xl font-bold">Select Your Events</h1>
-              <p className="text-muted-foreground mt-2">$25 per event. Select one or more events to purchase.</p>
+              <p className="text-muted-foreground mt-2">$17 per event. Select one or more events to purchase.</p>
             </div>
 
             {/* Search and filters */}
@@ -486,7 +486,7 @@ const EventSelectionPage: React.FC = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-primary">$25</span>
+                      <span className="text-sm font-semibold text-primary">$17</span>
                       <Button
                         variant="ghost"
                         size="icon"

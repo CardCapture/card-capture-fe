@@ -1,6 +1,6 @@
 /**
  * Event purchase page for authenticated admin users.
- * Allows admins to purchase access to TACROA events at $25 each.
+ * Allows admins to purchase access to TACROA events at $17 each.
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -17,7 +17,7 @@ import recruiterSignupService, { UniversalEvent, purchaseEventsAsAdmin } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 
-const PRICE_PER_EVENT = 25;
+const PRICE_PER_EVENT = 17;
 
 const PurchaseEventsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -246,7 +246,7 @@ const PurchaseEventsPage: React.FC = () => {
               </div>
             </div>
             <div className="text-right">
-              <span className="text-lg font-semibold text-primary">$25</span>
+              <span className="text-lg font-semibold text-primary">$17</span>
             </div>
           </div>
         </CardContent>
@@ -279,7 +279,7 @@ const PurchaseEventsPage: React.FC = () => {
             <div className="mb-8">
               <h1 className="text-3xl font-bold">Purchase Events</h1>
               <p className="text-muted-foreground mt-2">
-                Select TACROA events to add to your account. $25 per event.
+                Select TACROA events to add to your account. $17 per event.
               </p>
             </div>
 
@@ -459,7 +459,7 @@ const PurchaseEventsPage: React.FC = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-primary">$25</span>
+                      <span className="text-sm font-semibold text-primary">$17</span>
                       <Button
                         variant="ghost"
                         size="icon"
