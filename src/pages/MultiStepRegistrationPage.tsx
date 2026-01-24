@@ -265,7 +265,10 @@ export default function MultiStepRegistrationPage() {
           entry_term: student.entry_term || '',
           entry_year: student.entry_year?.toString() || '',
           major: student.major || '',
-          academic_interests: student.academic_interests || [],
+          // Convert string array to {id, label} objects for MultiSelectAutocomplete
+          academic_interests: (student.academic_interests || []).map((interest: string | { id: string; label: string }) =>
+            typeof interest === 'string' ? { id: interest, label: interest } : interest
+          ),
           email_opt_in: student.email_opt_in ?? true,
           permission_to_text: student.permission_to_text ?? false,
         });
