@@ -42,6 +42,7 @@ export interface FormSession {
   session_type: 'magic_link' | 'event_code';
   email?: string;
   metadata?: any;
+  existing_student?: any;  // Existing student data for pre-filling form
 }
 
 export interface RegistrationResult {
@@ -67,7 +68,7 @@ class RegistrationServiceClass {
   /**
    * Start registration with email (magic link flow)
    */
-  async startEmailRegistration(email: string): Promise<{ success: boolean; message: string }> {
+  async startEmailRegistration(email: string): Promise<{ success: boolean; message: string; is_returning?: boolean }> {
     const response = await authFetch(`${this.baseUrl}/api/register/start-email`, {
       method: 'POST',
       headers: {

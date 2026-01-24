@@ -239,9 +239,42 @@ export default function MultiStepRegistrationPage() {
     try {
       const sessionData = await RegistrationService.getFormSession();
       setSession(sessionData);
-      
-      // Pre-fill email if from magic link
-      if (sessionData.email) {
+
+      // Pre-fill from existing student data if returning user
+      if (sessionData.existing_student) {
+        const student = sessionData.existing_student;
+        updateData({
+          first_name: student.first_name || '',
+          last_name: student.last_name || '',
+          preferred_first_name: student.preferred_first_name || '',
+          date_of_birth: student.date_of_birth || '',
+          email: student.email || sessionData.email || '',
+          cell: student.cell || '',
+          address: student.address || '',
+          address_2: student.address_2 || '',
+          city: student.city || '',
+          state: student.state || '',
+          zip_code: student.zip_code || '',
+          high_school: student.high_school || '',
+          grade_level: student.grade_level || '',
+          grad_year: student.grad_year || '',
+          gpa: student.gpa?.toString() || '',
+          gpa_scale: student.gpa_scale?.toString() || '4.0',
+          sat_score: student.sat_score?.toString() || '',
+          act_score: student.act_score?.toString() || '',
+          entry_term: student.entry_term || '',
+          entry_year: student.entry_year?.toString() || '',
+          major: student.major || '',
+          academic_interests: student.academic_interests || [],
+          email_opt_in: student.email_opt_in ?? true,
+          permission_to_text: student.permission_to_text ?? false,
+        });
+        toast({
+          title: "Welcome back!",
+          description: "Your information has been pre-filled. Update anything you'd like.",
+        });
+      } else if (sessionData.email) {
+        // New user - just pre-fill email
         updateData({ email: sessionData.email });
       }
     } catch (error) {

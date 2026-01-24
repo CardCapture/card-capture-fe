@@ -15,6 +15,7 @@ export default function CheckEmailPage() {
   const { toast } = useToast();
 
   const email = location.state?.email;
+  const isReturning = location.state?.isReturning;
 
   useEffect(() => {
     if (!email) {
@@ -101,11 +102,18 @@ export default function CheckEmailPage() {
                 </h1>
                 <div className="space-y-2">
                   <p className="text-lg text-foreground/80">
-                    We sent a secure registration link to
+                    {isReturning
+                      ? "We sent a link to update your profile to"
+                      : "We sent a secure registration link to"}
                   </p>
                   <p className="text-xl font-semibold text-primary break-all">
                     {email}
                   </p>
+                  {isReturning && (
+                    <p className="text-sm text-foreground/60 mt-2">
+                      Welcome back! Your existing information will be pre-filled.
+                    </p>
+                  )}
                 </div>
               </div>
             </header>

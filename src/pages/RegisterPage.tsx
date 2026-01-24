@@ -61,13 +61,15 @@ export default function RegisterPage() {
     submissionRef.current = true;
     setSubmitting(true);
     try {
-      await RegistrationService.startEmailRegistration(email);
-      
-      navigate('/register/check-email', { state: { email } });
-      
+      const result = await RegistrationService.startEmailRegistration(email);
+
+      navigate('/register/check-email', { state: { email, isReturning: result.is_returning } });
+
       toast({
         title: "Check your email",
-        description: "We've sent you a secure link to complete registration.",
+        description: result.is_returning
+          ? "We've sent you a link to update your profile."
+          : "We've sent you a secure link to complete registration.",
       });
     } catch (error: any) {
       toast({
