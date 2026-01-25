@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDefaultRedirectPath } from '@/utils/roleRedirect';
 import { Menu, X } from 'lucide-react';
 import ccLogoOnly from '../../assets/cc-logo-only.svg';
+
+type PersonaTab = 'recruiters' | 'coordinators' | 'students';
 
 interface LandingLayoutProps {
   children: React.ReactNode;
@@ -12,10 +14,20 @@ interface LandingLayoutProps {
 
 const LandingLayout = ({ children }: LandingLayoutProps) => {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+
+  const isHomePage = location.pathname === '/' || location.pathname === '';
+  const activeTab = (searchParams.get('persona') as PersonaTab) || 'recruiters';
+
+  const personaTabs: { id: PersonaTab; label: string }[] = [
+    { id: 'recruiters', label: 'For Admissions Teams' },
+    { id: 'coordinators', label: 'For Fair Coordinators' },
+    { id: 'students', label: 'For Students' },
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -30,12 +42,22 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
     navigate(redirectPath);
   };
 
+  const handleTabClick = (tab: PersonaTab) => {
+    if (location.pathname !== '/') {
+      navigate(`/?persona=${tab}`);
+    } else {
+      setSearchParams({ persona: tab });
+    }
+    setMobileMenuOpen(false);
+    window.scrollTo(0, 0);
+  };
+
   const NavLink = ({ to, children, className = '' }: { to: string; children: React.ReactNode; className?: string }) => (
-    <Link 
-      to={to} 
+    <Link
+      to={to}
       className={`relative px-4 py-2 text-sm font-medium transition-colors hover:text-primary ${
-        location.pathname === to 
-          ? 'text-primary font-semibold' 
+        location.pathname === to
+          ? 'text-primary font-semibold'
           : 'text-foreground/60'
       } ${className}`}
       onClick={() => setMobileMenuOpen(false)}
@@ -61,38 +83,47 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
               <span className="font-bold text-xl tracking-tight">CardCapture</span>
             </Link>
 
-            {/* Desktop Navigation */}
+            {/* Desktop Navigation - Persona Tabs */}
             <div className="hidden md:flex items-center flex-1 justify-center">
-              <nav className="flex items-center space-x-6">
-                {/* Navigation links can be added here */}
+              <nav className="flex items-center">
+                {personaTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabClick(tab.id)}
+                    className={`relative px-5 py-2 text-sm font-medium transition-colors ${
+                      isHomePage && activeTab === tab.id
+                        ? 'text-primary'
+                        : 'text-foreground/60 hover:text-foreground/80'
+                    }`}
+                  >
+                    {tab.label}
+                    {isHomePage && activeTab === tab.id && (
+                      <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full" />
+                    )}
+                  </button>
+                ))}
               </nav>
             </div>
-            
+
             {/* Right side navigation */}
-            <div className="hidden md:flex items-center">
-              <Link 
-                to="/get-started"
-                className="px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Schedule a Demo
-              </Link>
-              
+            <div className="hidden md:flex items-center gap-2">
+              <NavLink to="/docs">Guides</NavLink>
               {user ? (
                 <Button
                   variant="default"
                   size="sm"
-                  className="ml-3"
                   onClick={handleDashboardClick}
                 >
                   Go to Dashboard
                 </Button>
               ) : (
-                <Link to="/login" className="ml-3">
-                  <Button variant="default" size="sm">
-                    Login / Sign Up
-                  </Button>
-                </Link>
+                (!isHomePage || activeTab === 'recruiters') && (
+                  <Link to="/login">
+                    <Button variant="default" size="sm">
+                      Login / Sign Up
+                    </Button>
+                  </Link>
+                )
               )}
             </div>
 
@@ -112,12 +143,32 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
             <nav className="md:hidden py-4 space-y-2">
+              {/* Persona Tabs */}
+              <div className="flex flex-col space-y-1 pb-3 border-b border-foreground/10 mb-3">
+                {personaTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabClick(tab.id)}
+                    className={`text-left px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      isHomePage && activeTab === tab.id
+                        ? 'text-primary bg-primary/10'
+                        : 'text-foreground/60 hover:text-foreground/80 hover:bg-foreground/5'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
               <Link
-                to="/get-started"
-                className="block px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                to="/docs"
                 onClick={() => setMobileMenuOpen(false)}
+                className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  location.pathname === '/docs'
+                    ? 'text-primary bg-primary/10'
+                    : 'text-foreground/60 hover:text-foreground/80 hover:bg-foreground/5'
+                }`}
               >
-                Schedule a Demo
+                Guides
               </Link>
               {user ? (
                 <Button
@@ -132,7 +183,13 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                   Go to Dashboard
                 </Button>
               ) : (
-                <NavLink to="/login">Login / Sign Up</NavLink>
+                (!isHomePage || activeTab === 'recruiters') && (
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="default" size="sm" className="w-full">
+                      Login / Sign Up
+                    </Button>
+                  </Link>
+                )
               )}
             </nav>
           )}

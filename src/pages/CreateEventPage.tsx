@@ -26,7 +26,10 @@ import {
   MapPin,
   User,
   FileText,
+  UserPlus,
+  Mail,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { toast } from "@/lib/toast";
 import {
@@ -59,6 +62,18 @@ interface FormData {
   description: string;
   needs_inquiry_cards: boolean;
   expected_students: string;
+  // Secondary contact
+  has_secondary_contact: boolean;
+  contact_name_secondary: string;
+  contact_email_secondary: string;
+  contact_phone_secondary: string;
+  // Inquiry cards mailing address
+  inquiry_cards_same_as_event_address: boolean;
+  inquiry_cards_address: string;
+  inquiry_cards_city: string;
+  inquiry_cards_state: string;
+  inquiry_cards_zip: string;
+  inquiry_cards_attention: string;
 }
 
 const initialFormData: FormData = {
@@ -77,6 +92,18 @@ const initialFormData: FormData = {
   description: "",
   needs_inquiry_cards: false,
   expected_students: "",
+  // Secondary contact
+  has_secondary_contact: false,
+  contact_name_secondary: "",
+  contact_email_secondary: "",
+  contact_phone_secondary: "",
+  // Inquiry cards mailing address
+  inquiry_cards_same_as_event_address: true,
+  inquiry_cards_address: "",
+  inquiry_cards_city: "",
+  inquiry_cards_state: "TX",
+  inquiry_cards_zip: "",
+  inquiry_cards_attention: "",
 };
 
 // Format phone number as user types: (555) 123-4567
@@ -169,6 +196,43 @@ const CreateEventPage: React.FC = () => {
       }
     }
 
+    // Validate secondary contact if enabled
+    if (formData.has_secondary_contact) {
+      if (formData.contact_email_secondary.trim()) {
+        const emailError = validators.email(formData.contact_email_secondary);
+        if (emailError) {
+          newErrors.contact_email_secondary = emailError;
+        }
+      }
+      if (formData.contact_phone_secondary.trim()) {
+        const phoneError = validators.phone(formData.contact_phone_secondary);
+        if (phoneError) {
+          newErrors.contact_phone_secondary = phoneError;
+        }
+      }
+    }
+
+    // Validate mailing address if inquiry cards requested and not same as event address
+    if (formData.needs_inquiry_cards && !formData.inquiry_cards_same_as_event_address) {
+      if (!formData.inquiry_cards_address.trim()) {
+        newErrors.inquiry_cards_address = "Mailing address is required";
+      }
+      if (!formData.inquiry_cards_city.trim()) {
+        newErrors.inquiry_cards_city = "City is required";
+      }
+      if (!formData.inquiry_cards_state.trim()) {
+        newErrors.inquiry_cards_state = "State is required";
+      }
+      if (!formData.inquiry_cards_zip.trim()) {
+        newErrors.inquiry_cards_zip = "ZIP code is required";
+      } else {
+        const zipError = validators.zipCode(formData.inquiry_cards_zip);
+        if (zipError) {
+          newErrors.inquiry_cards_zip = zipError;
+        }
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -200,6 +264,17 @@ const CreateEventPage: React.FC = () => {
         ...(formData.description && { description: formData.description }),
         needs_inquiry_cards: formData.needs_inquiry_cards,
         ...(formData.expected_students && { expected_students: parseInt(formData.expected_students.replace(/,/g, ""), 10) }),
+        // Secondary contact
+        ...(formData.has_secondary_contact && formData.contact_name_secondary && { contact_name_secondary: formData.contact_name_secondary }),
+        ...(formData.has_secondary_contact && formData.contact_email_secondary && { contact_email_secondary: formData.contact_email_secondary }),
+        ...(formData.has_secondary_contact && formData.contact_phone_secondary && { contact_phone_secondary: formData.contact_phone_secondary }),
+        // Inquiry cards mailing address
+        ...(formData.needs_inquiry_cards && { inquiry_cards_same_as_event_address: formData.inquiry_cards_same_as_event_address }),
+        ...(formData.needs_inquiry_cards && !formData.inquiry_cards_same_as_event_address && formData.inquiry_cards_address && { inquiry_cards_address: formData.inquiry_cards_address }),
+        ...(formData.needs_inquiry_cards && !formData.inquiry_cards_same_as_event_address && formData.inquiry_cards_city && { inquiry_cards_city: formData.inquiry_cards_city }),
+        ...(formData.needs_inquiry_cards && !formData.inquiry_cards_same_as_event_address && formData.inquiry_cards_state && { inquiry_cards_state: formData.inquiry_cards_state }),
+        ...(formData.needs_inquiry_cards && !formData.inquiry_cards_same_as_event_address && formData.inquiry_cards_zip && { inquiry_cards_zip: formData.inquiry_cards_zip }),
+        ...(formData.needs_inquiry_cards && !formData.inquiry_cards_same_as_event_address && formData.inquiry_cards_attention && { inquiry_cards_attention: formData.inquiry_cards_attention }),
       };
 
       await submitEvent(submissionData);
@@ -493,6 +568,82 @@ const CreateEventPage: React.FC = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Secondary Contact Toggle */}
+                  <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <UserPlus className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">Add a second contact</span>
+                    </div>
+                    <Switch
+                      checked={formData.has_secondary_contact}
+                      onCheckedChange={(checked) => {
+                        updateField("has_secondary_contact", checked);
+                        if (!checked) {
+                          updateField("contact_name_secondary", "");
+                          updateField("contact_email_secondary", "");
+                          updateField("contact_phone_secondary", "");
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Secondary Contact Fields */}
+                  {formData.has_secondary_contact && (
+                    <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <h4 className="text-sm font-semibold text-gray-700">Secondary Contact</h4>
+                      <div className="space-y-2">
+                        <Label htmlFor="contact_name_secondary">Name</Label>
+                        <Input
+                          id="contact_name_secondary"
+                          placeholder="Secondary contact name"
+                          value={formData.contact_name_secondary}
+                          onChange={(e) =>
+                            updateField("contact_name_secondary", e.target.value)
+                          }
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="contact_email_secondary">Email</Label>
+                          <Input
+                            id="contact_email_secondary"
+                            type="email"
+                            placeholder="email@example.com"
+                            value={formData.contact_email_secondary}
+                            onChange={(e) =>
+                              updateField("contact_email_secondary", e.target.value)
+                            }
+                            className={errors.contact_email_secondary ? "border-red-500" : ""}
+                          />
+                          {errors.contact_email_secondary && (
+                            <p className="text-sm text-red-500">
+                              {errors.contact_email_secondary}
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="contact_phone_secondary">Phone</Label>
+                          <Input
+                            id="contact_phone_secondary"
+                            type="tel"
+                            placeholder="(555) 123-4567"
+                            value={formData.contact_phone_secondary}
+                            onChange={(e) =>
+                              updateField("contact_phone_secondary", formatPhoneNumber(e.target.value))
+                            }
+                            className={errors.contact_phone_secondary ? "border-red-500" : ""}
+                          />
+                          {errors.contact_phone_secondary && (
+                            <p className="text-sm text-red-500">
+                              {errors.contact_phone_secondary}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -555,27 +706,159 @@ const CreateEventPage: React.FC = () => {
                   </div>
 
                   {formData.needs_inquiry_cards && (
-                    <div className="space-y-2">
-                      <Label htmlFor="expected_students">
-                        How many students do you anticipate attending?{" "}
-                        <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="expected_students"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="e.g., 1,500"
-                        value={formData.expected_students}
-                        onChange={(e) => updateField("expected_students", formatNumberWithCommas(e.target.value))}
-                        className={errors.expected_students ? "border-red-500" : ""}
-                      />
-                      {errors.expected_students && (
-                        <p className="text-sm text-red-500">{errors.expected_students}</p>
-                      )}
-                      <p className="text-sm text-gray-500">
-                        This helps us prepare the right number of cards for your event.
-                      </p>
-                    </div>
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="expected_students">
+                          How many students do you anticipate attending?{" "}
+                          <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="expected_students"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="e.g., 1,500"
+                          value={formData.expected_students}
+                          onChange={(e) => updateField("expected_students", formatNumberWithCommas(e.target.value))}
+                          className={errors.expected_students ? "border-red-500" : ""}
+                        />
+                        {errors.expected_students && (
+                          <p className="text-sm text-red-500">{errors.expected_students}</p>
+                        )}
+                        <p className="text-sm text-gray-500">
+                          This helps us prepare the right number of cards for your event.
+                        </p>
+                      </div>
+
+                      {/* Mailing Address Section */}
+                      <div className="space-y-4 mt-6 p-4 bg-blue-50/50 rounded-lg border border-blue-100">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-blue-600" />
+                          <Label className="text-base font-semibold">Mailing Address for Inquiry Cards</Label>
+                        </div>
+
+                        {/* Same as Event Address Toggle */}
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            id="inquiry_cards_same_as_event_address"
+                            checked={formData.inquiry_cards_same_as_event_address}
+                            onChange={(e) => {
+                              updateField("inquiry_cards_same_as_event_address", e.target.checked);
+                              if (e.target.checked) {
+                                // Clear mailing address fields when using event address
+                                updateField("inquiry_cards_address", "");
+                                updateField("inquiry_cards_city", "");
+                                updateField("inquiry_cards_state", "TX");
+                                updateField("inquiry_cards_zip", "");
+                                updateField("inquiry_cards_attention", "");
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 rounded"
+                          />
+                          <Label htmlFor="inquiry_cards_same_as_event_address" className="text-sm cursor-pointer">
+                            Same as event address
+                          </Label>
+                        </div>
+
+                        {formData.inquiry_cards_same_as_event_address && formData.address && (
+                          <div className="text-sm text-gray-600 bg-white p-3 rounded border">
+                            <p className="font-medium">Cards will be mailed to:</p>
+                            <p>{formData.address}</p>
+                            <p>{formData.city}{formData.city && formData.state ? ", " : ""}{formData.state} {formData.zip}</p>
+                          </div>
+                        )}
+
+                        {formData.inquiry_cards_same_as_event_address && !formData.address && (
+                          <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded border border-amber-200">
+                            Please fill out the event address above, or uncheck this box to enter a different mailing address.
+                          </p>
+                        )}
+
+                        {/* Custom Mailing Address Fields */}
+                        {!formData.inquiry_cards_same_as_event_address && (
+                          <div className="space-y-4 pt-2">
+                            <div className="space-y-2">
+                              <Label htmlFor="inquiry_cards_attention">Attention / Recipient Name</Label>
+                              <Input
+                                id="inquiry_cards_attention"
+                                placeholder="e.g., Counseling Office"
+                                value={formData.inquiry_cards_attention}
+                                onChange={(e) => updateField("inquiry_cards_attention", e.target.value)}
+                              />
+                            </div>
+
+                            <AddressAutocomplete
+                              label="Street Address *"
+                              value={formData.inquiry_cards_address}
+                              onChange={(value) => updateField("inquiry_cards_address", value)}
+                              onAddressSelect={(address) => {
+                                updateField("inquiry_cards_address", address.street);
+                                updateField("inquiry_cards_city", address.city);
+                                updateField("inquiry_cards_state", address.state);
+                                updateField("inquiry_cards_zip", address.zipCode);
+                              }}
+                              error={errors.inquiry_cards_address}
+                              helpText="Start typing and select from suggestions"
+                              required
+                            />
+
+                            <div className="grid grid-cols-3 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="inquiry_cards_city">
+                                  City <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                  id="inquiry_cards_city"
+                                  value={formData.inquiry_cards_city}
+                                  onChange={(e) => updateField("inquiry_cards_city", e.target.value)}
+                                  className={errors.inquiry_cards_city ? "border-red-500" : ""}
+                                />
+                                {errors.inquiry_cards_city && (
+                                  <p className="text-sm text-red-500">{errors.inquiry_cards_city}</p>
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                <Label>
+                                  State <span className="text-red-500">*</span>
+                                </Label>
+                                <Select
+                                  value={formData.inquiry_cards_state}
+                                  onValueChange={(value) => updateField("inquiry_cards_state", value)}
+                                >
+                                  <SelectTrigger className={errors.inquiry_cards_state ? "border-red-500" : ""}>
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {US_STATES.map((state) => (
+                                      <SelectItem key={state} value={state}>
+                                        {state}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {errors.inquiry_cards_state && (
+                                  <p className="text-sm text-red-500">{errors.inquiry_cards_state}</p>
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="inquiry_cards_zip">
+                                  ZIP Code <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                  id="inquiry_cards_zip"
+                                  value={formData.inquiry_cards_zip}
+                                  onChange={(e) => updateField("inquiry_cards_zip", e.target.value)}
+                                  className={errors.inquiry_cards_zip ? "border-red-500" : ""}
+                                />
+                                {errors.inquiry_cards_zip && (
+                                  <p className="text-sm text-red-500">{errors.inquiry_cards_zip}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>

@@ -21,6 +21,17 @@ export interface EventSubmissionData {
   description?: string;
   needs_inquiry_cards?: boolean;
   expected_students?: number;
+  // Secondary contact
+  contact_name_secondary?: string;
+  contact_email_secondary?: string;
+  contact_phone_secondary?: string;
+  // Inquiry cards mailing address
+  inquiry_cards_same_as_event_address?: boolean;
+  inquiry_cards_address?: string;
+  inquiry_cards_city?: string;
+  inquiry_cards_state?: string;
+  inquiry_cards_zip?: string;
+  inquiry_cards_attention?: string;
 }
 
 export interface EventSubmissionResponse {
