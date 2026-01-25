@@ -7,14 +7,14 @@ export const getDefaultRedirectPath = (profile: UserProfile | null): string => {
 
   const roles = profile.role;
 
-  // Admin can access everything, default to events
-  if (roles.includes('admin')) {
-    return '/events';
-  }
-
-  // Recruiter can scan cards, default to scan page
+  // Recruiter should default to scan page (even if they also have admin role)
   if (roles.includes('recruiter')) {
     return '/scan';
+  }
+
+  // Admin without recruiter role defaults to events
+  if (roles.includes('admin')) {
+    return '/events';
   }
 
   // Reviewer can only view events
