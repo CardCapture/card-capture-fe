@@ -1,6 +1,6 @@
 // src/pages/HomePage.tsx
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import RecruiterLanding from '@/components/landing/RecruiterLanding';
 import CoordinatorLanding from '@/components/landing/CoordinatorLanding';
@@ -10,9 +10,17 @@ type PersonaTab = 'recruiters' | 'coordinators' | 'students';
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const activeTab = (searchParams.get('persona') as PersonaTab) || 'recruiters';
+  // Determine persona from route path or query param
+  const getPersonaFromPath = (): PersonaTab => {
+    if (location.pathname === '/for-coordinators') return 'coordinators';
+    if (location.pathname === '/for-students') return 'students';
+    return (searchParams.get('persona') as PersonaTab) || 'recruiters';
+  };
+
+  const activeTab = getPersonaFromPath();
 
   useEffect(() => {
     // On mobile app, skip landing page and go straight to login

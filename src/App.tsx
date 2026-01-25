@@ -94,6 +94,8 @@ function App() {
                   }
                 >
                   <Route path="/" element={<HomePage />} />
+                  <Route path="/for-coordinators" element={<HomePage />} />
+                  <Route path="/for-students" element={<HomePage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/get-started" element={<GetStartedPage />} />
                   <Route path="/thank-you" element={<ThankYouPage />} />

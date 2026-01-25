@@ -14,19 +14,28 @@ interface LandingLayoutProps {
 
 const LandingLayout = ({ children }: LandingLayoutProps) => {
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile } = useAuth();
   const navigate = useNavigate();
 
-  const isHomePage = location.pathname === '/' || location.pathname === '';
-  const activeTab = (searchParams.get('persona') as PersonaTab) || 'recruiters';
+  // Check if we're on a home/persona page
+  const isHomePage = ['/', '', '/for-coordinators', '/for-students'].includes(location.pathname) ||
+    (location.pathname === '/' && searchParams.has('persona'));
 
-  const personaTabs: { id: PersonaTab; label: string }[] = [
-    { id: 'recruiters', label: 'For Admissions Teams' },
-    { id: 'coordinators', label: 'For Fair Coordinators' },
-    { id: 'students', label: 'For Students' },
+  // Determine active tab from path or query param
+  const getActiveTab = (): PersonaTab => {
+    if (location.pathname === '/for-coordinators') return 'coordinators';
+    if (location.pathname === '/for-students') return 'students';
+    return (searchParams.get('persona') as PersonaTab) || 'recruiters';
+  };
+  const activeTab = getActiveTab();
+
+  const personaTabs: { id: PersonaTab; label: string; path: string }[] = [
+    { id: 'recruiters', label: 'For Admissions Teams', path: '/' },
+    { id: 'coordinators', label: 'For Fair Coordinators', path: '/for-coordinators' },
+    { id: 'students', label: 'For Students', path: '/for-students' },
   ];
 
   useEffect(() => {
@@ -43,10 +52,9 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
   };
 
   const handleTabClick = (tab: PersonaTab) => {
-    if (location.pathname !== '/') {
-      navigate(`/?persona=${tab}`);
-    } else {
-      setSearchParams({ persona: tab });
+    const targetTab = personaTabs.find(t => t.id === tab);
+    if (targetTab) {
+      navigate(targetTab.path);
     }
     setMobileMenuOpen(false);
     window.scrollTo(0, 0);
