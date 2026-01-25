@@ -86,9 +86,9 @@ const StudentLanding = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                 <div className="space-y-6 text-center md:text-left">
                   <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.05]">
-                    One Profile.
+                    One Profile
                     <br />
-                    <span className="text-primary">Every College Fair.</span>
+                    <span className="text-primary">Every College Fair</span>
                   </h1>
 
                   <p className="text-xl md:text-2xl text-foreground/70 font-medium">
