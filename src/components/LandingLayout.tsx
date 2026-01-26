@@ -115,7 +115,6 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
 
             {/* Right side navigation */}
             <div className="hidden md:flex items-center gap-2">
-              <NavLink to="/docs">Guides</NavLink>
               {user ? (
                 <Button
                   variant="default"
@@ -167,17 +166,6 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                   </button>
                 ))}
               </div>
-              <Link
-                to="/docs"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  location.pathname === '/docs'
-                    ? 'text-primary bg-primary/10'
-                    : 'text-foreground/60 hover:text-foreground/80 hover:bg-foreground/5'
-                }`}
-              >
-                Guides
-              </Link>
               {user ? (
                 <Button
                   variant="default"

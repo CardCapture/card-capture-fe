@@ -256,6 +256,16 @@ const RecruiterSignupPage: React.FC = () => {
                     onValueChange={setSchoolSearchQuery}
                   />
                   <CommandList>
+                    {/* My school isn't listed option - always at top */}
+                    <CommandGroup>
+                      <CommandItem
+                        onSelect={handleMySchoolNotListed}
+                        className="cursor-pointer border-b"
+                      >
+                        <span className="mr-2 h-4 w-4" />
+                        <span className="text-primary font-medium">My school isn't listed</span>
+                      </CommandItem>
+                    </CommandGroup>
                     <CommandGroup>
                       {filteredSchools.slice(0, 50).map((school) => (
                         <CommandItem
@@ -276,16 +286,6 @@ const RecruiterSignupPage: React.FC = () => {
                           <span>{school.name}</span>
                         </CommandItem>
                       ))}
-                    </CommandGroup>
-                    {/* My school isn't listed option - always at bottom */}
-                    <CommandGroup>
-                      <CommandItem
-                        onSelect={handleMySchoolNotListed}
-                        className="cursor-pointer border-t"
-                      >
-                        <span className="mr-2 h-4 w-4" />
-                        <span className="text-muted-foreground italic">My school isn't listed</span>
-                      </CommandItem>
                     </CommandGroup>
                   </CommandList>
                 </Command>

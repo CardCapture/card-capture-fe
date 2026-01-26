@@ -380,6 +380,14 @@ const RecruiterLanding = () => {
             >
               Sign Up & Select an Event
             </Button>
+            <Button
+              size="lg"
+              variant="ghost"
+              className="text-lg px-10 py-6 border-2 border-white/50 text-white bg-transparent hover:bg-white/10 hover:border-white/70"
+              onClick={() => navigate('/docs#recruiters')}
+            >
+              View Recruiter Guide
+            </Button>
           </div>
           <p className="text-sm opacity-75 mt-6">
             Questions? <a href="/get-started" className="underline hover:opacity-100">Schedule a demo</a>
