@@ -31,6 +31,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Building2, User, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import recruiterSignupService, { School } from '@/services/RecruiterSignupService';
 
@@ -40,6 +41,10 @@ interface SchoolSelection {
   type: 'existing' | 'new';
   schoolId?: string;
   schoolName?: string;
+  isSelfAdmin?: boolean;
+  adminEmail?: string;
+  adminFirstName?: string;
+  adminLastName?: string;
 }
 
 const RecruiterSignupPage: React.FC = () => {
@@ -63,6 +68,12 @@ const RecruiterSignupPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Admin invite state (for new schools)
+  const [isSelfAdmin, setIsSelfAdmin] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminFirstName, setAdminFirstName] = useState('');
+  const [adminLastName, setAdminLastName] = useState('');
 
   // Load schools on mount
   useEffect(() => {
@@ -161,6 +172,14 @@ const RecruiterSignupPage: React.FC = () => {
       return;
     }
 
+    // Validate admin email for new schools (only if not self-admin)
+    if (schoolSelection?.type === 'new' && !isSelfAdmin) {
+      if (!adminEmail.trim()) {
+        setError('Please enter your admin\'s email address');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -174,6 +193,10 @@ const RecruiterSignupPage: React.FC = () => {
           type: schoolSelection!.type,
           school_id: schoolSelection!.schoolId,
           school_name: schoolSelection!.schoolName,
+          is_self_admin: isSelfAdmin,
+          admin_email: !isSelfAdmin ? adminEmail || undefined : undefined,
+          admin_first_name: !isSelfAdmin ? adminFirstName || undefined : undefined,
+          admin_last_name: !isSelfAdmin ? adminLastName || undefined : undefined,
         },
       };
       sessionStorage.setItem('recruiterSignupData', JSON.stringify(signupData));
@@ -233,6 +256,16 @@ const RecruiterSignupPage: React.FC = () => {
                     onValueChange={setSchoolSearchQuery}
                   />
                   <CommandList>
+                    {/* My school isn't listed option - always at top */}
+                    <CommandGroup>
+                      <CommandItem
+                        onSelect={handleMySchoolNotListed}
+                        className="cursor-pointer border-b"
+                      >
+                        <span className="mr-2 h-4 w-4" />
+                        <span className="text-primary font-medium">My school isn't listed</span>
+                      </CommandItem>
+                    </CommandGroup>
                     <CommandGroup>
                       {filteredSchools.slice(0, 50).map((school) => (
                         <CommandItem
@@ -253,16 +286,6 @@ const RecruiterSignupPage: React.FC = () => {
                           <span>{school.name}</span>
                         </CommandItem>
                       ))}
-                    </CommandGroup>
-                    {/* My school isn't listed option - always at bottom */}
-                    <CommandGroup>
-                      <CommandItem
-                        onSelect={handleMySchoolNotListed}
-                        className="cursor-pointer border-t"
-                      >
-                        <span className="mr-2 h-4 w-4" />
-                        <span className="text-muted-foreground italic">My school isn't listed</span>
-                      </CommandItem>
                     </CommandGroup>
                   </CommandList>
                 </Command>
@@ -416,6 +439,61 @@ const RecruiterSignupPage: React.FC = () => {
               disabled={loading}
             />
           </div>
+
+          {/* Admin section - only show for new schools */}
+          {schoolSelection?.type === 'new' && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
+              {/* Toggle: I'm the admin */}
+              <div className="flex items-center justify-between">
+                <Label htmlFor="isSelfAdmin" className="text-sm font-medium cursor-pointer">
+                  I'm the admin for this school
+                </Label>
+                <Switch
+                  id="isSelfAdmin"
+                  checked={isSelfAdmin}
+                  onCheckedChange={setIsSelfAdmin}
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Admin invite fields - hidden if they are the admin */}
+              {!isSelfAdmin && (
+                <>
+                  <div>
+                    <Label className="text-sm font-medium text-blue-900">
+                      Who is your department admin?
+                    </Label>
+                    <p className="text-xs text-blue-700 mb-3">
+                      We'll send them an invite so they can manage your school's account.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Admin first name"
+                        value={adminFirstName}
+                        onChange={(e) => setAdminFirstName(e.target.value)}
+                        disabled={loading}
+                      />
+                      <Input
+                        placeholder="Admin last name"
+                        value={adminLastName}
+                        onChange={(e) => setAdminLastName(e.target.value)}
+                        disabled={loading}
+                      />
+                    </div>
+                    <Input
+                      type="email"
+                      placeholder="Admin email address"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {error && (
             <div className="rounded-lg bg-destructive/10 p-3">

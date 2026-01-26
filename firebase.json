@@ -6,6 +6,14 @@
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [
         {
+          "source": "/for-coordinators",
+          "destination": "/for-coordinators/index.html"
+        },
+        {
+          "source": "/for-students",
+          "destination": "/for-students/index.html"
+        },
+        {
           "source": "**",
           "destination": "/index.html"
         }
@@ -46,6 +54,14 @@
       "public": "dist",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [
+        {
+          "source": "/for-coordinators",
+          "destination": "/for-coordinators/index.html"
+        },
+        {
+          "source": "/for-students",
+          "destination": "/for-students/index.html"
+        },
         {
           "source": "**",
           "destination": "/index.html"

@@ -45,6 +45,10 @@ export interface RecruiterSignupRequest {
     type: 'existing' | 'new';
     school_id?: string;
     school_name?: string;
+    is_self_admin?: boolean;
+    admin_email?: string;
+    admin_first_name?: string;
+    admin_last_name?: string;
   };
   universal_event_ids: string[];
 }
@@ -66,6 +70,10 @@ export interface CreateAccountRequest {
     type: 'existing' | 'new';
     school_id?: string;
     school_name?: string;
+    is_self_admin?: boolean;
+    admin_email?: string;
+    admin_first_name?: string;
+    admin_last_name?: string;
   };
 }
 

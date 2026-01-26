@@ -1,17 +1,26 @@
 // src/pages/HomePage.tsx
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
-import Hero from '@/components/Hero';
-import Problem from '@/components/Problem';
-import Solution from '@/components/Solution';
-import HowItWorks from '@/components/HowItWorks';
-import Differentiator from '@/components/Differentiator';
-import SecondaryFeatures from '@/components/SecondaryFeatures';
-import FinalCTA from '@/components/Features';
+import RecruiterLanding from '@/components/landing/RecruiterLanding';
+import CoordinatorLanding from '@/components/landing/CoordinatorLanding';
+import StudentLanding from '@/components/landing/StudentLanding';
+
+type PersonaTab = 'recruiters' | 'coordinators' | 'students';
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // Determine persona from route path or query param
+  const getPersonaFromPath = (): PersonaTab => {
+    if (location.pathname === '/for-coordinators') return 'coordinators';
+    if (location.pathname === '/for-students') return 'students';
+    return (searchParams.get('persona') as PersonaTab) || 'recruiters';
+  };
+
+  const activeTab = getPersonaFromPath();
 
   useEffect(() => {
     // On mobile app, skip landing page and go straight to login
@@ -19,21 +28,21 @@ const HomePage = () => {
       navigate('/login', { replace: true });
       return;
     }
-    // Scroll to top when component mounts (web only)
-    window.scrollTo(0, 0);
   }, [navigate]);
 
-  return (
-    <>
-      <Hero />
-      <Problem />
-      <Solution />
-      <HowItWorks />
-      <Differentiator />
-      <SecondaryFeatures />
-      <FinalCTA />
-    </>
-  );
+  const renderLandingPage = () => {
+    switch (activeTab) {
+      case 'coordinators':
+        return <CoordinatorLanding />;
+      case 'students':
+        return <StudentLanding />;
+      case 'recruiters':
+      default:
+        return <RecruiterLanding />;
+    }
+  };
+
+  return renderLandingPage();
 };
 
 export default HomePage;
