@@ -36,45 +36,77 @@ const MagicLinkPage: React.FC = () => {
           return;
         }
 
-        // Skip validation and go directly to consumption
-        // This handles email client pre-scanning gracefully
-        console.log('🔄 Processing magic link...');
-        const result = await usersApi.consumeMagicLink(token, type);
-        console.log('✅ Magic link processed:', result);
+        // Handle invite type differently - validate only, don't consume yet
+        // The token will be consumed by createUser endpoint for security
+        if (type === 'invite') {
+          console.log('🔄 Validating invite magic link (not consuming)...');
+          const result = await usersApi.validateMagicLink(token);
+          console.log('✅ Invite validated:', result);
 
-        // For invite magic links, no session handling needed
-        console.log('✅ Magic link processed successfully');
+          setState('success');
+          setMessage('Invitation verified! Redirecting to complete your account setup...');
 
-        setState('success');
-        
-        if (result.type === 'password_reset') {
-          // If the backend provided session tokens, set them up
-          if (result.session && result.session.access_token) {
-            console.log('🔑 Setting up session from magic link...');
-            try {
-              await supabase.auth.setSession({
-                access_token: result.session.access_token,
-                refresh_token: result.session.refresh_token || ''
-              });
-              console.log('✅ Session established for password reset');
-              
-              setMessage('Password reset link verified and authenticated! Redirecting...');
-              setTimeout(() => {
-                navigate('/reset-password', { 
-                  state: { 
-                    email: result.email,
-                    fromMagicLink: true,
-                    hasSession: true
-                  }
+          setTimeout(() => {
+            navigate('/accept-invite', {
+              state: {
+                token: token,              // Pass the token for createUser
+                email: result.email,
+                metadata: result.metadata,
+                fromMagicLink: true
+              }
+            });
+          }, 2000);
+        } else {
+          // For password_reset and other types: keep existing consume behavior
+          console.log('🔄 Processing magic link...');
+          const result = await usersApi.consumeMagicLink(token, type);
+          console.log('✅ Magic link processed:', result);
+
+          console.log('✅ Magic link processed successfully');
+
+          setState('success');
+
+          if (result.type === 'password_reset') {
+            // If the backend provided session tokens, set them up
+            if (result.session && result.session.access_token) {
+              console.log('🔑 Setting up session from magic link...');
+              try {
+                await supabase.auth.setSession({
+                  access_token: result.session.access_token,
+                  refresh_token: result.session.refresh_token || ''
                 });
-              }, 2000);
-            } catch (sessionError) {
-              console.error('❌ Error setting session:', sessionError);
-              // Fallback to normal flow without session
+                console.log('✅ Session established for password reset');
+
+                setMessage('Password reset link verified and authenticated! Redirecting...');
+                setTimeout(() => {
+                  navigate('/reset-password', {
+                    state: {
+                      email: result.email,
+                      fromMagicLink: true,
+                      hasSession: true
+                    }
+                  });
+                }, 2000);
+              } catch (sessionError) {
+                console.error('❌ Error setting session:', sessionError);
+                // Fallback to normal flow without session
+                setMessage('Password reset link verified! Redirecting to reset password page...');
+                setTimeout(() => {
+                  navigate('/reset-password', {
+                    state: {
+                      email: result.email,
+                      fromMagicLink: true,
+                      requiresSignin: result.requires_signin || false
+                    }
+                  });
+                }, 2000);
+              }
+            } else {
+              // No session provided - normal flow
               setMessage('Password reset link verified! Redirecting to reset password page...');
               setTimeout(() => {
-                navigate('/reset-password', { 
-                  state: { 
+                navigate('/reset-password', {
+                  state: {
                     email: result.email,
                     fromMagicLink: true,
                     requiresSignin: result.requires_signin || false
@@ -83,34 +115,11 @@ const MagicLinkPage: React.FC = () => {
               }, 2000);
             }
           } else {
-            // No session provided - normal flow
-            setMessage('Password reset link verified! Redirecting to reset password page...');
+            setMessage('Link processed successfully!');
             setTimeout(() => {
-              navigate('/reset-password', { 
-                state: { 
-                  email: result.email,
-                  fromMagicLink: true,
-                  requiresSignin: result.requires_signin || false
-                }
-              });
+              navigate('/dashboard');
             }, 2000);
           }
-        } else if (result.type === 'invite') {
-          setMessage('Invitation verified! Redirecting to complete your account setup...');
-          setTimeout(() => {
-            navigate('/accept-invite', { 
-              state: { 
-                email: result.email,
-                metadata: result.metadata,
-                fromMagicLink: true
-              }
-            });
-          }, 2000);
-        } else {
-          setMessage('Link processed successfully!');
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 2000);
         }
 
       } catch (error) {
