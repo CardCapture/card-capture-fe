@@ -178,14 +178,11 @@ export const usersApi = {
 
   /**
    * Create user account for invite flow
+   * Requires magic_link_token for security - backend validates token and extracts user info
    */
   async createUser(userData: {
-    email: string;
+    magic_link_token: string;
     password: string;
-    first_name: string;
-    last_name: string;
-    role: string[];
-    school_id: string;
   }): Promise<{
     success: boolean;
     user_id: string;

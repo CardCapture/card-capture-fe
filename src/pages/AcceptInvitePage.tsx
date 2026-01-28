@@ -25,6 +25,13 @@ const AcceptInvitePage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [schoolInfo, setSchoolInfo] = useState<{ name: string } | null>(null);
+  const [magicLinkToken, setMagicLinkToken] = useState<string | null>(null);
+  const [isFromMagicLink, setIsFromMagicLink] = useState(false);
+  const [magicLinkMetadata, setMagicLinkMetadata] = useState<{
+    school_id?: string;
+    role?: string[];
+    email?: string;
+  } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -42,19 +49,27 @@ const AcceptInvitePage = () => {
       // Check if we came from our magic link system
       if (location.state?.fromMagicLink) {
         console.log("✅ Arrived from magic link system - ready for invite acceptance");
-        
+
         // Clear any existing error since magic link was successful
         setError(null);
-        
+        setIsFromMagicLink(true);
+
+        // Save the magic link token for secure user creation
+        if (location.state?.token) {
+          setMagicLinkToken(location.state.token);
+          console.log("✅ Magic link token saved for user creation");
+        }
+
         // Extract email and metadata from magic link state
         if (location.state?.fromMagicLink) {
           if (location.state?.email) {
             setEmail(location.state.email);
             console.log("✅ Email found from magic link:", location.state.email);
           }
-          
+
           if (location.state?.metadata) {
             console.log("✅ Metadata found from magic link:", location.state.metadata);
+            setMagicLinkMetadata(location.state.metadata);
           }
         }
         
@@ -199,23 +214,22 @@ const AcceptInvitePage = () => {
   useEffect(() => {
     if (!email) {
       // Try magic link metadata first, then query params
-      const metadataEmail = location.state?.metadata?.email;
+      const metadataEmail = magicLinkMetadata?.email;
       const fallbackEmail = metadataEmail || invitedEmail;
-      
+
       if (fallbackEmail) {
         console.log("🔄 Using email from fallback:", fallbackEmail);
         setEmail(fallbackEmail);
       }
     }
-  }, [email, invitedEmail, location.state?.metadata?.email]);
+  }, [email, invitedEmail, magicLinkMetadata]);
 
   // Fetch school information if school_id is provided
   useEffect(() => {
     const fetchSchoolInfo = async () => {
       // Get school_id from URL params or magic link metadata
-      const currentSchoolId = schoolId || 
-        (location.state?.metadata?.school_id);
-      
+      const currentSchoolId = schoolId || magicLinkMetadata?.school_id;
+
       if (currentSchoolId) {
         try {
           const schoolData = await SchoolService.getSchoolData(currentSchoolId);
@@ -227,7 +241,7 @@ const AcceptInvitePage = () => {
     };
 
     fetchSchoolInfo();
-  }, [schoolId, location.state?.metadata?.school_id]);
+  }, [schoolId, magicLinkMetadata?.school_id]);
 
   const passwordRequirements = [
     {
@@ -278,36 +292,37 @@ const AcceptInvitePage = () => {
     setLoading(true);
 
     try {
-                      // For magic link invites, create the user account
-        if (location.state?.fromMagicLink) {
-          console.log("🔄 Processing magic link invite - creating user account");
-          
-          const metadata = location.state?.metadata || {};
-          
-          // Create user account with their password and metadata
-          await usersApi.createUser({
-            email,
-            password,
-            first_name: metadata.first_name || '',
-            last_name: metadata.last_name || '',
-            role: metadata.role || [],
-            school_id: metadata.school_id || ''
-          });
+      // For magic link invites, create the user account
+      if (isFromMagicLink) {
+        console.log("🔄 Processing magic link invite - creating user account");
 
-          console.log("✅ User account created successfully");
+        // Check for magic link token - required for secure user creation
+        if (!magicLinkToken) {
+          setError("Invalid invitation. Please click the link in your email again.");
+          setLoading(false);
+          return;
+        }
 
-          // Now sign them in with their new credentials
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
+        // Create user account with token (backend validates and extracts user info)
+        await usersApi.createUser({
+          magic_link_token: magicLinkToken,
+          password
+        });
 
-          if (signInError) {
-            throw new Error("Account created but sign-in failed. Please try signing in with your email and password.");
-          }
+        console.log("✅ User account created successfully");
 
-          console.log("✅ Sign in successful after account creation");
-        } else {
+        // Now sign them in with their new credentials
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          throw new Error("Account created but sign-in failed. Please try signing in with your email and password.");
+        }
+
+        console.log("✅ Sign in successful after account creation");
+      } else {
         // Legacy flow - user should have an active session
         const { error: updateError } = await supabase.auth.updateUser({
           password: password,
@@ -335,8 +350,8 @@ const AcceptInvitePage = () => {
       );
 
       // If we have a school_id (from URL params or magic link metadata), assign the user to the school
-      const currentSchoolId = schoolId || location.state?.metadata?.school_id;
-      const userRole = location.state?.metadata?.role || ["admin"]; // Default to admin if not specified
+      const currentSchoolId = schoolId || magicLinkMetadata?.school_id;
+      const userRole = magicLinkMetadata?.role || ["admin"]; // Default to admin if not specified
       
       if (currentSchoolId) {
         try {
@@ -376,7 +391,7 @@ const AcceptInvitePage = () => {
         <CardHeader>
           <CardTitle>Set Your Password</CardTitle>
           <CardDescription>
-            {location.state?.fromMagicLink ? (
+            {isFromMagicLink ? (
               schoolInfo ? (
                 <>
                   Your invitation to join <strong>{schoolInfo.name}</strong> has been verified.
