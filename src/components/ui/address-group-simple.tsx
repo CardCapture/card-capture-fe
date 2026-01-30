@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { logger } from '@/utils/logger';
 import { CheckCircle, TriangleAlert } from "lucide-react";
 import {
   Tooltip,
@@ -86,7 +87,7 @@ export function AddressGroupSimple({
 
   // Helper to mark all address fields as reviewed when validation succeeds
   const handleValidationSuccess = () => {
-    console.log("✅ Address validated successfully, marking fields as reviewed");
+    logger.log("✅ Address validated successfully, marking fields as reviewed");
 
     // Mark all address fields as reviewed
     // We need to pass a flag to indicate this is NOT a toggle, but a set-to-reviewed action
@@ -96,7 +97,7 @@ export function AddressGroupSimple({
       // This prevents toggling back to "needs review" on subsequent selections
       onFieldReview('address');
     } else if (addressFieldData?.reviewed) {
-      console.log("⏭️ Address already reviewed, skipping toggle");
+      logger.log("⏭️ Address already reviewed, skipping toggle");
     }
   };
 
@@ -190,11 +191,11 @@ export function AddressGroupSimple({
     state: string;
     zipCode: string;
   }) => {
-    console.log('🏠 handleAddressAutocomplete called with:', addressData);
+    logger.log('🏠 handleAddressAutocomplete called with:', addressData);
     
     // Use batch update if available, otherwise fall back to individual calls
     if (onBatchChange) {
-      console.log('🔄 Using batch update for all address fields');
+      logger.log('🔄 Using batch update for all address fields');
       onBatchChange({
         address: addressData.street,
         city: addressData.city,
@@ -202,14 +203,14 @@ export function AddressGroupSimple({
         zip_code: addressData.zipCode
       });
     } else {
-      console.log('🔄 Using individual change handlers');
+      logger.log('🔄 Using individual change handlers');
       onAddressChange(addressData.street);
       onCityChange(addressData.city);
       onStateChange(addressData.state);
       onZipCodeChange(addressData.zipCode);
     }
     
-    console.log('🔄 After calling change handlers');
+    logger.log('🔄 After calling change handlers');
     
     // Add a small delay to ensure the parent state updates before showing success
     setTimeout(() => {

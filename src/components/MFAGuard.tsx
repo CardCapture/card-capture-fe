@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import MFAEnrollmentModal from './MFAEnrollmentModal';
 import MFAChallengeModal from './MFAChallengeModal';
 import { supabase } from '@/lib/supabaseClient';
+import { logger } from '@/utils/logger';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -41,7 +42,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
   const MAX_ATTEMPTS = 3;
 
   useEffect(() => {
-    console.log('[MFAGuard] Starting MFA flow');
+    logger.log('[MFAGuard] Starting MFA flow');
     startMFAFlow();
   }, []);
 
@@ -56,7 +57,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
 
     try {
       // Step 1: Authenticate with Supabase
-      console.log('[MFAGuard] Step 1: Authenticating with Supabase');
+      logger.log('[MFAGuard] Step 1: Authenticating with Supabase');
       const result = await signInWithPassword({ email, password });
 
       if (result.error) {
@@ -76,16 +77,16 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
       const accessToken = session.access_token;
 
       // Step 2: Check device trust
-      console.log('[MFAGuard] Step 2: Checking device trust');
+      logger.log('[MFAGuard] Step 2: Checking device trust');
       const deviceToken = localStorage.getItem('device_token');
 
       if (deviceToken) {
         const deviceTrusted = await checkDeviceTrust(deviceToken, accessToken);
         if (deviceTrusted) {
-          console.log('[MFAGuard] Device is trusted - skipping MFA');
+          logger.log('[MFAGuard] Device is trusted - skipping MFA');
 
           // IMPORTANT: Force refresh profile to get updated mfa_verified_at
-          console.log('[MFAGuard] Force refreshing profile after device trust check');
+          logger.log('[MFAGuard] Force refreshing profile after device trust check');
           await refetchProfile(true);  // forceRefresh = true
 
           // Small delay to ensure database update has propagated
@@ -97,7 +98,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
       }
 
       // Step 3: Check if user is exempt from MFA
-      console.log('[MFAGuard] Step 3: Checking MFA status');
+      logger.log('[MFAGuard] Step 3: Checking MFA status');
       const { data: mfaSettings } = await supabase
         .from('user_mfa_settings')
         .select('*')
@@ -106,7 +107,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
 
       // Check for exemption first
       if (mfaSettings?.mfa_exempt === true) {
-        console.log('[MFAGuard] User is exempt from MFA - granting access');
+        logger.log('[MFAGuard] User is exempt from MFA - granting access');
         await refetchProfile(true);
         await new Promise(resolve => setTimeout(resolve, 500));
         handleSuccess();
@@ -117,14 +118,14 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
       const needsEnrollment = !mfaSettings || !mfaSettings.mfa_enabled || !mfaSettings.phone_number;
 
       if (needsEnrollment) {
-        console.log('[MFAGuard] User needs enrollment');
+        logger.log('[MFAGuard] User needs enrollment');
         setStep('need-enrollment');
       } else {
-        console.log('[MFAGuard] Sending MFA challenge');
+        logger.log('[MFAGuard] Sending MFA challenge');
         await sendMFAChallenge(accessToken);
       }
     } catch (error: any) {
-      console.error('[MFAGuard] Error in MFA flow:', error);
+      logger.error('[MFAGuard] Error in MFA flow:', error);
       handleError(error);
     } finally {
       setIsLoading(false);
@@ -143,14 +144,14 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
       });
 
       if (!response.ok) {
-        console.warn('[MFAGuard] Device trust check failed');
+        logger.warn('[MFAGuard] Device trust check failed');
         return false;
       }
 
       const data = await response.json();
       return data.trusted === true;
     } catch (error) {
-      console.error('[MFAGuard] Device trust check error:', error);
+      logger.error('[MFAGuard] Device trust check error:', error);
       return false;
     }
   };
@@ -166,7 +167,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
       // If user is explicitly exempt from MFA, skip enrollment
       // This is for shared accounts like admissions@mc.edu
       if (mfaSettings?.mfa_exempt === true) {
-        console.log('[MFAGuard] User is exempt from MFA - skipping enrollment');
+        logger.log('[MFAGuard] User is exempt from MFA - skipping enrollment');
         return false; // Don't need enrollment
       }
 
@@ -181,7 +182,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
 
       return needsEnrollment;
     } catch (error) {
-      console.error('[MFAGuard] Error checking MFA status:', error);
+      logger.error('[MFAGuard] Error checking MFA status:', error);
       return true; // Default to enrollment if check fails
     }
   };
@@ -216,14 +217,14 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
   };
 
   const handleEnrollmentComplete = async (deviceToken?: string) => {
-    console.log('[MFAGuard] Enrollment complete');
+    logger.log('[MFAGuard] Enrollment complete');
 
     if (deviceToken) {
       localStorage.setItem('device_token', deviceToken);
     }
 
     // IMPORTANT: Force refresh profile to get updated mfa_verified_at
-    console.log('[MFAGuard] Force refreshing profile to get mfa_verified_at');
+    logger.log('[MFAGuard] Force refreshing profile to get mfa_verified_at');
     await refetchProfile(true);  // forceRefresh = true
 
     // Small delay to ensure database update has propagated
@@ -233,14 +234,14 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
   };
 
   const handleChallengeComplete = async (deviceToken?: string) => {
-    console.log('[MFAGuard] Challenge complete');
+    logger.log('[MFAGuard] Challenge complete');
 
     if (deviceToken) {
       localStorage.setItem('device_token', deviceToken);
     }
 
     // IMPORTANT: Force refresh profile to get updated mfa_verified_at
-    console.log('[MFAGuard] Force refreshing profile to get mfa_verified_at');
+    logger.log('[MFAGuard] Force refreshing profile to get mfa_verified_at');
     await refetchProfile(true);  // forceRefresh = true
 
     // Small delay to ensure database update has propagated
@@ -250,7 +251,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
   };
 
   const handleSuccess = () => {
-    console.log('[MFAGuard] MFA flow complete - success!');
+    logger.log('[MFAGuard] MFA flow complete - success!');
     setStep('complete');
 
     // Let the parent (LoginPage) handle navigation
@@ -259,7 +260,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
 
   const handleError = (error: any) => {
     const errorMessage = error.message || error.detail || 'MFA verification failed';
-    console.error('[MFAGuard] Error:', errorMessage);
+    logger.error('[MFAGuard] Error:', errorMessage);
 
     if (errorMessage.includes('RATE_LIMITED')) {
       const parts = errorMessage.split('|');
@@ -271,7 +272,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
   };
 
   const handleCircuitBreaker = () => {
-    console.error('[MFAGuard] Circuit breaker triggered - max attempts exceeded');
+    logger.error('[MFAGuard] Circuit breaker triggered - max attempts exceeded');
     onError('Too many failed attempts. Please try logging in again.');
 
     // Sign out user
@@ -286,7 +287,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
 
   const handleModalClose = () => {
     // User closed modal - sign them out
-    console.log('[MFAGuard] User closed MFA modal - signing out');
+    logger.log('[MFAGuard] User closed MFA modal - signing out');
     supabase.auth.signOut();
     localStorage.removeItem('device_token');
     navigate('/login');

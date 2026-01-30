@@ -1,4 +1,5 @@
 import { profilesApi, type ProfileData } from "@/api/supabase/profiles";
+import { logger } from '@/utils/logger';
 
 export class ProfileService {
   /**
@@ -8,7 +9,7 @@ export class ProfileService {
     try {
       return await profilesApi.getProfile(userId);
     } catch (error) {
-      console.error("ProfileService: Failed to get profile", error);
+      logger.error("ProfileService: Failed to get profile", error);
       throw error;
     }
   }
@@ -20,7 +21,7 @@ export class ProfileService {
     try {
       return await profilesApi.getSchoolId(userId);
     } catch (error) {
-      console.error("ProfileService: Failed to get school ID", error);
+      logger.error("ProfileService: Failed to get school ID", error);
       throw error;
     }
   }
@@ -35,7 +36,7 @@ export class ProfileService {
     try {
       return await profilesApi.updateProfile(userId, updates);
     } catch (error) {
-      console.error("ProfileService: Failed to update profile", error);
+      logger.error("ProfileService: Failed to update profile", error);
       throw error;
     }
   }

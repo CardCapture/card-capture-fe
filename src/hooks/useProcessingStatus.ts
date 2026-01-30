@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { debounce } from "@/utils/debounce";
+import { logger } from '@/utils/logger';
 
 interface ProcessingJob {
   id: string;
@@ -75,7 +76,7 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
         .eq('event_id', eventId);
 
       if (error) {
-        console.error('useProcessingStatus: Error fetching processing jobs:', error);
+        logger.error('useProcessingStatus: Error fetching processing jobs:', error);
         return;
       }
 
@@ -100,7 +101,7 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
 
       const timeRemaining = calculateTimeRemaining(queued, processing);
 
-      console.log('useProcessingStatus: Status updated', {
+      logger.log('useProcessingStatus: Status updated', {
         eventId,
         queued,
         processing,
@@ -132,11 +133,11 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
       // If no active cards and no failed cards, set a brief timeout to hide
       // This gives the UI a moment to update before hiding completely
       if (!hasActiveCards && !hasFailedCards && completed > 0) {
-        console.log('useProcessingStatus: All processing complete, hiding in 2 seconds');
+        logger.log('useProcessingStatus: All processing complete, hiding in 2 seconds');
 
         // Trigger onComplete callback when transitioning from processing to complete
         if (wasProcessingRef.current && onCompleteRef.current) {
-          console.log('useProcessingStatus: Calling onComplete callback to refresh cards');
+          logger.log('useProcessingStatus: Calling onComplete callback to refresh cards');
           onCompleteRef.current();
         }
 
@@ -151,15 +152,15 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
 
       // Set up polling if we have active processing (reduced frequency for better performance)
       if (hasActiveCards && !pollingIntervalRef.current) {
-        console.log('useProcessingStatus: Starting polling for active processing');
+        logger.log('useProcessingStatus: Starting polling for active processing');
         pollingIntervalRef.current = setInterval(fetchProcessingStatus, 5000); // Poll every 5 seconds (reduced from 2)
       } else if (!hasActiveCards && pollingIntervalRef.current) {
-        console.log('useProcessingStatus: Stopping polling');
+        logger.log('useProcessingStatus: Stopping polling');
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
     } catch (error) {
-      console.error('useProcessingStatus: Fetch error:', error);
+      logger.error('useProcessingStatus: Fetch error:', error);
     } finally {
       setLoading(false);
     }
@@ -175,12 +176,12 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
   useEffect(() => {
     if (!eventId || !supabase) return;
 
-    console.log('useProcessingStatus: Setting up real-time subscription for event:', eventId);
+    logger.log('useProcessingStatus: Setting up real-time subscription for event:', eventId);
 
     const channelName = `processing_status_${eventId}`;
 
     const handleRealtimeChange = (payload: any) => {
-      console.log('useProcessingStatus: Real-time change received:', payload);
+      logger.log('useProcessingStatus: Real-time change received:', payload);
 
       // Check if change is relevant to our event
       const newRecord = payload.new as ProcessingJob | undefined;
@@ -191,7 +192,7 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
         oldRecord?.event_id === eventId;
 
       if (isRelevant) {
-        console.log('useProcessingStatus: Relevant change detected, refreshing status');
+        logger.log('useProcessingStatus: Relevant change detected, refreshing status');
         // Use debounced fetch to prevent multiple rapid updates
         debouncedFetchProcessingStatus();
       }
@@ -209,13 +210,13 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
       }, handleRealtimeChange)
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`useProcessingStatus: Real-time subscription active for ${channelName}`);
+          logger.log(`useProcessingStatus: Real-time subscription active for ${channelName}`);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`useProcessingStatus: Real-time error: ${status}`, err);
+          logger.error(`useProcessingStatus: Real-time error: ${status}`, err);
           
           // Setup polling fallback (reduced frequency)
           if (!pollingIntervalRef.current) {
-            console.log('useProcessingStatus: Setting up polling fallback');
+            logger.log('useProcessingStatus: Setting up polling fallback');
             pollingIntervalRef.current = setInterval(fetchProcessingStatus, 10000); // 10 seconds instead of 3
           }
         }
@@ -227,7 +228,7 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
     fetchProcessingStatus();
 
     return () => {
-      console.log('useProcessingStatus: Cleaning up subscriptions');
+      logger.log('useProcessingStatus: Cleaning up subscriptions');
       
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Calendar, MapPin, Clock, Search, Loader2, ChevronLeft, ChevronRight, Check, CalendarX, X, ShoppingCart, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/utils/logger';
 import recruiterSignupService, { UniversalEvent, purchaseEventsAsAdmin } from '@/services/RecruiterSignupService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
@@ -64,7 +65,7 @@ const PurchaseEventsPage: React.FC = () => {
         setTotalEvents(response.total);
         setTotalPages(response.pages);
       } catch (err) {
-        console.error('Failed to search events:', err);
+        logger.error('Failed to search events:', err);
         setError('Failed to load events. Please try again.');
       } finally {
         setSearchLoading(false);

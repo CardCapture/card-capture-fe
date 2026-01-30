@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { logger } from '@/utils/logger';
 
 interface MultiSelectItem {
   id: string | number;
@@ -32,7 +33,7 @@ export function MultiSelectAutocomplete({
   className,
   required = false,
 }: MultiSelectAutocompleteProps) {
-  console.log('🎨 MultiSelectAutocomplete rendered', { label, valueCount: value?.length });
+  logger.log('🎨 MultiSelectAutocomplete rendered', { label, valueCount: value?.length });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -56,7 +57,7 @@ export function MultiSelectAutocomplete({
       setSuggestions(results || []);
       setShowDropdown(true);
     } catch (error) {
-      console.error('Search error:', error);
+      logger.error('Search error:', error);
       setSuggestions([]);
       setShowDropdown(false);
     } finally {
@@ -67,7 +68,7 @@ export function MultiSelectAutocomplete({
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
-    console.log('🔍 MultiSelect input changed:', query);
+    logger.log('🔍 MultiSelect input changed:', query);
     setSearchQuery(query);
     handleSearch(query);
   };

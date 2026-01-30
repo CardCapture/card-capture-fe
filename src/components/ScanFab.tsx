@@ -3,6 +3,7 @@ import { Plus, Camera, Upload, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/lib/toast";
+import { logger } from '@/utils/logger';
 import {
   Popover,
   PopoverContent,
@@ -49,7 +50,7 @@ const dataURLtoFile = (dataurl: string, filename: string): File | null => {
     }
     return new File([u8arr], filename, { type: mime });
   } catch (e) {
-    console.error("Error converting data URL:", e);
+    logger.error("Error converting data URL:", e);
     return null;
   }
 };
@@ -94,9 +95,9 @@ const ScanFab = ({
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    console.log("File selected:", file);
+    logger.log("File selected:", file);
     if (file) {
-      console.log("Selected event ID:", selectedEventId);
+      logger.log("Selected event ID:", selectedEventId);
       if (!selectedEventId) {
         toast.required("Event selection");
         return;
@@ -113,8 +114,8 @@ const ScanFab = ({
   };
 
   const startProcessing = async (file: File | null) => {
-    console.log("Starting processing with file:", file);
-    console.log("Selected event ID:", selectedEventId);
+    logger.log("Starting processing with file:", file);
+    logger.log("Selected event ID:", selectedEventId);
 
     if (!file) {
       toast.error("No valid file provided.", "File Error");
@@ -133,7 +134,7 @@ const ScanFab = ({
     formData.append("event_id", selectedEventId);
     // Add school_id if available (optional, adjust as needed)
     // formData.append("school_id", selectedSchoolId);
-    console.log("FormData created:", {
+    logger.log("FormData created:", {
       file: file.name,
       event_id: selectedEventId,
     });
@@ -152,7 +153,7 @@ const ScanFab = ({
       ) {
         endpoint = "/upload";
       }
-      console.log("Making upload request to:", `${apiBaseUrl}${endpoint}`);
+      logger.log("Making upload request to:", `${apiBaseUrl}${endpoint}`);
 
       // Convert FormData to a simple object for CardService
       const cardData: Record<string, string> = {};
@@ -181,7 +182,7 @@ const ScanFab = ({
         setLocalUploadProgress(0);
       }, 1500);
     } catch (error: unknown) {
-      console.error("Upload failed:", error);
+      logger.error("Upload failed:", error);
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -203,20 +204,20 @@ const ScanFab = ({
 
   const testBackendConnection = async () => {
     try {
-      console.log(
+      logger.log(
         "ScanFab: Testing backend connection via IntegrationsService"
       );
 
       await IntegrationsService.testConnection();
 
-      console.log("ScanFab: Test connection successful");
+      logger.log("ScanFab: Test connection successful");
 
       toast.success(
         "Backend connection test completed successfully.",
         "Connection Successful"
       );
     } catch (error: unknown) {
-      console.error("ScanFab: Test connection failed", {
+      logger.error("ScanFab: Test connection failed", {
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       });

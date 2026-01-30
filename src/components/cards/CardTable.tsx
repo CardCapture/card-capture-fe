@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { logger } from '@/utils/logger';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -161,7 +162,7 @@ const CardTable: React.FC<CardTableProps> = ({
         const isConfigured = sftpConfig && sftpConfig.host && sftpConfig.username;
         setHasSlateIntegration(!!isConfigured);
       } catch (error) {
-        console.log("No SFTP configuration found for school");
+        logger.log("No SFTP configuration found for school");
         setHasSlateIntegration(false);
       }
     };
@@ -237,7 +238,7 @@ const CardTable: React.FC<CardTableProps> = ({
       return;
     }
 
-    console.log(`📊 Exporting ${bulkSelection.selectedCount} cards to CSV`);
+    logger.log(`📊 Exporting ${bulkSelection.selectedCount} cards to CSV`);
     const eventName = selectedEvent?.name || "Unknown Event";
     downloadCSV(
       bulkSelection.selectedCards,
@@ -263,7 +264,7 @@ const CardTable: React.FC<CardTableProps> = ({
       return;
     }
 
-    console.log(`🎯 Exporting ${bulkSelection.selectedCount} cards to Slate`);
+    logger.log(`🎯 Exporting ${bulkSelection.selectedCount} cards to Slate`);
     handleExportToSlate(bulkSelection.selectedIds);
   };
 

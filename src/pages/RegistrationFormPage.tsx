@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MultiSelectAutocomplete } from '@/components/ui/multi-select-autocomplete';
 import { useToast } from '@/hooks/use-toast';
 import { RegistrationService } from '@/services/RegistrationService';
+import { logger } from '@/utils/logger';
 
 // CSS to prevent autofill styling glitches
 const autofillStyles = `
@@ -53,7 +54,7 @@ interface FormData {
 }
 
 export default function RegistrationFormPage() {
-  console.log('🔍🔍🔍 RegistrationFormPage: Component is loading!');
+  logger.log('🔍🔍🔍 RegistrationFormPage: Component is loading!');
   
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -89,14 +90,14 @@ export default function RegistrationFormPage() {
     }
 
     try {
-      console.log('🔍 Searching schools for:', query);
+      logger.log('🔍 Searching schools for:', query);
       const response = await fetch(`http://localhost:8000/high_schools/search?q=${encodeURIComponent(query)}&limit=10`);
       const data = await response.json();
-      console.log('🔍 School search results:', data);
+      logger.log('🔍 School search results:', data);
       setSchoolSuggestions(data.results || []);
       setShowSchoolSuggestions(true);
     } catch (error) {
-      console.error('🔍 School search error:', error);
+      logger.error('🔍 School search error:', error);
       setSchoolSuggestions([]);
       setShowSchoolSuggestions(false);
     }
@@ -111,14 +112,14 @@ export default function RegistrationFormPage() {
     }
 
     try {
-      console.log('🔍 Searching majors for:', query);
+      logger.log('🔍 Searching majors for:', query);
       const response = await fetch(`http://localhost:8000/majors/search?q=${encodeURIComponent(query)}&limit=10`);
       const data = await response.json();
-      console.log('🔍 Major search results:', data);
+      logger.log('🔍 Major search results:', data);
       setMajorSuggestions(data.results || []);
       setShowMajorSuggestions(true);
     } catch (error) {
-      console.error('🔍 Major search error:', error);
+      logger.error('🔍 Major search error:', error);
       setMajorSuggestions([]);
       setShowMajorSuggestions(false);
     }
@@ -131,14 +132,14 @@ export default function RegistrationFormPage() {
     }
 
     try {
-      console.log('🔍 Searching academic interests for:', query);
+      logger.log('🔍 Searching academic interests for:', query);
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
       const response = await fetch(`${apiBaseUrl}/majors/search?q=${encodeURIComponent(query)}&limit=10`);
       const data = await response.json();
-      console.log('🔍 Academic interests search results:', data);
+      logger.log('🔍 Academic interests search results:', data);
       return data.results || [];
     } catch (error) {
-      console.error('🔍 Academic interests search error:', error);
+      logger.error('🔍 Academic interests search error:', error);
       return [];
     }
   };
@@ -165,7 +166,7 @@ export default function RegistrationFormPage() {
       // Check school dropdown
       if (showSchoolSuggestions && schoolDropdownRef.current) {
         if (!schoolDropdownRef.current.contains(event.target as Node)) {
-          console.log('🔍 Closing school dropdown - clicked outside');
+          logger.log('🔍 Closing school dropdown - clicked outside');
           setShowSchoolSuggestions(false);
         }
       }
@@ -173,7 +174,7 @@ export default function RegistrationFormPage() {
       // Check major dropdown
       if (showMajorSuggestions && majorDropdownRef.current) {
         if (!majorDropdownRef.current.contains(event.target as Node)) {
-          console.log('🔍 Closing major dropdown - clicked outside');
+          logger.log('🔍 Closing major dropdown - clicked outside');
           setShowMajorSuggestions(false);
         }
       }
@@ -445,7 +446,7 @@ export default function RegistrationFormPage() {
                   value={form.high_school || ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    console.log('🔍 High school input changed:', value);
+                    logger.log('🔍 High school input changed:', value);
                     setForm(prev => ({ ...prev, high_school: value }));
                     searchSchools(value);
                   }}
@@ -470,7 +471,7 @@ export default function RegistrationFormPage() {
                         role="option"
                         className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0 cursor-pointer"
                         onClick={() => {
-                          console.log('🔍 Selected school:', school);
+                          logger.log('🔍 Selected school:', school);
                           setForm(prev => ({ ...prev, high_school: school.name }));
                           setShowSchoolSuggestions(false);
                         }}
@@ -572,7 +573,7 @@ export default function RegistrationFormPage() {
                   value={form.major || ''} 
                   onChange={(e) => {
                     const value = e.target.value;
-                    console.log('🔍 Major input changed:', value);
+                    logger.log('🔍 Major input changed:', value);
                     setForm(prev => ({ ...prev, major: value }));
                     searchMajors(value);
                   }}
@@ -597,7 +598,7 @@ export default function RegistrationFormPage() {
                         role="option"
                         className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0 cursor-pointer"
                         onClick={() => {
-                          console.log('🔍 Selected major:', major);
+                          logger.log('🔍 Selected major:', major);
                           setForm(prev => ({ ...prev, major: major.cip_title }));
                           setShowMajorSuggestions(false);
                         }}

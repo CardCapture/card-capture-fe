@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { logger } from '@/utils/logger';
 import { toast } from "@/lib/toast";
 import { CardService } from "@/services/CardService";
 
@@ -29,7 +30,7 @@ export function useArchiveCards(): UseArchiveCardsReturn {
         "Archive Complete"
       );
     } catch (error) {
-      console.error("Error archiving cards:", error);
+      logger.error("Error archiving cards:", error);
       toast.error(
         "Failed to archive cards. Please try again.",
         "Archive Failed"

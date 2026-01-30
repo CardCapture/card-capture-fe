@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { logger } from '@/utils/logger';
 
 /**
  * Generates a signed URL for a private image in Supabase Storage.
@@ -21,7 +22,7 @@ export const getSignedImageUrl = async (imagePath: string, expiresIn: number = 3
       .createSignedUrl(cleanPath, expiresIn);
 
     if (error || !data?.signedUrl) {
-      console.error("[ImageUtils] Error generating signed URL:", error, "for path:", cleanPath);
+      logger.error("[ImageUtils] Error generating signed URL:", error, "for path:", cleanPath);
       
       // List files in the same folder for debugging
       const folder = cleanPath.split('/').slice(0, -1).join('/');
@@ -32,7 +33,7 @@ export const getSignedImageUrl = async (imagePath: string, expiresIn: number = 3
           .list(folder, { limit: 100 });
         
         if (listError) {
-          console.error("[ImageUtils] Error listing files in folder:", folder, listError);
+          logger.error("[ImageUtils] Error listing files in folder:", folder, listError);
         }
       }
       return "";
@@ -40,7 +41,7 @@ export const getSignedImageUrl = async (imagePath: string, expiresIn: number = 3
 
     return data.signedUrl;
   } catch (error) {
-    console.error("[ImageUtils] Unexpected error generating signed URL:", error);
+    logger.error("[ImageUtils] Unexpected error generating signed URL:", error);
     return "";
   }
 };

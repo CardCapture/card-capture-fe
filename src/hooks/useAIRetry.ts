@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { logger } from '@/utils/logger';
 import { CardService } from '@/services/CardService';
 import { toast } from '@/lib/toast';
 
@@ -36,7 +37,7 @@ export function useAIRetry(onSuccess?: () => void): UseAIRetryReturn {
       const errorMessage = error instanceof Error ? error.message : 'Failed to retry AI processing';
       setRetryError(errorMessage);
       toast.error(errorMessage, 'Retry Failed');
-      console.error('AI retry failed:', error);
+      logger.error('AI retry failed:', error);
     } finally {
       setIsRetrying(false);
     }

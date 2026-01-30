@@ -33,6 +33,7 @@ import {
 import { Check, ChevronsUpDown, Building2, User, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { logger } from '@/utils/logger';
 import recruiterSignupService, { School } from '@/services/RecruiterSignupService';
 
 type Step = 'school' | 'account';
@@ -83,7 +84,7 @@ const RecruiterSignupPage: React.FC = () => {
         const response = await recruiterSignupService.getSchools();
         setSchools(response.schools);
       } catch (err) {
-        console.error('Failed to load schools:', err);
+        logger.error('Failed to load schools:', err);
         setError('Failed to load schools. Please try again.');
       } finally {
         setSchoolsLoading(false);

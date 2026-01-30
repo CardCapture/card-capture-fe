@@ -1,6 +1,7 @@
 import { cardsApi } from "@/api/backend/cards";
 import { determineCardStatus, isAIFailed } from "@/lib/cardUtils";
 import type { ProspectCard, CardStatus, FieldData } from "@/types/card";
+import { logger } from '@/utils/logger';
 
 export interface RawCardData {
   document_id?: string;
@@ -34,7 +35,7 @@ export class CardService {
       const rawCards = await cardsApi.getCards();
       return this.transformCardsData(rawCards);
     } catch (error) {
-      console.error("CardService: Failed to get all cards", error);
+      logger.error("CardService: Failed to get all cards", error);
       throw error;
     }
   }
@@ -47,7 +48,7 @@ export class CardService {
       const rawCards = await cardsApi.getCardsByEvent(eventId);
       return this.transformCardsData(rawCards);
     } catch (error) {
-      console.error("CardService: Failed to get cards by event", error);
+      logger.error("CardService: Failed to get cards by event", error);
       throw error;
     }
   }
@@ -61,7 +62,7 @@ export class CardService {
     try {
       await cardsApi.uploadCardManually(cardData);
     } catch (error) {
-      console.error("CardService: Failed to upload card manually", error);
+      logger.error("CardService: Failed to upload card manually", error);
       throw error;
     }
   }
@@ -76,7 +77,7 @@ export class CardService {
       }
       await cardsApi.archiveCards(documentIds);
     } catch (error) {
-      console.error("CardService: Failed to archive cards", error);
+      logger.error("CardService: Failed to archive cards", error);
       throw error;
     }
   }
@@ -91,7 +92,7 @@ export class CardService {
       }
       await cardsApi.markCardsAsExported(documentIds);
     } catch (error) {
-      console.error("CardService: Failed to mark cards as exported", error);
+      logger.error("CardService: Failed to mark cards as exported", error);
       throw error;
     }
   }
@@ -122,7 +123,7 @@ export class CardService {
 
       return await cardsApi.exportToSlate(schoolId, rows);
     } catch (error) {
-      console.error("CardService: Failed to export to Slate", error);
+      logger.error("CardService: Failed to export to Slate", error);
       throw error;
     }
   }
@@ -137,7 +138,7 @@ export class CardService {
       }
       await cardsApi.deleteCards(documentIds);
     } catch (error) {
-      console.error("CardService: Failed to delete cards", error);
+      logger.error("CardService: Failed to delete cards", error);
       throw error;
     }
   }
@@ -155,7 +156,7 @@ export class CardService {
       }
       await cardsApi.moveCards(documentIds, status);
     } catch (error) {
-      console.error("CardService: Failed to move cards", error);
+      logger.error("CardService: Failed to move cards", error);
       throw error;
     }
   }
@@ -170,7 +171,7 @@ export class CardService {
       }
       await cardsApi.retryAIProcessing(documentId);
     } catch (error) {
-      console.error("CardService: Failed to retry AI processing", error);
+      logger.error("CardService: Failed to retry AI processing", error);
       throw error;
     }
   }

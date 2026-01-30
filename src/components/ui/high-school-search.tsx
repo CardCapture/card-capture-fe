@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Search, X, AlertCircle, Check, AlertTriangle, CheckCircle } from "lucide-react";
 import { HighSchoolService, type HighSchool } from "@/services/HighSchoolService";
 import { cn } from "@/lib/utils";
+import { logger } from '@/utils/logger';
 import {
   Tooltip,
   TooltipContent,
@@ -300,7 +301,7 @@ export function HighSchoolSearch({
         setShowResults(true);
       }
     } catch (error) {
-      console.error("Search error:", error);
+      logger.error("Search error:", error);
       setSearchResults(suggestions);
     } finally {
       setIsSearching(false);
@@ -319,7 +320,7 @@ export function HighSchoolSearch({
     // Clear verification state when user types (unless they're typing the exact verified school name)
     const isTypingVerifiedSchool = lastSelectedSchool && newValue === lastSelectedSchool.name;
     if (!isTypingVerifiedSchool) {
-      console.log('🧹 HighSchoolSearch: User typing, clearing verification state');
+      logger.log('🧹 HighSchoolSearch: User typing, clearing verification state');
       setIsVerified(false);
       setCurrentCeebCode(undefined);
       setCurrentSchoolData(undefined);
@@ -327,7 +328,7 @@ export function HighSchoolSearch({
       
       // Notify parent that field is no longer verified and needs review reset
       if (onChange) {
-        console.log('🔄 HighSchoolSearch: Notifying parent of unverified state');
+        logger.log('🔄 HighSchoolSearch: Notifying parent of unverified state');
       }
     }
     

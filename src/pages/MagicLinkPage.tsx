@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { logger } from '@/utils/logger';
 
 type MagicLinkState = 'loading' | 'success' | 'error';
 
@@ -18,7 +19,7 @@ const MagicLinkPage: React.FC = () => {
   useEffect(() => {
     const processMagicLink = async () => {
       if (hasProcessed.current) {
-        console.log('🚫 Magic link already processed, skipping');
+        logger.log('🚫 Magic link already processed, skipping');
         return;
       }
       hasProcessed.current = true;
@@ -27,10 +28,10 @@ const MagicLinkPage: React.FC = () => {
         const token = searchParams.get('token');
         const type = searchParams.get('type');
 
-        console.log('🪄 MagicLinkPage received:', { token: token?.substring(0, 8) + '...', type });
+        logger.log('🪄 MagicLinkPage received:', { token: token?.substring(0, 8) + '...', type });
 
         if (!token || !type) {
-          console.error('❌ Missing token or type in magic link');
+          logger.error('❌ Missing token or type in magic link');
           setState('error');
           setMessage('Invalid magic link - missing required parameters');
           return;
@@ -39,9 +40,9 @@ const MagicLinkPage: React.FC = () => {
         // Handle invite type differently - validate only, don't consume yet
         // The token will be consumed by createUser endpoint for security
         if (type === 'invite') {
-          console.log('🔄 Validating invite magic link (not consuming)...');
+          logger.log('🔄 Validating invite magic link (not consuming)...');
           const result = await usersApi.validateMagicLink(token);
-          console.log('✅ Invite validated:', result);
+          logger.log('✅ Invite validated:', result);
 
           setState('success');
           setMessage('Invitation verified! Redirecting to complete your account setup...');
@@ -58,24 +59,24 @@ const MagicLinkPage: React.FC = () => {
           }, 2000);
         } else {
           // For password_reset and other types: keep existing consume behavior
-          console.log('🔄 Processing magic link...');
+          logger.log('🔄 Processing magic link...');
           const result = await usersApi.consumeMagicLink(token, type);
-          console.log('✅ Magic link processed:', result);
+          logger.log('✅ Magic link processed:', result);
 
-          console.log('✅ Magic link processed successfully');
+          logger.log('✅ Magic link processed successfully');
 
           setState('success');
 
           if (result.type === 'password_reset') {
             // If the backend provided session tokens, set them up
             if (result.session && result.session.access_token) {
-              console.log('🔑 Setting up session from magic link...');
+              logger.log('🔑 Setting up session from magic link...');
               try {
                 await supabase.auth.setSession({
                   access_token: result.session.access_token,
                   refresh_token: result.session.refresh_token || ''
                 });
-                console.log('✅ Session established for password reset');
+                logger.log('✅ Session established for password reset');
 
                 setMessage('Password reset link verified and authenticated! Redirecting...');
                 setTimeout(() => {
@@ -88,7 +89,7 @@ const MagicLinkPage: React.FC = () => {
                   });
                 }, 2000);
               } catch (sessionError) {
-                console.error('❌ Error setting session:', sessionError);
+                logger.error('❌ Error setting session:', sessionError);
                 // Fallback to normal flow without session
                 setMessage('Password reset link verified! Redirecting to reset password page...');
                 setTimeout(() => {
@@ -123,12 +124,12 @@ const MagicLinkPage: React.FC = () => {
         }
 
       } catch (error) {
-        console.error('❌ Error processing magic link:', error);
+        logger.error('❌ Error processing magic link:', error);
         
         if (error instanceof Error) {
           if (error.message.includes('400')) {
             // Handle already used magic links gracefully
-            console.log('🔄 Magic link already processed (likely by email client scanning)');
+            logger.log('🔄 Magic link already processed (likely by email client scanning)');
             setState('success');
             setMessage('Processing your request...');
             

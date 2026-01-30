@@ -1,6 +1,7 @@
 import { integrationsApi } from "@/api/backend/integrations";
 import { SchoolService } from "./SchoolService";
 import type { SFTPConfig } from "@/api/supabase/configs";
+import { logger } from '@/utils/logger';
 
 export class IntegrationsService {
   /**
@@ -10,7 +11,7 @@ export class IntegrationsService {
     try {
       return await SchoolService.getSftpConfig(schoolId);
     } catch (error) {
-      console.error("IntegrationsService: Failed to get SFTP config", error);
+      logger.error("IntegrationsService: Failed to get SFTP config", error);
       throw error;
     }
   }
@@ -33,7 +34,7 @@ export class IntegrationsService {
 
       await integrationsApi.saveSftpConfig(config, token);
     } catch (error) {
-      console.error("IntegrationsService: Failed to save SFTP config", error);
+      logger.error("IntegrationsService: Failed to save SFTP config", error);
       throw error;
     }
   }
@@ -56,7 +57,7 @@ export class IntegrationsService {
 
       await integrationsApi.testSftpConnection(config, token);
     } catch (error) {
-      console.error(
+      logger.error(
         "IntegrationsService: Failed to test SFTP connection",
         error
       );
@@ -71,7 +72,7 @@ export class IntegrationsService {
     try {
       await integrationsApi.testConnection();
     } catch (error) {
-      console.error("IntegrationsService: Failed to test connection", error);
+      logger.error("IntegrationsService: Failed to test connection", error);
       throw error;
     }
   }
@@ -84,7 +85,7 @@ export class IntegrationsService {
       const response = await integrationsApi.createStripePortalSession(token);
       return response.url;
     } catch (error) {
-      console.error(
+      logger.error(
         "IntegrationsService: Failed to create Stripe portal session",
         error
       );

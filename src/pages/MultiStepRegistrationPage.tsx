@@ -18,6 +18,7 @@ import { usePersistentForm } from '@/hooks/use-persistent-form';
 import { RegistrationService } from '@/services/RegistrationService';
 import { validators, combineValidators } from '@/utils/validation';
 import { cn } from '@/lib/utils';
+import { logger } from '@/utils/logger';
 
 interface MajorItem {
   id: string | number;
@@ -121,21 +122,21 @@ export default function MultiStepRegistrationPage() {
     }
 
     try {
-      console.log('🔍 Searching schools for:', query, 'in state:', formData.state);
+      logger.log('🔍 Searching schools for:', query, 'in state:', formData.state);
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
       // Add state parameter if available to prioritize local schools
       const stateParam = formData.state ? `&state=${encodeURIComponent(formData.state)}` : '';
       const searchUrl = `${API_BASE_URL}/high_schools/search?q=${encodeURIComponent(query)}&limit=10${stateParam}`;
 
-      console.log('🔍 Location-aware search URL:', searchUrl);
+      logger.log('🔍 Location-aware search URL:', searchUrl);
       const response = await fetch(searchUrl);
       const data = await response.json();
-      console.log('🔍 School search results:', data);
+      logger.log('🔍 School search results:', data);
       setSchoolSuggestions(data.results || []);
       setShowSchoolSuggestions(true);
     } catch (error) {
-      console.error('🔍 School search error:', error);
+      logger.error('🔍 School search error:', error);
       setSchoolSuggestions([]);
       setShowSchoolSuggestions(false);
     }
@@ -150,15 +151,15 @@ export default function MultiStepRegistrationPage() {
     }
 
     try {
-      console.log('🔍 Searching majors for:', query);
+      logger.log('🔍 Searching majors for:', query);
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${API_BASE_URL}/majors/search?q=${encodeURIComponent(query)}&limit=10`);
       const data = await response.json();
-      console.log('🔍 Major search results:', data);
+      logger.log('🔍 Major search results:', data);
       setMajorSuggestions(data.results || []);
       setShowMajorSuggestions(true);
     } catch (error) {
-      console.error('🔍 Major search error:', error);
+      logger.error('🔍 Major search error:', error);
       setMajorSuggestions([]);
       setShowMajorSuggestions(false);
     }
@@ -171,14 +172,14 @@ export default function MultiStepRegistrationPage() {
     }
 
     try {
-      console.log('🔍 Searching academic interests for:', query);
+      logger.log('🔍 Searching academic interests for:', query);
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${API_BASE_URL}/majors/search?q=${encodeURIComponent(query)}&limit=10`);
       const data = await response.json();
-      console.log('🔍 Academic interests search results:', data);
+      logger.log('🔍 Academic interests search results:', data);
       return data.results || [];
     } catch (error) {
-      console.error('🔍 Academic interests search error:', error);
+      logger.error('🔍 Academic interests search error:', error);
       return [];
     }
   };
@@ -618,7 +619,7 @@ export default function MultiStepRegistrationPage() {
                     value={formData.high_school}
                     onChange={(e) => {
                       const value = e.target.value;
-                      console.log('🔍 High school input changed:', value);
+                      logger.log('🔍 High school input changed:', value);
                       updateData({ high_school: value });
                       searchSchools(value);
                     }}
@@ -658,7 +659,7 @@ export default function MultiStepRegistrationPage() {
                           type="button"
                           className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
                           onClick={() => {
-                            console.log('🔍 Selected school:', school);
+                            logger.log('🔍 Selected school:', school);
                             updateData({ high_school: school.name });
                             setShowSchoolSuggestions(false);
                           }}
@@ -836,7 +837,7 @@ export default function MultiStepRegistrationPage() {
                     value={formData.major}
                     onChange={(e) => {
                       const value = e.target.value;
-                      console.log('🔍 Major input changed:', value);
+                      logger.log('🔍 Major input changed:', value);
                       updateData({ major: value });
                       searchMajors(value);
                     }}
@@ -876,7 +877,7 @@ export default function MultiStepRegistrationPage() {
                           type="button"
                           className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
                           onClick={() => {
-                            console.log('🔍 Selected major:', major);
+                            logger.log('🔍 Selected major:', major);
                             updateData({ major: major.display_name || major.cip_title });
                             setShowMajorSuggestions(false);
                           }}

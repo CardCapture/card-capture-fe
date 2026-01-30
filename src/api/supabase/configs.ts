@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { logger } from '@/utils/logger';
 
 export interface SFTPConfig {
   school_id: string;
@@ -20,7 +21,7 @@ export const configsApi = {
       .maybeSingle(); // Use maybeSingle instead of single to handle 0 or 1 rows gracefully
 
     if (error) {
-      console.error("Error fetching SFTP config:", error);
+      logger.error("Error fetching SFTP config:", error);
       throw new Error(`Failed to fetch SFTP config: ${error.message}`);
     }
 

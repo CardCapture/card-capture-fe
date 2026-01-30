@@ -12,6 +12,7 @@ import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { DateInput } from "@/components/ui/date-input";
 
 import { CheckCircle } from "lucide-react";
+import { logger } from '@/utils/logger';
 import { formatPhoneNumber, formatBirthday, normalizeFieldValue, normalizeAddress, cn } from "@/lib/utils";
 import type { ProspectCard, FieldData } from "@/types/card";
 import {
@@ -144,7 +145,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         ? fieldConfig.options 
         : ["Yes", "No"];
       
-      console.log('🔍 Permission to Text Debug:', {
+      logger.log('🔍 Permission to Text Debug:', {
         actualFieldKey,
         fieldValue,
         options,
@@ -158,16 +159,16 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         <Select
           value={fieldValue}
           onValueChange={(value) => {
-            console.log('🔄 Permission to Text value changed:', value);
+            logger.log('🔄 Permission to Text value changed:', value);
             handleFormChange(actualFieldKey, value);
           }}
           onOpenChange={(open) => {
-            console.log('📋 Permission to Text dropdown open state:', open);
+            logger.log('📋 Permission to Text dropdown open state:', open);
           }}
         >
           <SelectTrigger 
             className={getInputClassName("h-10 sm:h-8 text-sm w-full")}
-            onClick={() => console.log('🖱️ Permission to Text trigger clicked')}
+            onClick={() => logger.log('🖱️ Permission to Text trigger clicked')}
           >
             <SelectValue placeholder="Select..." />
           </SelectTrigger>
@@ -176,7 +177,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
               <div className="p-2 text-sm text-gray-500">No options available</div>
             ) : (
               options.map((option) => {
-                console.log('📋 Rendering option:', option);
+                logger.log('📋 Rendering option:', option);
                 return (
                   <SelectItem key={option} value={option}>
                     {option}
@@ -261,7 +262,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
     if (actualFieldKey === 'high_school') {
       const fieldData = selectedCardForReview?.fields?.[actualFieldKey];
       const ceebCode = formData['ceeb_code'] || selectedCardForReview?.fields?.ceeb_code?.value || '';
-      console.log('🔍 CEEB CODE DEBUG:', {
+      logger.log('🔍 CEEB CODE DEBUG:', {
         formDataCeeb: formData['ceeb_code'],
         cardFieldCeeb: selectedCardForReview?.fields?.ceeb_code?.value,
         finalCeebCode: ceebCode,
@@ -331,32 +332,32 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       }
       
       // Removed excessive debug logging for performance
-      // console.log('selectedCardForReview:', selectedCardForReview);
-      // console.log('selectedCardForReview.fields:', selectedCardForReview?.fields);
+      // logger.log('selectedCardForReview:', selectedCardForReview);
+      // logger.log('selectedCardForReview.fields:', selectedCardForReview?.fields);
       
       if (selectedCardForReview?.fields) {
-        // console.log('🔍 ALL FIELD KEYS:', Object.keys(selectedCardForReview.fields));
+        // logger.log('🔍 ALL FIELD KEYS:', Object.keys(selectedCardForReview.fields));
         
         // Check every field that contains key words
         const relevantFields = {};
         Object.entries(selectedCardForReview.fields).forEach(([key, value]) => {
           if (key.includes('ceeb') || key.includes('validation') || key.includes('high_school') || key === 'high_school') {
             relevantFields[key] = value;
-            // console.log(`🎯 RELEVANT FIELD: ${key}:`, value);
+            // logger.log(`🎯 RELEVANT FIELD: ${key}:`, value);
           }
         });
         
-        // console.log('📋 ALL RELEVANT FIELDS:', relevantFields);
+        // logger.log('📋 ALL RELEVANT FIELDS:', relevantFields);
         
         // Specific field checks
-        // console.log('🔍 Direct field access:');
-        // console.log('  ceeb_code:', selectedCardForReview.fields.ceeb_code);
-        // console.log('  high_school_validation:', selectedCardForReview.fields.high_school_validation);
-        // console.log('  high_school:', selectedCardForReview.fields.high_school);
+        // logger.log('🔍 Direct field access:');
+        // logger.log('  ceeb_code:', selectedCardForReview.fields.ceeb_code);
+        // logger.log('  high_school_validation:', selectedCardForReview.fields.high_school_validation);
+        // logger.log('  high_school:', selectedCardForReview.fields.high_school);
         
         // Check if these fields have the right structure
         if (selectedCardForReview.fields.ceeb_code) {
-          // console.log('🎯 CEEB CODE STRUCTURE:', {
+          // logger.log('🎯 CEEB CODE STRUCTURE:', {
           //   value: selectedCardForReview.fields.ceeb_code.value,
           //   source: selectedCardForReview.fields.ceeb_code.source,
           //   fullField: selectedCardForReview.fields.ceeb_code
@@ -364,7 +365,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         }
         
         if (selectedCardForReview.fields.high_school_validation) {
-          // console.log('🎯 VALIDATION STRUCTURE:', {
+          // logger.log('🎯 VALIDATION STRUCTURE:', {
           //   value: selectedCardForReview.fields.high_school_validation.value,
           //   source: selectedCardForReview.fields.high_school_validation.source,
           //   fullField: selectedCardForReview.fields.high_school_validation
@@ -372,7 +373,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         }
         
         if (selectedCardForReview.fields.high_school) {
-          // console.log('🎯 HIGH SCHOOL STRUCTURE:', {
+          // logger.log('🎯 HIGH SCHOOL STRUCTURE:', {
           //   value: selectedCardForReview.fields.high_school.value,
           //   source: selectedCardForReview.fields.high_school.source,
           //   metadata: selectedCardForReview.fields.high_school.metadata,
@@ -382,7 +383,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       }
       
       // Debug logging for high school field
-      console.log('🏫 HIGH SCHOOL DEBUG - ReviewForm props:', {
+      logger.log('🏫 HIGH SCHOOL DEBUG - ReviewForm props:', {
         fieldValue,
         ceebCode,
         validationStatus: validationStatus?.value,
@@ -421,17 +422,17 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             
             if (newCeebCode) {
               // School selected - update CEEB and validation status
-              console.log('🏫 Updating CEEB code and validation status:', newCeebCode);
+              logger.log('🏫 Updating CEEB code and validation status:', newCeebCode);
               handleFormChange('ceeb_code', newCeebCode);
               
               if (selectedCardForReview?.fields?.high_school_validation) {
                 selectedCardForReview.fields.high_school_validation.value = 'verified';
-                console.log('🟢 Updated high_school_validation to verified');
+                logger.log('🟢 Updated high_school_validation to verified');
               }
               
               // Automatically mark field as reviewed when a school is selected
               // This removes the need for the extra click on the review checkbox
-              console.log('🟢 Auto-marking high school field as reviewed due to school selection', {
+              logger.log('🟢 Auto-marking high school field as reviewed due to school selection', {
                 actualFieldKey,
                 currentFieldState: selectedCardForReview?.fields?.[actualFieldKey],
                 formDataValue: formData[actualFieldKey]
@@ -442,7 +443,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                 selectedCardForReview.fields[actualFieldKey].reviewed = true;
                 selectedCardForReview.fields[actualFieldKey].requires_human_review = false;
                 selectedCardForReview.fields[actualFieldKey].review_notes = "Automatically reviewed (school selected)";
-                console.log('🟢 Explicitly set high school field as reviewed');
+                logger.log('🟢 Explicitly set high school field as reviewed');
               } else {
                 // Create the field if it doesn't exist
                 selectedCardForReview.fields[actualFieldKey] = {
@@ -456,29 +457,29 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                   confidence: 0.9,
                   bounding_box: []
                 };
-                console.log('🟢 Created and marked high school field as reviewed');
+                logger.log('🟢 Created and marked high school field as reviewed');
               }
             } else if (newValue.trim() === '') {
               // Field cleared - reset CEEB and validation status AND mark as needs review
-              console.log('🧹 Clearing CEEB code and validation status');
+              logger.log('🧹 Clearing CEEB code and validation status');
               handleFormChange('ceeb_code', '');
               
               if (selectedCardForReview?.fields?.high_school_validation) {
                 selectedCardForReview.fields.high_school_validation.value = 'needs_validation';
-                console.log('🔴 Reset high_school_validation to needs_validation');
+                logger.log('🔴 Reset high_school_validation to needs_validation');
               }
               
               // Reset the review status when field is cleared
               if (selectedCardForReview?.fields?.[actualFieldKey]) {
                 selectedCardForReview.fields[actualFieldKey].reviewed = false;
                 selectedCardForReview.fields[actualFieldKey].requires_human_review = true;
-                console.log('🔴 Reset high school field review status (field cleared)');
+                logger.log('🔴 Reset high school field review status (field cleared)');
               }
               
               // Also clear CEEB from the card fields to prevent validation override
               if (selectedCardForReview?.fields?.ceeb_code) {
                 selectedCardForReview.fields.ceeb_code.value = '';
-                console.log('🔴 Cleared CEEB code from card fields');
+                logger.log('🔴 Cleared CEEB code from card fields');
               }
             }
           }}
@@ -748,49 +749,49 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                 const originalValue = selectedCardForReview?.fields?.[actualFieldKey]?.value || '';
                 const hasUserModifiedField = fieldValue !== originalValue;
                 
-                console.log('🏫 High School FULL Debug:');
-                console.log('  fieldValue:', fieldValue);
-                console.log('  originalValue:', originalValue);
-                console.log('  hasUserModifiedField:', hasUserModifiedField);
-                console.log('  isValidated:', isValidated);
-                console.log('  fieldDataReviewed:', fieldData?.reviewed);
-                console.log('  formDataValue:', formData[actualFieldKey]);
-                console.log('  cardFieldValue:', selectedCardForReview?.fields?.[actualFieldKey]?.value);
-                console.log('  isReviewedBefore:', isReviewed);
-                console.log('  validationStatus:', validationStatus?.value);
+                logger.log('🏫 High School FULL Debug:');
+                logger.log('  fieldValue:', fieldValue);
+                logger.log('  originalValue:', originalValue);
+                logger.log('  hasUserModifiedField:', hasUserModifiedField);
+                logger.log('  isValidated:', isValidated);
+                logger.log('  fieldDataReviewed:', fieldData?.reviewed);
+                logger.log('  formDataValue:', formData[actualFieldKey]);
+                logger.log('  cardFieldValue:', selectedCardForReview?.fields?.[actualFieldKey]?.value);
+                logger.log('  isReviewedBefore:', isReviewed);
+                logger.log('  validationStatus:', validationStatus?.value);
                 
                 // If user has modified the field and it's not validated, reset reviewed state
                 if (hasUserModifiedField && !isValidated) {
                   isReviewed = false;
                   needsReview = true;
-                  console.log('🔄 User modified high school field - resetting reviewed state');
+                  logger.log('🔄 User modified high school field - resetting reviewed state');
                 }
                 // Special case: if field is empty AND validation status is needs_validation (from clear operation)
                 // Always reset the reviewed state when field is cleared
                 else if (!fieldValue.trim() && validationStatus?.value === 'needs_validation') {
                   isReviewed = false;
                   needsReview = true;
-                  console.log('🔄 Field cleared - overriding reviewed state');
+                  logger.log('🔄 Field cleared - overriding reviewed state');
                 }
                 // If field is empty (but not from a clear operation), suggest review but allow manual override
                 else if (!fieldValue.trim() && validationStatus?.value !== 'needs_validation' && !fieldData?.reviewed) {
                   // Only force needs review if not manually reviewed and not from clear operation
                   needsReview = true;
-                  console.log('🔴 High school field is empty - suggesting review (but respects manual review)');
+                  logger.log('🔴 High school field is empty - suggesting review (but respects manual review)');
                 }
                 // For "ready for export" tab: if school is verified, treat as reviewed automatically
                 else if (selectedTab === 'ready_for_export' && isValidated) {
                   isReviewed = true;
                   needsReview = false;
-                  console.log('🟢 Setting high school as reviewed (ready for export + validated)');
+                  logger.log('🟢 Setting high school as reviewed (ready for export + validated)');
                 } else if (!isValidated && !isReviewed) {
                   // Field needs review if it's not fully validated (no CEEB = needs review)
                   // BUT respect the reviewed state if user has manually reviewed it
                   needsReview = true;
-                  console.log('🔴 Setting high school as needs review');
+                  logger.log('🔴 Setting high school as needs review');
                 }
                 
-                console.log('🏫 High School Final State:', {
+                logger.log('🏫 High School Final State:', {
                   isReviewed,
                   needsReview
                 });

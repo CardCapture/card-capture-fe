@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { logger } from '@/utils/logger';
 import {
   Dialog,
   DialogContent,
@@ -122,7 +123,7 @@ export function InviteUserDialog({
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      console.error("Error inviting user:", error);
+      logger.error("Error inviting user:", error);
       toast.error(
         error instanceof Error
           ? error.message

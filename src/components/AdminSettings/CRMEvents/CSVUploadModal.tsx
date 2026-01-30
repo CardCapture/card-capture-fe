@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { logger } from '@/utils/logger';
 import {
   Dialog,
   DialogContent,
@@ -204,7 +205,7 @@ export function CSVUploadModal({ open, onClose, onComplete }: CSVUploadModalProp
       hideLoader();
       onComplete(result);
     } catch (error) {
-      console.error("Error importing CSV:", error);
+      logger.error("Error importing CSV:", error);
       toast.error("Failed to import CSV");
       hideLoader();
     }

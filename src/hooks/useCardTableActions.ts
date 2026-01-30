@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import type { ProspectCard } from "@/types/card";
 import { standardizeState } from "@/utils/stateUtils";
 import { authFetch } from "@/lib/authFetch";
+import { logger } from '@/utils/logger';
 
 export function useCardTableActions(
   filteredCards: ProspectCard[],
@@ -43,7 +44,7 @@ export function useCardTableActions(
         description: `${idsToArchive.length} card${idsToArchive.length === 1 ? '' : 's'} have been archived`,
       });
     } catch (error) {
-      console.error("Error archiving cards:", error);
+      logger.error("Error archiving cards:", error);
       toast({
         title: "Error",
         description: "Failed to archive cards",
@@ -78,7 +79,7 @@ export function useCardTableActions(
         variant: "default",
       });
     } catch (error) {
-      console.error("Error exporting cards:", error);
+      logger.error("Error exporting cards:", error);
       toast({
         title: "Export Failed",
         description: "Something went wrong while exporting cards. Please try again.",
@@ -160,7 +161,7 @@ export function useCardTableActions(
       });
       
       if (!markExportedResponse.ok) {
-        console.warn("Failed to mark cards as exported, but Slate export was successful");
+        logger.warn("Failed to mark cards as exported, but Slate export was successful");
         // Don't throw error here since Slate export succeeded
       }
       
@@ -173,10 +174,10 @@ export function useCardTableActions(
         variant: "default",
       });
 
-      console.log("Slate export result:", result);
+      logger.log("Slate export result:", result);
 
     } catch (error) {
-      console.error("Error exporting to Slate:", error);
+      logger.error("Error exporting to Slate:", error);
       toast({
         title: "Slate Export Failed",
         description: error instanceof Error ? error.message : "Something went wrong while exporting to Slate. Please try again.",
@@ -210,7 +211,7 @@ export function useCardTableActions(
         description: `${idsToDelete.length} card${idsToDelete.length === 1 ? '' : 's'} have been deleted`,
       });
     } catch (error) {
-      console.error("Error deleting cards:", error);
+      logger.error("Error deleting cards:", error);
       toast({
         title: "Error",
         description: "Failed to delete cards",
@@ -245,7 +246,7 @@ export function useCardTableActions(
         description: `${idsToMove.length} card${idsToMove.length === 1 ? '' : 's'} have been moved to Ready to Export`,
       });
     } catch (error) {
-      console.error("Error moving cards:", error);
+      logger.error("Error moving cards:", error);
       toast({
         title: "Error",
         description: "Failed to move cards",
@@ -266,9 +267,9 @@ export function useCardTableActions(
           return;
         }
         
-        console.log('=== downloadCSV Debug ===');
-        console.log('selectedIds:', selectedIds);
-        console.log('filteredCards length:', filteredCards.length);
+        logger.log('=== downloadCSV Debug ===');
+        logger.log('selectedIds:', selectedIds);
+        logger.log('filteredCards length:', filteredCards.length);
         
         toast({
           title: "Exporting Cards",
@@ -292,7 +293,7 @@ export function useCardTableActions(
         
         // Find the selected cards from filteredCards instead of table rows
         const selectedCards = filteredCards.filter((card) => selectedIds.includes(card.id));
-        console.log('selectedCards found:', selectedCards.length);
+        logger.log('selectedCards found:', selectedCards.length);
         
         // Helper function to split names
         const splitName = (fullName: string): { firstName: string; lastName: string } => {

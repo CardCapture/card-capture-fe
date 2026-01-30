@@ -23,6 +23,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { SyncStatusBadge } from '@/components/SyncStatusBadge';
 import { StudentService } from '@/services';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/utils/logger';
 
 const ScanPage: React.FC = () => {
   const { events, fetchEvents } = useEvents();
@@ -89,8 +90,8 @@ const ScanPage: React.FC = () => {
       originalWidth = img.width;
       originalHeight = img.height;
     }
-    console.log('Original file size (MB):', (originalSize / 1024 / 1024).toFixed(2));
-    console.log('Original image dimensions:', originalWidth + 'x' + originalHeight);
+    logger.log('Original file size (MB):', (originalSize / 1024 / 1024).toFixed(2));
+    logger.log('Original image dimensions:', originalWidth + 'x' + originalHeight);
     const options = {
       maxWidthOrHeight: 2048,
       initialQuality: 0.85,
@@ -101,24 +102,24 @@ const ScanPage: React.FC = () => {
     const resizedImg = new window.Image();
     resizedImg.src = URL.createObjectURL(resizedFile);
     await new Promise((resolve) => { resizedImg.onload = resolve; });
-    console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
-    console.log('Resized image dimensions:', resizedImg.width + 'x' + resizedImg.height);
+    logger.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
+    logger.log('Resized image dimensions:', resizedImg.width + 'x' + resizedImg.height);
     return resizedFile;
   }
 
   // Process the captured image
   const processImage = async (file: File) => {
-    console.log('Uploading file:', file.name, 'size (MB):', (file.size / 1024 / 1024).toFixed(2));
+    logger.log('Uploading file:', file.name, 'size (MB):', (file.size / 1024 / 1024).toFixed(2));
 
     if (!selectedEventId) {
-      console.error('No event selected');
+      logger.error('No event selected');
       return;
     }
 
     // Find the selected event object to get school_id
     const selectedEvent = events.find(evt => evt.id === selectedEventId);
     if (!selectedEvent) {
-      console.error('Selected event not found');
+      logger.error('Selected event not found');
       return;
     }
 
@@ -140,7 +141,7 @@ const ScanPage: React.FC = () => {
         setTimeout(() => setForceShowProcessing(false), 3000);
       }
     } catch (error: any) {
-      console.error("Upload error details:", {
+      logger.error("Upload error details:", {
         error,
         message: error.message,
         stack: error.stack
@@ -155,7 +156,7 @@ const ScanPage: React.FC = () => {
   const handleImageCaptured = async (imageDataUrl: string) => {
     // Resize the image before upload
     const resizedFile = await resizeImage(imageDataUrl);
-    console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
+    logger.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
     setIsCameraOpen(false); // Close camera after capture
     processImage(resizedFile);
   };
@@ -166,7 +167,7 @@ const ScanPage: React.FC = () => {
     if (file) {
       // Resize the image before upload
       const resizedFile = await resizeImage(file);
-      console.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
+      logger.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
       setCapturedImage(URL.createObjectURL(resizedFile));
       processImage(resizedFile);
     }
@@ -181,7 +182,7 @@ const ScanPage: React.FC = () => {
       return;
     }
 
-    console.log('Processing QR token:', token);
+    logger.log('Processing QR token:', token);
     setIsProcessingQR(true);
     setQrSuccess(false);
 
@@ -205,7 +206,7 @@ const ScanPage: React.FC = () => {
       }, 1500);
 
     } catch (error: any) {
-      console.error('QR scan error:', error);
+      logger.error('QR scan error:', error);
       const errorMessage = error?.message || 'Failed to process QR code';
       toast.error(errorMessage);
       setIsProcessingQR(false);
