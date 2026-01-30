@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { logger } from '@/utils/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -150,7 +151,7 @@ export function SignupSheetUpload({
       );
 
     } catch (error) {
-      console.error('Signup sheet upload failed:', error);
+      logger.error('Signup sheet upload failed:', error);
       toast.error(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };

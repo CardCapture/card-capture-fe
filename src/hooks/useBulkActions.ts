@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { toast } from "@/lib/toast";
 import { authFetch } from "@/lib/authFetch";
+import { logger } from '@/utils/logger';
 
 export function useBulkActions(
   fetchCards: () => void,
@@ -37,7 +38,7 @@ export function useBulkActions(
         move: { document_ids: documentIds, status: options?.status || "reviewed" }
       };
       
-      console.log(`🔄 ${action.toUpperCase()} Action:`, {
+      logger.log(`🔄 ${action.toUpperCase()} Action:`, {
         action,
         documentIds,
         payload: payloads[action],
@@ -57,13 +58,13 @@ export function useBulkActions(
           errorMessage = errorData?.error || errorMessage;
         } catch (jsonError) {
           // If response.json() fails, use the default error message
-          console.warn('Failed to parse error response as JSON:', jsonError);
+          logger.warn('Failed to parse error response as JSON:', jsonError);
         }
         throw new Error(errorMessage);
       }
       
       const responseData = await response.json();
-      console.log(`✅ ${action.toUpperCase()} Success:`, responseData);
+      logger.log(`✅ ${action.toUpperCase()} Success:`, responseData);
       
       // Success - refresh data and clear selection
       await fetchCards();
@@ -81,7 +82,7 @@ export function useBulkActions(
       return true;
       
     } catch (error) {
-      console.error(`❌ ${action.toUpperCase()} Error:`, error);
+      logger.error(`❌ ${action.toUpperCase()} Error:`, error);
       toast.error(`Failed to ${action} cards: ${error instanceof Error ? error.message : 'Unknown error'}`, "Error");
       return false;
     } finally {

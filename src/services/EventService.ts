@@ -4,6 +4,7 @@ import { cardsApi } from "@/api/backend/cards";
 import { getEventCardStats } from "@/lib/getEventCardStats";
 import type { Event, EventWithStats } from "@/types/event";
 import type { ProspectCard } from "@/types/card";
+import { logger } from '@/utils/logger';
 
 export class EventService {
   /**
@@ -13,20 +14,20 @@ export class EventService {
     schoolId?: string
   ): Promise<EventWithStats[]> {
     try {
-      console.log("EventService: Fetching events with stats (optimized)", { schoolId });
+      logger.log("EventService: Fetching events with stats (optimized)", { schoolId });
 
       // Use optimized backend endpoint that calculates stats server-side
       // This is much faster than fetching all cards and calculating client-side
       const eventsWithStats = await backendEventsApi.getEventsWithStats(schoolId);
 
-      console.log("EventService: Fetched events with stats:", {
+      logger.log("EventService: Fetched events with stats:", {
         count: eventsWithStats.length,
         totalCards: eventsWithStats.reduce((sum, e) => sum + (e.stats?.total_cards || 0), 0)
       });
 
       return eventsWithStats;
     } catch (error) {
-      console.error("EventService: Failed to get events with stats", error);
+      logger.error("EventService: Failed to get events with stats", error);
       throw error;
     }
   }
@@ -36,7 +37,7 @@ export class EventService {
    */
   static async getEventWithStats(eventId: string): Promise<EventWithStats | null> {
     try {
-      console.log("EventService: Fetching single event with stats", { eventId });
+      logger.log("EventService: Fetching single event with stats", { eventId });
 
       // Fetch event and cards from backend API (includes both V1 and V2 tables)
       const [eventData, cards] = await Promise.all([
@@ -48,8 +49,8 @@ export class EventService {
         return null;
       }
 
-      console.log("EventService: Single event data:", eventData);
-      console.log("EventService: Cards for event:", cards?.length || 0);
+      logger.log("EventService: Single event data:", eventData);
+      logger.log("EventService: Cards for event:", cards?.length || 0);
 
       const stats = getEventCardStats(cards as ProspectCard[] || []);
 
@@ -58,7 +59,7 @@ export class EventService {
         stats,
       };
     } catch (error) {
-      console.error("EventService: Failed to get event with stats", error);
+      logger.error("EventService: Failed to get event with stats", error);
       throw error;
     }
   }
@@ -73,13 +74,13 @@ export class EventService {
     slate_event_id?: string | null;
   }): Promise<Event> {
     try {
-      console.log("EventService DEBUG - Received data:", eventData);
+      logger.log("EventService DEBUG - Received data:", eventData);
       // Use backend API for event creation as it handles additional logic
       const result = await backendEventsApi.createEvent(eventData);
-      console.log("EventService DEBUG - Backend response:", result);
+      logger.log("EventService DEBUG - Backend response:", result);
       return result;
     } catch (error) {
-      console.error("EventService: Failed to create event", error);
+      logger.error("EventService: Failed to create event", error);
       throw error;
     }
   }
@@ -91,7 +92,7 @@ export class EventService {
     try {
       await backendEventsApi.updateEvent(eventId, { name });
     } catch (error) {
-      console.error("EventService: Failed to update event name", error);
+      logger.error("EventService: Failed to update event name", error);
       throw error;
     }
   }
@@ -110,7 +111,7 @@ export class EventService {
     try {
       await backendEventsApi.updateEvent(eventId, updates);
     } catch (error) {
-      console.error("EventService: Failed to update event", error);
+      logger.error("EventService: Failed to update event", error);
       throw error;
     }
   }
@@ -131,7 +132,7 @@ export class EventService {
         await eventsApi.archiveEventCards(eventId);
       }
     } catch (error) {
-      console.error("EventService: Failed to archive event", error);
+      logger.error("EventService: Failed to archive event", error);
       throw error;
     }
   }
@@ -143,7 +144,7 @@ export class EventService {
     try {
       await backendEventsApi.archiveEvents(eventIds);
     } catch (error) {
-      console.error("EventService: Failed to archive events", error);
+      logger.error("EventService: Failed to archive events", error);
       throw error;
     }
   }
@@ -155,7 +156,7 @@ export class EventService {
     try {
       await backendEventsApi.deleteEvent(eventId);
     } catch (error) {
-      console.error("EventService: Failed to delete event", error);
+      logger.error("EventService: Failed to delete event", error);
       throw error;
     }
   }

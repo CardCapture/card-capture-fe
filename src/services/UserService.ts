@@ -1,4 +1,5 @@
 import { usersApi, type UserProfile } from "@/api/backend/users";
+import { logger } from '@/utils/logger';
 
 export interface UserToEdit {
   id: string;
@@ -16,7 +17,7 @@ export class UserService {
     try {
       return await usersApi.getUsers(token);
     } catch (error) {
-      console.error("UserService: Failed to get users", error);
+      logger.error("UserService: Failed to get users", error);
       throw error;
     }
   }
@@ -32,7 +33,7 @@ export class UserService {
     try {
       return await usersApi.updateUser(userId, updates, token);
     } catch (error) {
-      console.error("UserService: Failed to update user", error);
+      logger.error("UserService: Failed to update user", error);
       throw error;
     }
   }
@@ -44,7 +45,7 @@ export class UserService {
     try {
       await usersApi.deleteUser(userId, token);
     } catch (error) {
-      console.error("UserService: Failed to delete user", error);
+      logger.error("UserService: Failed to delete user", error);
       throw error;
     }
   }
@@ -65,7 +66,7 @@ export class UserService {
     try {
       await usersApi.inviteUser(inviteData, token);
     } catch (error) {
-      console.error("UserService: Failed to invite user", error);
+      logger.error("UserService: Failed to invite user", error);
       throw error;
     }
   }
@@ -77,7 +78,7 @@ export class UserService {
     try {
       await usersApi.resetPassword(email, token);
     } catch (error) {
-      console.error("UserService: Failed to send password reset email", error);
+      logger.error("UserService: Failed to send password reset email", error);
       throw error;
     }
   }

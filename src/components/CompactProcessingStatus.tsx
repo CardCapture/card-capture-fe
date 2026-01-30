@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, RotateCcw, X, Pause } from "lucide-react";
 import { useProcessingStatus } from "@/hooks/useProcessingStatus";
 import { toast } from "@/lib/toast";
+import { logger } from '@/utils/logger';
 
 interface CompactProcessingStatusProps {
   eventId: string;
@@ -50,7 +51,7 @@ export function CompactProcessingStatus({
       await Promise.resolve(onRetryFailed());
       toast.success(`Retrying ${status.failed} failed cards`);
     } catch (error) {
-      console.error('Failed to retry processing:', error);
+      logger.error('Failed to retry processing:', error);
       toast.error('Failed to retry processing');
     } finally {
       setIsRetrying(false);
@@ -66,7 +67,7 @@ export function CompactProcessingStatus({
       await Promise.resolve(onStopProcessing());
       toast.success('Processing stopped');
     } catch (error) {
-      console.error('Failed to stop processing:', error);
+      logger.error('Failed to stop processing:', error);
       toast.error('Failed to stop processing');
     } finally {
       setStopping(false);
@@ -78,19 +79,19 @@ export function CompactProcessingStatus({
     if (!onDismissFailure) return;
     
     try {
-      console.log('🗑️ Dismissing failure state...');
+      logger.log('🗑️ Dismissing failure state...');
       await Promise.resolve(onDismissFailure());
       
       // Small delay to ensure database changes propagate
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // Force refresh the processing status to update UI immediately
-      console.log('🔄 Refreshing processing status after dismiss...');
+      logger.log('🔄 Refreshing processing status after dismiss...');
       await refresh();
       
       toast.success('Failure dismissed');
     } catch (error) {
-      console.error('Failed to dismiss failure:', error);
+      logger.error('Failed to dismiss failure:', error);
       toast.error('Failed to dismiss failure');
     }
   };

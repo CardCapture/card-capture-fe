@@ -1,6 +1,7 @@
 import { offlineQueue, type PendingCard } from './offlineQueue';
 import { Capacitor } from '@capacitor/core';
 import { Network } from '@capacitor/network';
+import { logger } from '@/utils/logger';
 
 const MAX_RETRIES = 3;
 
@@ -31,13 +32,13 @@ class SyncService {
     if (Capacitor.isNativePlatform()) {
       Network.addListener('networkStatusChange', async (status) => {
         if (status.connected) {
-          console.log('[SyncService] Network connected, starting sync...');
+          logger.log('[SyncService] Network connected, starting sync...');
           await this.syncPendingCards();
         }
       });
     } else {
       window.addEventListener('online', async () => {
-        console.log('[SyncService] Browser online, starting sync...');
+        logger.log('[SyncService] Browser online, starting sync...');
         await this.syncPendingCards();
       });
     }
@@ -67,7 +68,7 @@ class SyncService {
    */
   async syncPendingCards(): Promise<void> {
     if (this.isSyncing) {
-      console.log('[SyncService] Sync already in progress');
+      logger.log('[SyncService] Sync already in progress');
       return;
     }
 
@@ -99,13 +100,13 @@ class SyncService {
         await this.uploadCard(card);
         await offlineQueue.removeCard(card.id);
         successCount++;
-        console.log(`[SyncService] Uploaded card ${card.id} (${successCount}/${total})`);
+        logger.log(`[SyncService] Uploaded card ${card.id} (${successCount}/${total})`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-        console.error(`[SyncService] Failed to upload card ${card.id}:`, errorMessage);
+        logger.error(`[SyncService] Failed to upload card ${card.id}:`, errorMessage);
 
         if (card.retryCount >= MAX_RETRIES) {
-          console.warn(`[SyncService] Card ${card.id} exceeded max retries, keeping in queue`);
+          logger.warn(`[SyncService] Card ${card.id} exceeded max retries, keeping in queue`);
         }
         await offlineQueue.markRetry(card.id, errorMessage);
       }
@@ -121,7 +122,7 @@ class SyncService {
       lastSyncTime: Date.now(),
     });
 
-    console.log(`[SyncService] Sync complete. ${successCount}/${total} uploaded, ${remaining} remaining.`);
+    logger.log(`[SyncService] Sync complete. ${successCount}/${total} uploaded, ${remaining} remaining.`);
   }
 
   private async uploadCard(card: PendingCard): Promise<void> {
@@ -145,7 +146,7 @@ class SyncService {
             const altData = JSON.parse(localStorage.getItem(altKey) || '{}');
             accessToken = altData.access_token || '';
           } catch {
-            console.error('[SyncService] Could not parse auth token');
+            logger.error('[SyncService] Could not parse auth token');
           }
         }
       }

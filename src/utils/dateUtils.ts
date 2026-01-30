@@ -2,6 +2,7 @@
  * Utility functions for handling date-only strings consistently
  * to avoid timezone-related day shifts
  */
+import { logger } from '@/utils/logger';
 
 /**
  * Parse a date-only string (YYYY-MM-DD) and return a Date object
@@ -22,7 +23,7 @@ export function formatDateOnly(dateString: string): string {
     const date = parseDateOnly(dateString);
     return date.toLocaleDateString();
   } catch (error) {
-    console.warn('Invalid date string:', dateString);
+    logger.warn('Invalid date string:', dateString);
     return dateString; // Fallback to original string
   }
 }
@@ -37,7 +38,7 @@ export function formatDateOnlyWithFormat(dateString: string, formatString: strin
     const { format } = require('date-fns');
     return format(date, formatString);
   } catch (error) {
-    console.warn('Error formatting date:', dateString, error);
+    logger.warn('Error formatting date:', dateString, error);
     return dateString; // Fallback to original string
   }
 }

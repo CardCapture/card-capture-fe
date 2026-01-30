@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import OTPInput from './OTPInput';
 import { supabase } from '../lib/supabaseClient';
+import { logger } from '@/utils/logger';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -34,7 +35,7 @@ const MFAChallengeModal: React.FC<MFAChallengeModalProps> = ({
     setIsLoading(true);
 
     try {
-      console.log('[Challenge] Verifying code...');
+      logger.log('[Challenge] Verifying code...');
 
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
@@ -76,7 +77,7 @@ const MFAChallengeModal: React.FC<MFAChallengeModalProps> = ({
         }
       }
 
-      console.log('[Challenge] Verification successful!');
+      logger.log('[Challenge] Verification successful!');
 
       // Save device token if provided
       const deviceToken = data.device_token;
@@ -105,7 +106,7 @@ const MFAChallengeModal: React.FC<MFAChallengeModalProps> = ({
     setIsLoading(true);
 
     try {
-      console.log('[Challenge] Resending code...');
+      logger.log('[Challenge] Resending code...');
 
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
@@ -129,7 +130,7 @@ const MFAChallengeModal: React.FC<MFAChallengeModalProps> = ({
         throw new Error(data.detail || 'Failed to resend code');
       }
 
-      console.log('[Challenge] Code resent successfully');
+      logger.log('[Challenge] Code resent successfully');
       setError(null);
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to resend code';

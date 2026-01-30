@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/lib/toast";
 import { Loader2, Calendar } from "lucide-react";
+import { logger } from '@/utils/logger';
 import { CRMEventsService } from "@/services/CRMEventsService";
 import { format } from "date-fns";
 import { formatDateOnlyWithFormat } from "@/utils/dateUtils";
@@ -101,7 +102,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         setCrmEvents(events || []);
         setShowSuggestions(true);
       } catch (error) {
-        console.error("Error searching CRM events:", error);
+        logger.error("Error searching CRM events:", error);
         setCrmEvents([]);
         setShowSuggestions(false);
       } finally {
@@ -146,9 +147,9 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleSlateEventIdChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      console.log("Slate Event ID input changed:", e.target.value);
+      logger.log("Slate Event ID input changed:", e.target.value);
       setSlateEventId(e.target.value);
-      console.log("Slate Event ID state will be set to:", e.target.value);
+      logger.log("Slate Event ID state will be set to:", e.target.value);
     },
     []
   );
@@ -214,7 +215,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
       try {
         if (isEditMode && existingEvent) {
           // Update existing event
-          console.log("Updating event:", {
+          logger.log("Updating event:", {
             id: existingEvent.id,
             name: eventName,
             date: eventDate,
@@ -227,7 +228,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             slate_event_id: slateEventId.trim() || null,
           });
 
-          console.log("Event updated successfully");
+          logger.log("Event updated successfully");
           toast.updated("Event");
         } else {
           // Create new event
@@ -238,20 +239,20 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             slate_event_id: slateEventId.trim() || null,
           };
 
-          console.log("CREATE EVENT DEBUG - Frontend sending data:", eventData);
-          console.log("CREATE EVENT DEBUG - schoolId from useProfile:", schoolId);
-          console.log("CREATE EVENT DEBUG - user from useAuth:", user?.id);
-          console.log("CREATE EVENT DEBUG - slateEventId state:", slateEventId);
-          console.log("CREATE EVENT DEBUG - slateEventId.trim():", slateEventId.trim());
-          console.log("CREATE EVENT DEBUG - slateEventId.trim() || null:", slateEventId.trim() || null);
+          logger.log("CREATE EVENT DEBUG - Frontend sending data:", eventData);
+          logger.log("CREATE EVENT DEBUG - schoolId from useProfile:", schoolId);
+          logger.log("CREATE EVENT DEBUG - user from useAuth:", user?.id);
+          logger.log("CREATE EVENT DEBUG - slateEventId state:", slateEventId);
+          logger.log("CREATE EVENT DEBUG - slateEventId.trim():", slateEventId.trim());
+          logger.log("CREATE EVENT DEBUG - slateEventId.trim() || null:", slateEventId.trim() || null);
 
           const createdEvent = await EventService.createEvent(eventData);
-          console.log("CREATE EVENT DEBUG - Created event response:", createdEvent);
+          logger.log("CREATE EVENT DEBUG - Created event response:", createdEvent);
 
           // DEBUG: Check if newly created event appears in Supabase query
           try {
             const { supabase } = await import('@/lib/supabaseClient');
-            console.log("DEBUG: Querying events table directly after creation");
+            logger.log("DEBUG: Querying events table directly after creation");
 
             const { data: directQuery, error } = await supabase
               .from('events')
@@ -260,7 +261,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
               .order('created_at', { ascending: false })
               .limit(10);
 
-            console.log("DEBUG: Direct Supabase query result:", {
+            logger.log("DEBUG: Direct Supabase query result:", {
               data: directQuery,
               error: error,
               newEventId: createdEvent.id,
@@ -269,7 +270,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
             // Check if the new event is in the results
             const newEventFound = directQuery?.find(event => event.id === createdEvent.id);
-            console.log("DEBUG: New event found in direct query?", newEventFound);
+            logger.log("DEBUG: New event found in direct query?", newEventFound);
 
             // Also try calling the debug endpoint with proper auth
             try {
@@ -279,13 +280,13 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 },
               });
               const debugData = await debugResponse.json();
-              console.log("DEBUG auth.users check:", debugData);
+              logger.log("DEBUG auth.users check:", debugData);
             } catch (debugError) {
-              console.log("DEBUG endpoint failed:", debugError);
+              logger.log("DEBUG endpoint failed:", debugError);
             }
 
           } catch (debugError) {
-            console.log("DEBUG: Supabase direct query failed:", debugError);
+            logger.log("DEBUG: Supabase direct query failed:", debugError);
           }
 
           toast.created("Event");
@@ -295,7 +296,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         resetForm();
         onClose();
       } catch (error) {
-        console.error(`Error ${isEditMode ? 'updating' : 'creating'} event:`, error);
+        logger.error(`Error ${isEditMode ? 'updating' : 'creating'} event:`, error);
         toast.error(
           `Something went wrong while ${isEditMode ? 'updating' : 'creating'} the event. Please try again.`,
           `${isEditMode ? 'Update' : 'Creation'} Failed`

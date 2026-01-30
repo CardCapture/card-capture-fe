@@ -1,11 +1,12 @@
 // src/lib/supabaseClient.ts
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/utils/logger'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("CRITICAL: Supabase URL or Anon Key is missing from environment variables.");
+  logger.error("CRITICAL: Supabase URL or Anon Key is missing from environment variables.");
   throw new Error("Supabase URL or Anon Key is missing from environment variables.");
 }
 

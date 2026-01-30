@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { logger } from '@/utils/logger';
 import type { ProspectCard } from "@/types/card";
 import { toast } from "@/lib/toast";
 import { supabase } from "@/lib/supabaseClient";
@@ -166,7 +167,7 @@ export function useCardReviewModal(
   };
 
   const handleFormBatchChange = (updates: Record<string, string>) => {
-    console.log('🔄 handleFormBatchChange called with:', updates);
+    logger.log('🔄 handleFormBatchChange called with:', updates);
     setFormData((prev) => ({ ...prev, ...updates }));
     if (selectedCardForReview) {
       setSelectedCardForReview((prev) => {

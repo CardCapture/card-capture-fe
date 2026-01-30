@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { logger } from '@/utils/logger';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -68,7 +69,7 @@ export function HighSchoolSuggestionsPanel({
         
         setSuggestions(sortedResults);
       } catch (error) {
-        console.error("Failed to fetch school suggestions:", error);
+        logger.error("Failed to fetch school suggestions:", error);
         setSuggestions([]);
       } finally {
         setIsLoading(false);

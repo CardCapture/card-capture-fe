@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "@/lib/toast";
+import { logger } from '@/utils/logger';
 
 const AcceptInvitePage = () => {
   const [searchParams] = useSearchParams();
@@ -42,13 +43,13 @@ const AcceptInvitePage = () => {
   // Handle both magic link and hash fragment redirect from Supabase
   useEffect(() => {
     const handleAuthRedirect = async () => {
-      console.log("🔍 Current URL:", window.location.href);
-      console.log("🔍 Hash:", location.hash);
-      console.log("🔍 Location state:", location.state);
+      logger.log("🔍 Current URL:", window.location.href);
+      logger.log("🔍 Hash:", location.hash);
+      logger.log("🔍 Location state:", location.state);
 
       // Check if we came from our magic link system
       if (location.state?.fromMagicLink) {
-        console.log("✅ Arrived from magic link system - ready for invite acceptance");
+        logger.log("✅ Arrived from magic link system - ready for invite acceptance");
 
         // Clear any existing error since magic link was successful
         setError(null);
@@ -57,18 +58,18 @@ const AcceptInvitePage = () => {
         // Save the magic link token for secure user creation
         if (location.state?.token) {
           setMagicLinkToken(location.state.token);
-          console.log("✅ Magic link token saved for user creation");
+          logger.log("✅ Magic link token saved for user creation");
         }
 
         // Extract email and metadata from magic link state
         if (location.state?.fromMagicLink) {
           if (location.state?.email) {
             setEmail(location.state.email);
-            console.log("✅ Email found from magic link:", location.state.email);
+            logger.log("✅ Email found from magic link:", location.state.email);
           }
 
           if (location.state?.metadata) {
-            console.log("✅ Metadata found from magic link:", location.state.metadata);
+            logger.log("✅ Metadata found from magic link:", location.state.metadata);
             setMagicLinkMetadata(location.state.metadata);
           }
         }
@@ -76,7 +77,7 @@ const AcceptInvitePage = () => {
         // Extract metadata from magic link (user info, school info, etc.)
         if (location.state?.metadata) {
           const metadata = location.state.metadata;
-          console.log("✅ Metadata found from magic link:", metadata);
+          logger.log("✅ Metadata found from magic link:", metadata);
           
           // Set email if not already set
           if (!location.state.email && metadata.email) {
@@ -99,7 +100,7 @@ const AcceptInvitePage = () => {
         // Check if user is already authenticated (magic link might have set session)
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          console.log("✅ User session found from magic link");
+          logger.log("✅ User session found from magic link");
           // Get user details
           const { data: userData } = await supabase.auth.getUser();
           if (userData?.user?.email && !email) {
@@ -117,14 +118,14 @@ const AcceptInvitePage = () => {
         try {
           // Parse the hash fragment to get the tokens
           const hashParams = new URLSearchParams(location.hash.substring(1));
-          console.log("🔍 Hash params:", Object.fromEntries(hashParams));
+          logger.log("🔍 Hash params:", Object.fromEntries(hashParams));
 
           const accessToken = hashParams.get("access_token");
           const refreshToken = hashParams.get("refresh_token");
           const type = hashParams.get("type");
 
           if (accessToken && (type === "invite" || type === "recovery")) {
-            console.log("✅ Found tokens, type:", type);
+            logger.log("✅ Found tokens, type:", type);
 
             // First, clear any existing session to avoid conflicts
             await supabase.auth.signOut();
@@ -137,21 +138,21 @@ const AcceptInvitePage = () => {
               });
 
             if (sessionError) {
-              console.error("❌ Error setting session:", sessionError);
+              logger.error("❌ Error setting session:", sessionError);
               setError(
                 "Error processing invite link. Please try again or contact support."
               );
               return;
             }
 
-            console.log("✅ Session set successfully:", data);
+            logger.log("✅ Session set successfully:", data);
 
             // Get the user details
             const { data: userData, error: userError } =
               await supabase.auth.getUser();
 
             if (userError) {
-              console.error("❌ Error getting user:", userError);
+              logger.error("❌ Error getting user:", userError);
               setError(
                 "Could not verify your identity. Please try again or contact support."
               );
@@ -160,7 +161,7 @@ const AcceptInvitePage = () => {
 
             // Extract email from the user data
             if (userData?.user?.email) {
-              console.log("✅ User email:", userData.user.email);
+              logger.log("✅ User email:", userData.user.email);
               setEmail(userData.user.email);
               // Clear the hash without triggering a reload
               window.history.replaceState(
@@ -174,13 +175,13 @@ const AcceptInvitePage = () => {
               );
             }
           } else {
-            console.error("❌ Missing tokens or wrong type. Type:", type);
+            logger.error("❌ Missing tokens or wrong type. Type:", type);
             setError(
               "Invalid invite link. Please check the link and try again."
             );
           }
         } catch (err) {
-          console.error("❌ Error handling hash redirect:", err);
+          logger.error("❌ Error handling hash redirect:", err);
           setError(
             "Error processing invite link. Please try again or contact support."
           );
@@ -194,14 +195,14 @@ const AcceptInvitePage = () => {
           queryToken &&
           (queryType === "invite" || queryType === "recovery")
         ) {
-          console.log(
+          logger.log(
             "🔍 Found tokens in query params, redirecting to hash format"
           );
           // Redirect to hash format
           window.location.hash = `#${searchParams.toString()}`;
         } else {
           // Only show error if this wasn't from our magic link system
-          console.log("ℹ️ No hash fragment or query params found and not from magic link - direct access");
+          logger.log("ℹ️ No hash fragment or query params found and not from magic link - direct access");
           setError("Please click the invitation link from your email, or request a new invitation.");
         }
       }
@@ -218,7 +219,7 @@ const AcceptInvitePage = () => {
       const fallbackEmail = metadataEmail || invitedEmail;
 
       if (fallbackEmail) {
-        console.log("🔄 Using email from fallback:", fallbackEmail);
+        logger.log("🔄 Using email from fallback:", fallbackEmail);
         setEmail(fallbackEmail);
       }
     }
@@ -235,7 +236,7 @@ const AcceptInvitePage = () => {
           const schoolData = await SchoolService.getSchoolData(currentSchoolId);
           setSchoolInfo({ name: schoolData.name });
         } catch (err) {
-          console.error("Error fetching school:", err);
+          logger.error("Error fetching school:", err);
         }
       }
     };
@@ -294,7 +295,7 @@ const AcceptInvitePage = () => {
     try {
       // For magic link invites, create the user account
       if (isFromMagicLink) {
-        console.log("🔄 Processing magic link invite - creating user account");
+        logger.log("🔄 Processing magic link invite - creating user account");
 
         // Check for magic link token - required for secure user creation
         if (!magicLinkToken) {
@@ -309,7 +310,7 @@ const AcceptInvitePage = () => {
           password
         });
 
-        console.log("✅ User account created successfully");
+        logger.log("✅ User account created successfully");
 
         // Now sign them in with their new credentials
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -321,7 +322,7 @@ const AcceptInvitePage = () => {
           throw new Error("Account created but sign-in failed. Please try signing in with your email and password.");
         }
 
-        console.log("✅ Sign in successful after account creation");
+        logger.log("✅ Sign in successful after account creation");
       } else {
         // Legacy flow - user should have an active session
         const { error: updateError } = await supabase.auth.updateUser({
@@ -366,7 +367,7 @@ const AcceptInvitePage = () => {
             });
           }
         } catch (profileError) {
-          console.error("Error updating profile:", profileError);
+          logger.error("Error updating profile:", profileError);
           // Don't throw here - user is already signed up successfully
         }
       }
@@ -374,7 +375,7 @@ const AcceptInvitePage = () => {
       // Redirect to events page
       navigate("/events", { replace: true });
     } catch (err) {
-      console.error("Error setting password:", err);
+      logger.error("Error setting password:", err);
       setError(
         err instanceof Error
           ? err.message

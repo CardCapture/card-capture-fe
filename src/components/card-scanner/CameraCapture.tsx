@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { logger } from '@/utils/logger';
 import { Button } from "@/components/ui/button";
 import { Camera, ArrowLeft } from 'lucide-react';
 import { useCameraPermission } from '@/hooks/useCameraPermission';
@@ -147,7 +148,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQR
           const token = result.getText();
           // Check if it looks like a valid token (not a URL or image data)
           if (token && !token.startsWith('data:') && !token.startsWith('http')) {
-            console.log('QR code detected:', token);
+            logger.log('QR code detected:', token);
             isScanningRef.current = false;
             setQrDetected(true);
             // Stop the stream

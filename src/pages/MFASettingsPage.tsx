@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import MFAEnrollmentModal from '@/components/MFAEnrollmentModal';
 import { supabase } from '@/lib/supabaseClient';
+import { logger } from '@/utils/logger';
 import {
   Card,
   CardContent,
@@ -68,7 +69,7 @@ const MFASettingsPage: React.FC = () => {
         setTrustedDevices(data.trusted_devices || []);
       }
     } catch (error) {
-      console.error('Failed to fetch MFA settings:', error);
+      logger.error('Failed to fetch MFA settings:', error);
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +101,7 @@ const MFASettingsPage: React.FC = () => {
         setShowDisableDialog(false);
       }
     } catch (error) {
-      console.error('Failed to disable MFA:', error);
+      logger.error('Failed to disable MFA:', error);
     }
   };
 
@@ -118,7 +119,7 @@ const MFASettingsPage: React.FC = () => {
         setDeviceToRevoke(null);
       }
     } catch (error) {
-      console.error('Failed to revoke device:', error);
+      logger.error('Failed to revoke device:', error);
     }
   };
 

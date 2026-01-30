@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logger } from '@/utils/logger';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -69,7 +70,7 @@ const GetStartedPage = () => {
       // Redirect to thank you page
       navigate('/thank-you');
     } catch (error) {
-      console.error("Error submitting demo request:", error);
+      logger.error("Error submitting demo request:", error);
       toast.error(
         error instanceof Error 
           ? error.message 

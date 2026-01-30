@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { logger } from '@/utils/logger';
 import {
   Dialog,
   DialogContent,
@@ -149,7 +150,7 @@ export function EditUserModal({
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      console.error("Error updating user:", error);
+      logger.error("Error updating user:", error);
       toast.error(
         error instanceof Error
           ? error.message
@@ -174,7 +175,7 @@ export function EditUserModal({
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      console.error("Error deleting user:", error);
+      logger.error("Error deleting user:", error);
       toast.error(
         error instanceof Error
           ? error.message
@@ -194,7 +195,7 @@ export function EditUserModal({
 
       toast.success(`Password reset email sent to ${user.email}`);
     } catch (error) {
-      console.error("Error sending password reset email:", error);
+      logger.error("Error sending password reset email:", error);
       toast.error(
         error instanceof Error
           ? error.message

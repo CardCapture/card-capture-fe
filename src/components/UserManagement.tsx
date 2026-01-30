@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { logger } from '@/utils/logger';
 import {
   Table,
   TableBody,
@@ -50,7 +51,7 @@ const UserManagement = () => {
       const users = await UserService.getAllUsers(session?.access_token);
       setUsers(users || []);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      logger.error("Error fetching users:", error);
     } finally {
       hideTableLoader(LOADER_ID);
     }

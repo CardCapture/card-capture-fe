@@ -6,6 +6,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { logger } from '@/utils/logger';
 import {
   Table,
   TableBody,
@@ -84,7 +85,7 @@ export function CRMEventsSection() {
       const data = await service.listEvents();
       setEvents(data);
     } catch (error) {
-      console.error("Error loading events:", error);
+      logger.error("Error loading events:", error);
       toast.error("Failed to load events");
     } finally {
       hideLoader();
@@ -126,7 +127,7 @@ export function CRMEventsSection() {
       setSelectedEvents(new Set());
       await loadEvents();
     } catch (error) {
-      console.error("Error deleting events:", error);
+      logger.error("Error deleting events:", error);
       toast.error("Failed to delete events");
     } finally {
       hideLoader();
@@ -148,7 +149,7 @@ export function CRMEventsSection() {
       setNewEvent({ name: "", event_date: "", crm_event_id: "" });
       await loadEvents();
     } catch (error) {
-      console.error("Error saving event:", error);
+      logger.error("Error saving event:", error);
       toast.error("Failed to save event");
     } finally {
       hideLoader();
@@ -176,7 +177,7 @@ export function CRMEventsSection() {
       toast.success("Event deleted");
       await loadEvents();
     } catch (error) {
-      console.error("Error deleting event:", error);
+      logger.error("Error deleting event:", error);
       toast.error("Failed to delete event");
     } finally {
       hideLoader();

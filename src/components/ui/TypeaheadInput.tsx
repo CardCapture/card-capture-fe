@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
+import { logger } from '@/utils/logger';
 
-console.log('🔍 TypeaheadInput.tsx: File is being imported!');
+logger.log('🔍 TypeaheadInput.tsx: File is being imported!');
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-console.log('🔍 TypeaheadInput.tsx: API_BASE_URL is:', API_BASE_URL);
+logger.log('🔍 TypeaheadInput.tsx: API_BASE_URL is:', API_BASE_URL);
 
 interface TypeaheadItem {
   id: string;
@@ -41,7 +42,7 @@ export const TypeaheadInput: React.FC<TypeaheadInputProps> = ({
   minSearchLength = 2,
   searchDelay = 300,
 }) => {
-  console.log('TypeaheadInput: Component mounted with props:', {
+  logger.log('TypeaheadInput: Component mounted with props:', {
     label,
     value,
     searchEndpoint,
@@ -57,10 +58,10 @@ export const TypeaheadInput: React.FC<TypeaheadInputProps> = ({
 
   // Search suggestions when user types
   useEffect(() => {
-    console.log('TypeaheadInput: useEffect triggered with value:', value, 'length:', value.length, 'minSearchLength:', minSearchLength);
+    logger.log('TypeaheadInput: useEffect triggered with value:', value, 'length:', value.length, 'minSearchLength:', minSearchLength);
     
     if (value.length < minSearchLength) {
-      console.log('TypeaheadInput: Value too short, not searching');
+      logger.log('TypeaheadInput: Value too short, not searching');
       setSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -68,14 +69,14 @@ export const TypeaheadInput: React.FC<TypeaheadInputProps> = ({
 
     // Don't search if we just selected an item
     if (blockDropdownRef.current) {
-      console.log('TypeaheadInput: Blocked dropdown is active, skipping search');
+      logger.log('TypeaheadInput: Blocked dropdown is active, skipping search');
       return;
     }
 
     const delayedSearch = setTimeout(async () => {
       setIsSearching(true);
       const searchUrl = `${API_BASE_URL}${searchEndpoint}?q=${encodeURIComponent(value)}&limit=10`;
-      console.log('TypeaheadInput: Making search request to:', searchUrl);
+      logger.log('TypeaheadInput: Making search request to:', searchUrl);
       
       try {
         const response = await fetch(searchUrl, {
@@ -85,21 +86,21 @@ export const TypeaheadInput: React.FC<TypeaheadInputProps> = ({
           },
         });
         
-        console.log('TypeaheadInput: Response status:', response.status);
+        logger.log('TypeaheadInput: Response status:', response.status);
         
         if (!response.ok) {
-          console.error('Search failed:', response.status, await response.text());
+          logger.error('Search failed:', response.status, await response.text());
           setSuggestions([]);
           setShowSuggestions(false);
           return;
         }
 
         const data = await response.json();
-        console.log('TypeaheadInput: Search results:', data);
+        logger.log('TypeaheadInput: Search results:', data);
         setSuggestions(data.results || []);
         setShowSuggestions(true);
       } catch (error) {
-        console.error('TypeaheadInput: Error searching:', error);
+        logger.error('TypeaheadInput: Error searching:', error);
         setSuggestions([]);
         setShowSuggestions(false);
       } finally {
@@ -128,7 +129,7 @@ export const TypeaheadInput: React.FC<TypeaheadInputProps> = ({
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
-      console.log('TypeaheadInput: Input changed to:', newValue);
+      logger.log('TypeaheadInput: Input changed to:', newValue);
       blockDropdownRef.current = false; // Allow search when user types
       onChange(newValue);
     },

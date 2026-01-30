@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/authFetch";
+import { logger } from '@/utils/logger';
 
 export interface HighSchool {
   id: string;
@@ -49,7 +50,7 @@ export class HighSchoolService {
 
       return await response.json();
     } catch (error) {
-      console.error("Error searching high schools:", error);
+      logger.error("Error searching high schools:", error);
       throw error;
     }
   }
@@ -66,7 +67,7 @@ export class HighSchoolService {
 
       return await response.json();
     } catch (error) {
-      console.error("Error getting high school:", error);
+      logger.error("Error getting high school:", error);
       throw error;
     }
   }
@@ -86,7 +87,7 @@ export class HighSchoolService {
 
       return await response.json();
     } catch (error) {
-      console.error("Error getting schools by state:", error);
+      logger.error("Error getting schools by state:", error);
       throw error;
     }
   }

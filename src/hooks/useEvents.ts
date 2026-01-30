@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { Event, EventWithStats } from "@/types/event";
 import { toast } from "sonner";
 import { EventService } from "@/services/EventService";
+import { logger } from '@/utils/logger';
 
 interface UseEventsReturn {
   events: EventWithStats[];
@@ -25,12 +26,12 @@ export function useEvents(schoolId?: string): UseEventsReturn {
     try {
       setLoading(true);
       
-      console.log("useEvents: fetchEvents called with schoolId:", schoolId);
+      logger.log("useEvents: fetchEvents called with schoolId:", schoolId);
       const eventsWithStats = await EventService.getEventsWithStats(schoolId);
-      console.log("useEvents: fetched events:", eventsWithStats.length, "events");
+      logger.log("useEvents: fetched events:", eventsWithStats.length, "events");
       setEvents(eventsWithStats);
     } catch (err) {
-      console.error("useEvents: fetchEvents error:", err);
+      logger.error("useEvents: fetchEvents error:", err);
       setError(err as Error);
       toast("Failed to fetch events");
     } finally {
@@ -133,7 +134,7 @@ export function useEvents(schoolId?: string): UseEventsReturn {
 
         toast(`Successfully archived ${ids.length} events`);
       } catch (err) {
-        console.error("Error archiving events:", err);
+        logger.error("Error archiving events:", err);
         toast("Failed to archive events");
         throw err;
       }

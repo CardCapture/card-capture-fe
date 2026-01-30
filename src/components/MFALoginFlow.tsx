@@ -5,6 +5,7 @@ import { getDefaultRedirectPath } from '@/utils/roleRedirect';
 import MFAEnrollmentModal from './MFAEnrollmentModal';
 import MFAChallengeModal from './MFAChallengeModal';
 import { supabase } from '@/lib/supabaseClient';
+import { logger } from '@/utils/logger';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const USE_V2_MFA = false; // Toggle to use new robust MFA implementation
@@ -38,15 +39,15 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('=== MFA LOGIN FLOW MOUNTED ===');
-    console.log('Email:', email);
-    console.log('Password length:', password.length);
+    logger.log('=== MFA LOGIN FLOW MOUNTED ===');
+    logger.log('Email:', email);
+    logger.log('Password length:', password.length);
 
     // Check if we're already in a session (e.g., user refreshed during MFA)
     const checkExistingSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        console.log('MFALoginFlow: Existing session detected, checking MFA status instead of re-authenticating');
+        logger.log('MFALoginFlow: Existing session detected, checking MFA status instead of re-authenticating');
         // User is already authenticated, don't call signInWithPassword again
         // Instead, check their MFA status
         await handleExistingSession(session);
@@ -60,7 +61,7 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   }, []);
 
   const handleExistingSession = async (session: any) => {
-    console.log('=== HANDLE EXISTING SESSION ===');
+    logger.log('=== HANDLE EXISTING SESSION ===');
     setIsLoading(true);
     setError(null);
 
@@ -68,10 +69,10 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       const userId = session.user.id;
       setUserId(userId);
 
-      console.log('Existing session for user:', userId);
+      logger.log('Existing session for user:', userId);
 
       // Parallelize profile and MFA settings queries for faster loading
-      console.log('Fetching profile and MFA settings in parallel...');
+      logger.log('Fetching profile and MFA settings in parallel...');
 
       const [profileResult, mfaSettingsResult] = await Promise.all([
         supabase
@@ -87,24 +88,24 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       ]);
 
       const { data: profile, error: profileError } = profileResult;
-      console.log('Profile mfa_verified_at:', profile?.mfa_verified_at);
+      logger.log('Profile mfa_verified_at:', profile?.mfa_verified_at);
 
       if (profile && profile.mfa_verified_at === null) {
         // User has started a new login session but hasn't completed MFA yet
-        console.log('MFA verification pending for this session');
+        logger.log('MFA verification pending for this session');
 
         const { data: mfaSettings, error: mfaError } = mfaSettingsResult;
 
         // If user is explicitly exempt from MFA, skip entirely
         if (mfaSettings?.mfa_exempt === true) {
-          console.log('User is exempt from MFA - skipping MFA');
+          logger.log('User is exempt from MFA - skipping MFA');
           onSuccess();
           return;
         }
 
         if (!mfaSettings || !mfaSettings.mfa_enabled) {
           // User doesn't have MFA enabled - complete login
-          console.log('User does not have MFA enabled');
+          logger.log('User does not have MFA enabled');
           onSuccess();
           return;
         }
@@ -112,7 +113,7 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         // Check device trust - if device is trusted, skip MFA
         const deviceToken = localStorage.getItem('device_token');
         if (deviceToken) {
-          console.log('Checking device trust with token:', deviceToken.substring(0, 8) + '...');
+          logger.log('Checking device trust with token:', deviceToken.substring(0, 8) + '...');
           const checkEndpoint = USE_V2_MFA ? '/mfa2/check-device' : '/mfa/check-device';
           const response = await fetch(`${API_BASE_URL}${checkEndpoint}`, {
             method: 'POST',
@@ -124,11 +125,11 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
           });
 
           const deviceData = await response.json();
-          console.log('Device trust check result:', deviceData);
+          logger.log('Device trust check result:', deviceData);
 
           if (deviceData.trusted) {
             // Device is trusted - skip MFA and mark as verified
-            console.log('Device is trusted on refresh, skipping MFA');
+            logger.log('Device is trusted on refresh, skipping MFA');
 
             // Set mfa_verified_at for this trusted device session
             try {
@@ -136,24 +137,24 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
                 .from('profiles')
                 .update({ mfa_verified_at: new Date().toISOString() })
                 .eq('id', userId);
-              console.log('Set mfa_verified_at for trusted device on refresh');
+              logger.log('Set mfa_verified_at for trusted device on refresh');
 
               // CRITICAL: Force refresh profile to bypass cache
               await refetchProfile(true); // forceRefresh = true
-              console.log('Refetched profile after setting mfa_verified_at');
+              logger.log('Refetched profile after setting mfa_verified_at');
             } catch (error) {
-              console.error('Error setting mfa_verified_at:', error);
+              logger.error('Error setting mfa_verified_at:', error);
             }
 
             onSuccess();
             return;
           } else {
-            console.log('Device is NOT trusted - requiring MFA');
+            logger.log('Device is NOT trusted - requiring MFA');
           }
         }
 
         // Create MFA challenge (device not trusted or no device token)
-        console.log('Creating MFA challenge...');
+        logger.log('Creating MFA challenge...');
         const mfaEndpoint = USE_V2_MFA ? '/mfa2/challenge' : '/mfa/challenge';
         const challengeResponse = await fetch(`${API_BASE_URL}${mfaEndpoint}`, {
           method: 'POST',
@@ -165,23 +166,23 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         });
 
         const challengeData = await challengeResponse.json();
-        console.log('Challenge response data:', challengeData);
+        logger.log('Challenge response data:', challengeData);
 
         if (!challengeData.mfa_required) {
-          console.log('MFA not required, calling onSuccess');
+          logger.log('MFA not required, calling onSuccess');
           onSuccess();
           return;
         }
 
         // Check if user needs enrollment (corrupted state: MFA enabled but no phone)
         if (challengeData.needs_enrollment) {
-          console.log('MFA enrollment required (missing phone number) - redirecting to enrollment');
+          logger.log('MFA enrollment required (missing phone number) - redirecting to enrollment');
           setEnrollmentRequired(true);
           setStep('mfa-enroll');
           return;
         }
 
-        console.log('Challenge data received:', challengeData);
+        logger.log('Challenge data received:', challengeData);
         setFactorId(challengeData.factor_id || '');
         setChallengeId(challengeData.challenge_id || '');
         setPhoneLastFour(challengeData.phone_masked || '');
@@ -190,7 +191,7 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       }
 
       // mfa_verified_at is NOT null, user has already verified MFA for this session
-      console.log('MFA already verified for this session, allowing access');
+      logger.log('MFA already verified for this session, allowing access');
       onSuccess();
 
     } catch (err) {
@@ -201,22 +202,22 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   };
 
   const handleLogin = async () => {
-    console.log('=== HANDLE LOGIN CALLED ===');
+    logger.log('=== HANDLE LOGIN CALLED ===');
     setIsLoading(true);
     setError(null);
 
     try {
       // Step 1: Attempt password login
-      console.log('Attempting signInWithPassword...');
+      logger.log('Attempting signInWithPassword...');
       const authResponse = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      console.log('Auth response:', authResponse);
+      logger.log('Auth response:', authResponse);
 
       if (authResponse.error) {
-        console.log('Sign in error:', authResponse.error);
+        logger.log('Sign in error:', authResponse.error);
         onError(authResponse.error.message);
         return;
       }
@@ -225,16 +226,16 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       const session = authResponse.data.session;
       
       if (!session?.user) {
-        console.log('No session data in auth response:', authResponse.data);
+        logger.log('No session data in auth response:', authResponse.data);
         onError('Login failed - no session');
         return;
       }
 
-      console.log('Login successful, user ID:', session.user.id);
+      logger.log('Login successful, user ID:', session.user.id);
       setUserId(session.user.id);
 
       // Step 2: Parallelize independent queries for faster login
-      console.log('Fetching MFA settings in parallel with clearing verification...');
+      logger.log('Fetching MFA settings in parallel with clearing verification...');
 
       const [mfaSettingsResult] = await Promise.all([
         // Fetch MFA settings
@@ -248,39 +249,39 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
           .from('profiles')
           .update({ mfa_verified_at: null })
           .eq('id', session.user.id)
-          .then(() => console.log('Cleared mfa_verified_at for new login session'))
-          .catch((error) => console.error('Error clearing mfa_verified_at:', error))
+          .then(() => logger.log('Cleared mfa_verified_at for new login session'))
+          .catch((error) => logger.error('Error clearing mfa_verified_at:', error))
       ]);
 
       const { data: mfaSettings, error: mfaError } = mfaSettingsResult;
-      console.log('MFA Settings result:', mfaSettings, mfaError);
+      logger.log('MFA Settings result:', mfaSettings, mfaError);
 
       // If user is explicitly exempt from MFA, skip entirely
       // This is for shared accounts like admissions@mc.edu
       if (mfaSettings?.mfa_exempt === true) {
-        console.log('User is exempt from MFA - skipping MFA and enrollment');
+        logger.log('User is exempt from MFA - skipping MFA and enrollment');
         onSuccess();
         return;
       }
 
       if (!mfaSettings || !mfaSettings.mfa_enabled) {
         // User doesn't have MFA enabled - prompt for enrollment
-        console.log('User does not have MFA enabled, showing enrollment modal');
+        logger.log('User does not have MFA enabled, showing enrollment modal');
         setIsFirstPasswordLogin(true);
         setStep('mfa-enroll');
         setIsLoading(false); // Explicitly set loading to false here
         return;
       }
 
-      console.log('User has MFA enabled, checking device trust...');
+      logger.log('User has MFA enabled, checking device trust...');
 
       // Step 3: Check if device is trusted
       const deviceToken = localStorage.getItem('device_token');
       const deviceExpires = localStorage.getItem('device_expires');
-      console.log('Device trust check - token exists:', !!deviceToken, 'expires:', deviceExpires);
+      logger.log('Device trust check - token exists:', !!deviceToken, 'expires:', deviceExpires);
       
       if (deviceToken) {
-        console.log('Checking device trust with token:', deviceToken.substring(0, 8) + '...');
+        logger.log('Checking device trust with token:', deviceToken.substring(0, 8) + '...');
         const checkEndpoint = USE_V2_MFA ? '/mfa2/check-device' : '/mfa/check-device';
         const response = await fetch(`${API_BASE_URL}${checkEndpoint}`, {
           method: 'POST',
@@ -292,12 +293,12 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         });
 
         const deviceData = await response.json();
-        console.log('Device trust check result:', deviceData);
-        console.log('deviceData.trusted:', deviceData.trusted);
-        console.log('deviceData.expired:', deviceData.expired);
+        logger.log('Device trust check result:', deviceData);
+        logger.log('deviceData.trusted:', deviceData.trusted);
+        logger.log('deviceData.expired:', deviceData.expired);
         if (deviceData.trusted) {
           // Device is trusted - skip MFA and mark as verified
-          console.log('Device is trusted, skipping MFA');
+          logger.log('Device is trusted, skipping MFA');
 
           // Set mfa_verified_at for this trusted device session
           try {
@@ -305,25 +306,25 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
               .from('profiles')
               .update({ mfa_verified_at: new Date().toISOString() })
               .eq('id', session.user.id);
-            console.log('Set mfa_verified_at for trusted device');
+            logger.log('Set mfa_verified_at for trusted device');
 
             // CRITICAL: Force refresh profile to bypass cache
             await refetchProfile(true); // forceRefresh = true
-            console.log('Refetched profile after setting mfa_verified_at');
+            logger.log('Refetched profile after setting mfa_verified_at');
           } catch (error) {
-            console.error('Error setting mfa_verified_at:', error);
+            logger.error('Error setting mfa_verified_at:', error);
           }
 
           onSuccess();
           return;
         } else {
-          console.log('Device is NOT trusted - requiring MFA');
-          console.log('Reason: trusted=', deviceData.trusted, 'expired=', deviceData.expired);
+          logger.log('Device is NOT trusted - requiring MFA');
+          logger.log('Reason: trusted=', deviceData.trusted, 'expired=', deviceData.expired);
         }
       }
 
       // Step 4: Create MFA challenge
-      console.log('Creating MFA challenge...');
+      logger.log('Creating MFA challenge...');
       const mfaEndpoint = USE_V2_MFA ? '/mfa2/challenge' : '/mfa/challenge';
       const challengeResponse = await fetch(`${API_BASE_URL}${mfaEndpoint}`, {
         method: 'POST',
@@ -334,35 +335,35 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
         body: JSON.stringify({})
       });
 
-      console.log('Challenge response status:', challengeResponse.status);
+      logger.log('Challenge response status:', challengeResponse.status);
       const challengeData = await challengeResponse.json();
-      console.log('Challenge response data:', challengeData);
-      console.log('challengeData.mfa_required:', challengeData.mfa_required);
+      logger.log('Challenge response data:', challengeData);
+      logger.log('challengeData.mfa_required:', challengeData.mfa_required);
 
       if (!challengeData.mfa_required) {
-        console.log('MFA not required, calling onSuccess');
+        logger.log('MFA not required, calling onSuccess');
         onSuccess();
         return;
       }
 
       // Check if user needs enrollment (corrupted state: MFA enabled but no phone)
       if (challengeData.needs_enrollment) {
-        console.log('MFA enrollment required (missing phone number) - redirecting to enrollment');
+        logger.log('MFA enrollment required (missing phone number) - redirecting to enrollment');
         setEnrollmentRequired(true);
         setStep('mfa-enroll');
         return;
       }
 
-      console.log('Challenge data received:', challengeData);
-      console.log('Setting factorId to:', challengeData.factor_id);
-      console.log('Setting challengeId to:', challengeData.challenge_id);
-      console.log('Setting phoneLastFour to:', challengeData.phone_masked);
+      logger.log('Challenge data received:', challengeData);
+      logger.log('Setting factorId to:', challengeData.factor_id);
+      logger.log('Setting challengeId to:', challengeData.challenge_id);
+      logger.log('Setting phoneLastFour to:', challengeData.phone_masked);
       setFactorId(challengeData.factor_id || '');
       setChallengeId(challengeData.challenge_id || '');
       setPhoneLastFour(challengeData.phone_masked || '');
-      console.log('Setting step to mfa-challenge');
+      logger.log('Setting step to mfa-challenge');
       setStep('mfa-challenge');
-      console.log('Step set complete');
+      logger.log('Step set complete');
 
     } catch (err) {
       onError(err instanceof Error ? err.message : 'An error occurred');
@@ -383,8 +384,8 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       setError(null);
     }
 
-    console.log('MFA Verify called with factorId:', factorId);
-    console.log('Code:', code);
+    logger.log('MFA Verify called with factorId:', factorId);
+    logger.log('Code:', code);
 
     try {
       const verifyEndpoint = USE_V2_MFA ? '/mfa2/verify' : '/mfa/verify';
@@ -427,7 +428,7 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
       // Update the session if MFA verification returned new tokens
       if (data.session) {
-        console.log('MFA verify returned new session, updating auth state');
+        logger.log('MFA verify returned new session, updating auth state');
         await supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token
@@ -436,11 +437,11 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       
       // Store device token if remember device was selected
       if (rememberDevice && data.device_token) {
-        console.log('Storing device token for 30-day trust:', data.device_token.substring(0, 8) + '...');
+        logger.log('Storing device token for 30-day trust:', data.device_token.substring(0, 8) + '...');
         localStorage.setItem('device_token', data.device_token);
         localStorage.setItem('device_expires', data.device_expires_at);
       } else {
-        console.log('Device token not stored. rememberDevice:', rememberDevice, 'device_token present:', !!data.device_token);
+        logger.log('Device token not stored. rememberDevice:', rememberDevice, 'device_token present:', !!data.device_token);
       }
 
       // CRITICAL: Set mfa_verified_at in profiles after successful MFA verification
@@ -450,14 +451,14 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
 
       if (currentUserId) {
         try {
-          console.log('Setting mfa_verified_at after successful MFA verification');
+          logger.log('Setting mfa_verified_at after successful MFA verification');
           await supabase
             .from('profiles')
             .update({ mfa_verified_at: new Date().toISOString() })
             .eq('id', currentUserId);
-          console.log('Successfully set mfa_verified_at for user:', currentUserId);
+          logger.log('Successfully set mfa_verified_at for user:', currentUserId);
         } catch (error) {
-          console.error('Error setting mfa_verified_at:', error);
+          logger.error('Error setting mfa_verified_at:', error);
           // Don't block login if this fails - the backend might have already set it
         }
       }
@@ -507,9 +508,9 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
     onSuccess();
   };
 
-  console.log('MFALoginFlow render - current step:', step);
-  console.log('MFALoginFlow render - factorId:', factorId);
-  console.log('MFALoginFlow render - challengeId:', challengeId);
+  logger.log('MFALoginFlow render - current step:', step);
+  logger.log('MFALoginFlow render - factorId:', factorId);
+  logger.log('MFALoginFlow render - challengeId:', challengeId);
 
   if (step === 'mfa-enroll') {
     return (

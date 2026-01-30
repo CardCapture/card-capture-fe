@@ -24,6 +24,23 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      // Prevent direct console.* usage - use logger utility instead
+      // Exception: logger.ts is allowed to use console.*
+      "no-console": ["warn", { allow: ["warn", "error"] }],
+    },
+  },
+  // Allow console.* in logger utility (it wraps console calls)
+  {
+    files: ["**/utils/logger.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  // Allow console.* in e2e test files for debugging
+  {
+    files: ["e2e/**/*.ts"],
+    rules: {
+      "no-console": "off",
     },
   }
 );

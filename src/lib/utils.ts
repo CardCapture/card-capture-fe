@@ -2,6 +2,7 @@
 
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { logger } from '@/utils/logger'
 
 // --- Existing Utility ---
 
@@ -254,7 +255,7 @@ export const formatBirthday = (dateStr: string | null | undefined): string => {
         }
       }
       
-      console.warn("Invalid date string for birthday:", dateStr);
+      logger.warn("Invalid date string for birthday:", dateStr);
       return dateStr; // Return original string if we can't parse it
     }
 
@@ -275,7 +276,7 @@ export const formatBirthday = (dateStr: string | null | undefined): string => {
     });
 
   } catch (e) {
-    console.warn("Error formatting birthday:", dateStr, e);
+    logger.warn("Error formatting birthday:", dateStr, e);
     return dateStr; // Return original string on error
   }
 };
@@ -312,7 +313,7 @@ export const formatDateOrTimeAgo = (dateStr: string | null | undefined): string 
         const date = new Date(dateStr);
         // Check if the date is valid after parsing
         if (isNaN(date.getTime())) {
-            console.warn("Invalid date string for formatting:", dateStr);
+            logger.warn("Invalid date string for formatting:", dateStr);
             return '';
         }
         // Format to locale string (e.g., "4/6/2025" in en-US)
@@ -322,7 +323,7 @@ export const formatDateOrTimeAgo = (dateStr: string | null | undefined): string 
             year: 'numeric',
         });
     } catch (e) {
-        console.warn("Error formatting date:", dateStr, e);
+        logger.warn("Error formatting date:", dateStr, e);
         return ''; // Return empty string on error
     }
 };

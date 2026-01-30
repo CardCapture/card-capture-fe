@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { logger } from '@/utils/logger';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -300,7 +301,7 @@ function SortableRow({ field, onFieldUpdate, onFieldDelete }: {
 }
 
 export function CardFieldPreferences({ fields, onFieldsChange }: CardFieldPreferencesProps) {
-  console.log('[CardFieldPreferences] fields:', fields);
+  logger.log('[CardFieldPreferences] fields:', fields);
 
   // Group fields by type (address group vs individual) while preserving original order
   const groupedFields = React.useMemo(() => {

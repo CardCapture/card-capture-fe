@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { EventWithStats } from "@/types/event";
 import { EventService } from "@/services/EventService";
 import { toast } from "sonner";
+import { logger } from '@/utils/logger';
 
 interface UseEventReturn {
   event: EventWithStats | null;
@@ -26,13 +27,13 @@ export function useEvent(eventId?: string): UseEventReturn {
       setLoading(true);
       setError(null);
       
-      console.log("useEvent: fetching event", eventId);
+      logger.log("useEvent: fetching event", eventId);
       const eventData = await EventService.getEventWithStats(eventId);
-      console.log("useEvent: fetched event data:", eventData);
+      logger.log("useEvent: fetched event data:", eventData);
       
       setEvent(eventData);
     } catch (err) {
-      console.error("useEvent: fetch error:", err);
+      logger.error("useEvent: fetch error:", err);
       setError(err as Error);
       toast("Failed to fetch event details");
     } finally {

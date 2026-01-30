@@ -1,6 +1,7 @@
 // src/components/Dashboard.tsx (Reverted State - After useCards, Before useCardTable)
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { logger } from '@/utils/logger';
 import { useNavigate, useParams } from "react-router-dom";
 // Restore full Tanstack Table imports
 import {
@@ -107,7 +108,7 @@ const Dashboard = () => {
   
   // Debug school loading
   useEffect(() => {
-    console.log('🔍 School loading debug:', {
+    logger.log('🔍 School loading debug:', {
       schoolLoading,
       hasSchool: !!school,
       schoolId: profile?.school_id,
@@ -170,20 +171,20 @@ const Dashboard = () => {
 
   // Extract cardFields from school data first (moved up for dependency)
   const cardFields = useMemo(() => {
-    console.log('🔍 Debug cardFields:', {
+    logger.log('🔍 Debug cardFields:', {
       hasSchool: !!school,
       cardFieldsRaw: school?.card_fields,
       cardFieldsLength: school?.card_fields?.length || 0
     });
     
     if (!school?.card_fields) {
-      console.log('🚨 No school or card_fields found');
+      logger.log('🚨 No school or card_fields found');
       return [];
     }
 
     // Use the SchoolService transformation to apply proper field type inference
     const transformed = SchoolService.transformCardFieldsForUI(school.card_fields);
-    console.log('🔍 Transformed cardFields:', transformed);
+    logger.log('🔍 Transformed cardFields:', transformed);
     return transformed;
   }, [school?.card_fields]);
 
@@ -347,7 +348,7 @@ const Dashboard = () => {
   // ✅ REMOVED: Heavy debug logging causing unnecessary re-renders
   // useEffect(() => {
   //   if (cards) {
-  //     console.log("Cards loaded:", cards.length);
+  //     logger.log("Cards loaded:", cards.length);
   //   }
   // }, [cards]);
 
@@ -524,7 +525,7 @@ const Dashboard = () => {
   // useEffect(() => {
   //   // Debug row selection changes
   //   if (process.env.NODE_ENV === 'development') {
-  //     console.log("Row selection changed:", Object.keys(rowSelection).length);
+  //     logger.log("Row selection changed:", Object.keys(rowSelection).length);
   //   }
   // }, [rowSelection]);
 
@@ -588,7 +589,7 @@ const Dashboard = () => {
   // ✅ REMOVED: Debug logging causing re-renders
   // useEffect(() => {
   //   if (process.env.NODE_ENV === 'development' && selectedCardForReview) {
-  //     console.log("Card selected for review:", selectedCardForReview.id);
+  //     logger.log("Card selected for review:", selectedCardForReview.id);
   //   }
   // }, [selectedCardForReview]);
 
@@ -827,7 +828,7 @@ const Dashboard = () => {
   const fieldsToShow = useMemo(() => {
     if (!selectedCardForReview) return [];
     
-    console.log('🔍 Debug fieldsToShow:', {
+    logger.log('🔍 Debug fieldsToShow:', {
       hasSelectedCard: !!selectedCardForReview,
       cardFields: cardFields,
       cardFieldsCount: cardFields.length,
@@ -855,7 +856,7 @@ const Dashboard = () => {
       .filter((f) => f.visible && !fieldsToExclude.has(f.key))
       .map((f) => f.key);
     
-    console.log('🔍 fieldsToShow result:', result);
+    logger.log('🔍 fieldsToShow result:', result);
     return result;
   }, [cardFields, selectedCardForReview, school]);
 
@@ -895,9 +896,9 @@ const Dashboard = () => {
   }, []);
 
   const handleEventUpdated = useCallback(async () => {
-    console.log("Refetching event data after update...");
+    logger.log("Refetching event data after update...");
     await refetchEvent();
-    console.log("Event data refetched successfully");
+    logger.log("Event data refetched successfully");
   }, [refetchEvent]);
 
   // --- useEffect for hiding exported cards & sorting ---
@@ -1011,7 +1012,7 @@ const Dashboard = () => {
 
   // ✅ REMOVED: Debug logging
   // useEffect(() => {
-  //   console.log("Cards after fetch:", cards);
+  //   logger.log("Cards after fetch:", cards);
   // }, [cards]);
 
   // --- State Declarations (consolidated here) ---

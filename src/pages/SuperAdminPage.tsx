@@ -16,6 +16,7 @@ import { Building2, Plus, UserPlus, Settings, LogOut } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { superAdminApi, type School } from "@/lib/superAdminApi";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from '@/utils/logger';
 
 interface NewSchoolForm {
   name: string;
@@ -58,7 +59,7 @@ const SuperAdminPage: React.FC = () => {
       const schools = await superAdminApi.getSchools();
       setSchools(schools);
     } catch (error) {
-      console.error("Error fetching schools:", error);
+      logger.error("Error fetching schools:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to fetch schools"
       );
@@ -88,7 +89,7 @@ const SuperAdminPage: React.FC = () => {
       setIsAddSchoolModalOpen(false);
       fetchSchools();
     } catch (error) {
-      console.error("Error creating school:", error);
+      logger.error("Error creating school:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to create school"
       );
@@ -126,7 +127,7 @@ const SuperAdminPage: React.FC = () => {
       setSelectedSchoolForInvite(null);
       fetchSchools();
     } catch (error) {
-      console.error("Error creating invitation:", error);
+      logger.error("Error creating invitation:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to create invitation"
       );
@@ -147,7 +148,7 @@ const SuperAdminPage: React.FC = () => {
       await signOut();
       toast.success("Logged out successfully");
     } catch (error) {
-      console.error("Error during logout:", error);
+      logger.error("Error during logout:", error);
       toast.error("Failed to logout. Please try again.");
     }
   };

@@ -1,4 +1,5 @@
 import { authFetch } from '@/lib/authFetch';
+import { logger } from '@/utils/logger';
 
 export interface EmailStartRequest {
   email: string;
@@ -208,12 +209,12 @@ class RegistrationServiceClass {
    */
   private async getCaptchaToken(): Promise<string | undefined> {
     // Temporarily disable hCaptcha for testing
-    console.log('hCaptcha temporarily disabled for testing');
+    logger.log('hCaptcha temporarily disabled for testing');
     return undefined;
     
     // Check if hCaptcha is loaded
     if (typeof window.hcaptcha === 'undefined') {
-      console.warn('hCaptcha not loaded, proceeding without CAPTCHA token');
+      logger.warn('hCaptcha not loaded, proceeding without CAPTCHA token');
       return undefined;
     }
 
@@ -224,7 +225,7 @@ class RegistrationServiceClass {
       });
       return token;
     } catch (error) {
-      console.warn('hCaptcha execution failed:', error);
+      logger.warn('hCaptcha execution failed:', error);
       return undefined;
     }
   }
