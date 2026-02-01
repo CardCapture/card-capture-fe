@@ -41,6 +41,32 @@ export interface InviteAdminResponse {
   };
 }
 
+export interface TimeSeriesDataPoint {
+  date: string;
+  count: number;
+}
+
+export interface SchoolStats {
+  school_id: string;
+  school_name: string;
+  students: number;
+  events: number;
+  cards: number;
+  users: number;
+}
+
+export interface PlatformStats {
+  total_students: number;
+  total_schools: number;
+  total_events: number;
+  total_cards: number;
+  total_users: number;
+  students_over_time: TimeSeriesDataPoint[];
+  events_over_time: TimeSeriesDataPoint[];
+  cards_over_time: TimeSeriesDataPoint[];
+  schools_breakdown: SchoolStats[];
+}
+
 // Helper function to get auth headers
 async function getAuthHeaders(): Promise<HeadersInit> {
   const session = await supabase.auth.getSession();
@@ -122,6 +148,16 @@ export const superAdminApi = {
       }
     );
     return handleResponse<InviteAdminResponse>(response);
+  },
+
+  // Get platform-wide statistics
+  async getStats(): Promise<PlatformStats> {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/superadmin/stats`, {
+      method: "GET",
+      headers,
+    });
+    return handleResponse<PlatformStats>(response);
   },
 };
 
