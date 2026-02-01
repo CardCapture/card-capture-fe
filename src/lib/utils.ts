@@ -21,6 +21,7 @@ export function cn(...inputs: ClassValue[]) {
  */
 export const normalizeName = (name: string | null | undefined): string => {
   if (!name) return '';
+  if (typeof name !== 'string') return String(name);
   
   return name
     .toLowerCase()
@@ -42,6 +43,7 @@ export const normalizeName = (name: string | null | undefined): string => {
  */
 export const normalizeEmail = (email: string | null | undefined): string => {
   if (!email) return '';
+  if (typeof email !== 'string') return String(email);
   return email.toLowerCase().trim();
 };
 
@@ -51,6 +53,7 @@ export const normalizeEmail = (email: string | null | undefined): string => {
  */
 export const normalizeAddress = (address: string | null | undefined): string => {
   if (!address) return '';
+  if (typeof address !== 'string') return String(address);
   
   return address
     .toLowerCase()
@@ -79,6 +82,7 @@ export const normalizeAddress = (address: string | null | undefined): string => 
  */
 export const normalizeSchoolName = (schoolName: string | null | undefined): string => {
   if (!schoolName) return '';
+  if (typeof schoolName !== 'string') return String(schoolName);
   
   return schoolName
     .toLowerCase()
@@ -106,6 +110,7 @@ export const normalizeSchoolName = (schoolName: string | null | undefined): stri
  */
 export const normalizeMajor = (major: string | null | undefined): string => {
   if (!major) return '';
+  if (typeof major !== 'string') return String(major);
   
   return major
     .toLowerCase()
@@ -134,6 +139,7 @@ export const normalizeMajor = (major: string | null | undefined): string => {
  */
 export const normalizeFieldValue = (value: string | null | undefined, fieldKey: string): string => {
   if (!value) return '';
+  if (typeof value !== 'string') return String(value);
   
   // Skip normalization for certain fields that should preserve original formatting
   // Includes select fields that need exact value matching for dropdowns

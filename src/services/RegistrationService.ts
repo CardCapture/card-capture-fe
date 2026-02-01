@@ -65,6 +65,21 @@ export interface ResendVerificationRequest {
 
 class RegistrationServiceClass {
   private baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  private sessionToken: string | null = null;
+
+  private getSessionToken(): string | undefined {
+    return this.sessionToken || sessionStorage.getItem('cc_form_session') || undefined;
+  }
+
+  private storeSessionToken(token: string) {
+    this.sessionToken = token;
+    sessionStorage.setItem('cc_form_session', token);
+  }
+
+  clearSessionToken() {
+    this.sessionToken = null;
+    sessionStorage.removeItem('cc_form_session');
+  }
 
   /**
    * Start registration with email (magic link flow)
@@ -92,7 +107,7 @@ class RegistrationServiceClass {
   /**
    * Verify event code and get form access
    */
-  async verifyEventCode(code: string): Promise<{ success: boolean; redirect: string; event?: any }> {
+  async verifyEventCode(code: string): Promise<{ success: boolean; redirect: string; event?: any; session_token?: string }> {
     const response = await authFetch(`${this.baseUrl}/api/register/verify-event-code`, {
       method: 'POST',
       headers: {
@@ -109,13 +124,17 @@ class RegistrationServiceClass {
       throw new Error(errorData.detail || 'Failed to verify event code');
     }
 
-    return response.json();
+    const data = await response.json();
+    if (data.session_token) {
+      this.storeSessionToken(data.session_token);
+    }
+    return data;
   }
 
   /**
    * Verify magic link token (called when user clicks email link)
    */
-  async verifyMagicLink(token: string): Promise<{ success: boolean; email: string; redirect: string }> {
+  async verifyMagicLink(token: string): Promise<{ success: boolean; email: string; redirect: string; session_token?: string }> {
     const response = await authFetch(`${this.baseUrl}/api/register/verify-magic-link?token=${token}`, {
       method: 'GET',
     });
@@ -125,7 +144,11 @@ class RegistrationServiceClass {
       throw new Error(errorData.detail || 'Failed to verify magic link');
     }
 
-    return response.json();
+    const data = await response.json();
+    if (data.session_token) {
+      this.storeSessionToken(data.session_token);
+    }
+    return data;
   }
 
   /**
@@ -134,7 +157,7 @@ class RegistrationServiceClass {
   async getFormSession(): Promise<FormSession> {
     const response = await authFetch(`${this.baseUrl}/api/register/form-session`, {
       method: 'GET',
-    });
+    }, this.getSessionToken());
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -154,13 +177,14 @@ class RegistrationServiceClass {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(formData),
-    });
+    }, this.getSessionToken());
 
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.detail || 'Failed to submit registration');
     }
 
+    this.clearSessionToken();
     return response.json();
   }
 
