@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
+import { logger } from '@/utils/logger';
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, RotateCw, RotateCcw, Maximize2, QrCode } from "lucide-react";
 import { toast } from '@/lib/toast';
@@ -303,7 +304,7 @@ const ReviewImagePanel = ({
           }
         })
         .catch((error) => {
-          console.error("[ReviewImagePanel] Error loading image:", error);
+          logger.error("[ReviewImagePanel] Error loading image:", error);
           setImgError(true);
           toast.error("Failed to load image", "Image Error");
         })

@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { Session } from '@supabase/supabase-js';
+import { logger } from '@/utils/logger';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -12,7 +13,7 @@ export async function updateSchoolCardFields(
     const accessToken = session?.access_token;
 
     if (!accessToken) {
-      console.error('No access token available');
+      logger.error('No access token available');
       throw new Error('No access token available');
     }
 
@@ -34,7 +35,7 @@ export async function updateSchoolCardFields(
         const errorData = JSON.parse(responseText);
         errorMessage = errorData.error || errorMessage;
       } catch (e) {
-        console.error('Error parsing error response:', e);
+        logger.error('Error parsing error response:', e);
       }
       throw new Error(errorMessage);
     }
@@ -42,7 +43,7 @@ export async function updateSchoolCardFields(
     const parsedResponse = JSON.parse(responseText);
     return parsedResponse;
   } catch (error) {
-    console.error('Error in updateSchoolCardFields:', error);
+    logger.error('Error in updateSchoolCardFields:', error);
     throw error;
   }
 } 

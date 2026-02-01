@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { RegistrationService } from '@/services/RegistrationService';
+import { logger } from '@/utils/logger';
 
 export default function RegisterPage() {
   const [visible, setVisible] = useState(false);
@@ -34,7 +35,7 @@ export default function RegisterPage() {
     
     // Track page view
     // TODO: Replace with your analytics service
-    console.log('analytics:page_view', { page: 'register_landing' });
+    logger.log('analytics:page_view', { page: 'register_landing' });
   }, []);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function RegisterPage() {
     if (!email.trim() || submitting || submissionRef.current) return;
 
     // Analytics tracking
-    console.log('analytics:cta_click', { type: 'email_registration', email_domain: email.split('@')[1] });
+    logger.log('analytics:cta_click', { type: 'email_registration', email_domain: email.split('@')[1] });
 
     submissionRef.current = true;
     setSubmitting(true);
@@ -88,7 +89,7 @@ export default function RegisterPage() {
     if (eventCode.length !== 6 || submitting || codeError) return;
 
     // Analytics tracking
-    console.log('analytics:cta_click', { type: 'event_code_verification', code_length: eventCode.length });
+    logger.log('analytics:cta_click', { type: 'event_code_verification', code_length: eventCode.length });
 
     setSubmitting(true);
     setCodeError('');
@@ -117,17 +118,17 @@ export default function RegisterPage() {
   };
   
   const handlePrimaryCTAClick = () => {
-    console.log('analytics:cta_click', { type: 'primary_email_cta' });
+    logger.log('analytics:cta_click', { type: 'primary_email_cta' });
     setShowEmailInput(true);
   };
   
   const handleSecondaryCTAClick = () => {
-    console.log('analytics:cta_click', { type: 'secondary_code_cta' });
+    logger.log('analytics:cta_click', { type: 'secondary_code_cta' });
     setShowCodeInput(true);
   };
   
   const handleLearnMoreClick = () => {
-    console.log('analytics:link_click', { type: 'learn_more' });
+    logger.log('analytics:link_click', { type: 'learn_more' });
     // Navigate to learn more page when built
     // navigate('/learn-more');
   };

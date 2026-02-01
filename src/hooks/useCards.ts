@@ -8,6 +8,7 @@ import type { ProspectCard, CardStatus } from "@/types/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { CardService } from "@/services/CardService";
 import { debounce } from "@/utils/debounce";
+import { logger } from '@/utils/logger';
 
 // Update the interface to use the new type
 interface UseCardsReturn {
@@ -40,19 +41,19 @@ export function useCards(): UseCardsReturn {
 
   // Export a function to set the review modal state
   const setReviewModalState = useCallback((isOpen: boolean) => {
-    console.log(`Setting review modal state to: ${isOpen}`);
+    logger.log(`Setting review modal state to: ${isOpen}`);
     isInReviewModalRef.current = isOpen;
   }, []);
 
   const fetchCards = useCallback(async () => {
-    console.log("Fetching cards via useCards hook...");
+    logger.log("Fetching cards via useCards hook...");
     setIsLoading(true);
 
     try {
       const cards = await CardService.getAllCards();
       setCards(cards);
     } catch (error) {
-      console.error("Error fetching cards:", error);
+      logger.error("Error fetching cards:", error);
       toast.error(
         error instanceof Error ? error.message : "An unknown error occurred.",
         "Error Fetching Cards"
@@ -76,14 +77,14 @@ export function useCards(): UseCardsReturn {
   // Effect for Supabase real-time subscription
   useEffect(() => {
     if (!supabase) {
-      console.warn(
+      logger.warn(
         "Supabase client not available, real-time updates disabled."
       );
       return;
     }
 
     if (!schoolId) {
-      console.warn("No school ID available, skipping realtime subscription");
+      logger.warn("No school ID available, skipping realtime subscription");
       return;
     }
 
@@ -95,7 +96,7 @@ export function useCards(): UseCardsReturn {
       new?: Record<string, unknown>;
       old?: Record<string, unknown>;
     }) => {
-      console.log("Supabase change received:", payload);
+      logger.log("Supabase change received:", payload);
 
       // Additional client-side filtering to ensure change is relevant
       const newRecord = payload.new;
@@ -107,11 +108,11 @@ export function useCards(): UseCardsReturn {
         (oldRecord && oldRecord.school_id === schoolId);
 
       if (isRelevant) {
-        console.log("Relevant change detected for school:", schoolId);
+        logger.log("Relevant change detected for school:", schoolId);
         // Use debounced fetch to prevent multiple rapid updates
         debouncedFetchCards();
       } else {
-        console.log("Ignoring change - not for our school");
+        logger.log("Ignoring change - not for our school");
       }
     };
 
@@ -140,19 +141,19 @@ export function useCards(): UseCardsReturn {
       )
       .subscribe((status, err) => {
         if (status === "SUBSCRIBED") {
-          console.log(
+          logger.log(
             `Supabase channel '${channelName}' subscribed successfully!`
           );
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.error(`Supabase channel error: ${status}`, err);
+          logger.error(`Supabase channel error: ${status}`, err);
           // Attempt to reconnect
           setTimeout(() => {
-            console.log("Attempting to reconnect...");
+            logger.log("Attempting to reconnect...");
             channel?.unsubscribe();
             channel?.subscribe();
           }, 5000);
         }
-        console.log(`Supabase channel status: ${status}`);
+        logger.log(`Supabase channel status: ${status}`);
       });
 
     // Cleanup function
@@ -161,12 +162,12 @@ export function useCards(): UseCardsReturn {
         clearTimeout(updateTimeoutRef.current);
       }
       if (supabase && channel) {
-        console.log(`Unsubscribing from Supabase channel '${channelName}'`);
+        logger.log(`Unsubscribing from Supabase channel '${channelName}'`);
         supabase
           .removeChannel(channel)
-          .then((status) => console.log(`Unsubscribe status: ${status}`))
+          .then((status) => logger.log(`Unsubscribe status: ${status}`))
           .catch((err) =>
-            console.error("Error unsubscribing from Supabase channel:", err)
+            logger.error("Error unsubscribing from Supabase channel:", err)
           );
       }
     };
@@ -187,7 +188,7 @@ export function useCards(): UseCardsReturn {
       // Refresh cards after retry
       await fetchCards();
     } catch (error) {
-      console.error('Error retrying AI processing:', error);
+      logger.error('Error retrying AI processing:', error);
       toast.error(
         error instanceof Error ? error.message : 'Failed to retry AI processing',
         'Retry Failed'

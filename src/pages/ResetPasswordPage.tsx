@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "@/lib/toast";
+import { logger } from '@/utils/logger';
 
 const ResetPasswordPage = () => {
   const [password, setPassword] = useState("");
@@ -27,13 +28,13 @@ const ResetPasswordPage = () => {
   // Handle both magic link and hash fragment redirect from Supabase
   useEffect(() => {
     const handleAuthRedirect = async () => {
-      console.log("🔍 Current URL:", window.location.href);
-      console.log("🔍 Hash:", location.hash);
-      console.log("🔍 Location state:", location.state);
+      logger.log("🔍 Current URL:", window.location.href);
+      logger.log("🔍 Hash:", location.hash);
+      logger.log("🔍 Location state:", location.state);
 
       // Check if we came from our magic link system
       if (location.state?.fromMagicLink) {
-        console.log("✅ Arrived from magic link system - ready for password reset");
+        logger.log("✅ Arrived from magic link system - ready for password reset");
         
         // Clear any existing error since magic link was successful
         setError(null);
@@ -41,18 +42,18 @@ const ResetPasswordPage = () => {
         // Check if user is authenticated (magic link should have set session)
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          console.log("✅ User session found - ready for password reset");
+          logger.log("✅ User session found - ready for password reset");
           setIsAuthenticated(true);
           // Clear the state to prevent re-processing on navigation
           window.history.replaceState(null, "", location.pathname);
           return;
                  } else {
-           console.log("⚠️ No session found, but magic link indicated success");
+           logger.log("⚠️ No session found, but magic link indicated success");
            // For password reset, we might not always have a session
            // Check if email was passed from magic link
            if (location.state?.email && location.state.email !== 'Please enter your email') {
              setEmail(location.state.email);
-             console.log("✅ Email found from magic link:", location.state.email);
+             logger.log("✅ Email found from magic link:", location.state.email);
            }
            setIsAuthenticated(false);
            return;
@@ -64,14 +65,14 @@ const ResetPasswordPage = () => {
         try {
           // Parse the hash fragment to get the tokens
           const hashParams = new URLSearchParams(location.hash.substring(1));
-          console.log("🔍 Hash params:", Object.fromEntries(hashParams));
+          logger.log("🔍 Hash params:", Object.fromEntries(hashParams));
 
           const accessToken = hashParams.get("access_token");
           const refreshToken = hashParams.get("refresh_token");
           const type = hashParams.get("type");
 
           if (accessToken && type === "recovery") {
-            console.log("✅ Found recovery tokens");
+            logger.log("✅ Found recovery tokens");
 
             // Set the session with the recovery tokens
             const { data, error: sessionError } = await supabase.auth.setSession({
@@ -80,27 +81,27 @@ const ResetPasswordPage = () => {
             });
 
             if (sessionError) {
-              console.error("❌ Error setting session:", sessionError);
+              logger.error("❌ Error setting session:", sessionError);
               setError("Error processing reset link. Please try again or contact support.");
               return;
             }
 
-            console.log("✅ Session set successfully:", data);
+            logger.log("✅ Session set successfully:", data);
             setIsAuthenticated(true);
             
             // Clear the hash without triggering a reload
             window.history.replaceState(null, "", location.pathname);
           } else {
-            console.error("❌ Missing tokens or wrong type. Type:", type);
+            logger.error("❌ Missing tokens or wrong type. Type:", type);
             setError("Invalid reset link. Please check the link and try again.");
           }
         } catch (err) {
-          console.error("❌ Error handling hash redirect:", err);
+          logger.error("❌ Error handling hash redirect:", err);
           setError("Error processing reset link. Please try again or contact support.");
         }
       } else if (!location.state?.fromMagicLink) {
         // Only show error if this wasn't from our magic link system
-        console.log("ℹ️ No hash fragment found and not from magic link - direct access");
+        logger.log("ℹ️ No hash fragment found and not from magic link - direct access");
         setError("Please click the reset link from your email, or request a new password reset.");
       }
     };
@@ -182,7 +183,7 @@ const ResetPasswordPage = () => {
         if (signInError) {
           // If sign in fails, the user probably needs to set their password first
           // We need to call the backend to handle password reset for magic link users
-          console.log("Password reset needed for magic link user");
+          logger.log("Password reset needed for magic link user");
           setError("Please contact support to complete your password reset, or try using the email link again.");
           return;
         }
@@ -194,7 +195,7 @@ const ResetPasswordPage = () => {
       // Redirect to login page
       navigate("/login", { replace: true });
     } catch (err) {
-      console.error("Error resetting password:", err);
+      logger.error("Error resetting password:", err);
       setError(
         err instanceof Error
           ? err.message

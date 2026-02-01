@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { addressSuggestionsApi, type AddressSuggestionsRequest, type AddressSuggestionsResponse } from "@/api/backend/addressSuggestions";
 import { toast } from "@/lib/toast";
+import { logger } from '@/utils/logger';
 
 interface UseAddressSuggestionsOptions {
   debounceMs?: number;
@@ -65,11 +66,11 @@ export function useAddressSuggestions(options: UseAddressSuggestionsOptions = {}
         setIsLoading(true);
         setError(null);
         
-        console.log("🔍 Validating address:", request);
+        logger.log("🔍 Validating address:", request);
         
         const response = await addressSuggestionsApi.getAddressSuggestions(request);
         
-        console.log("✅ Address validation response:", response);
+        logger.log("✅ Address validation response:", response);
         
         setSuggestions(response);
         setHasValidationOccurred(true);
@@ -79,12 +80,12 @@ export function useAddressSuggestions(options: UseAddressSuggestionsOptions = {}
         if (response.has_suggestions && response.suggestions.length > 0) {
           const firstSuggestion = response.suggestions[0];
           if (firstSuggestion.confidence === "high") {
-            console.log("🎯 High confidence suggestion found");
+            logger.log("🎯 High confidence suggestion found");
           }
         }
         
       } catch (err) {
-        console.error("❌ Address validation failed:", err);
+        logger.error("❌ Address validation failed:", err);
         const errorMessage = err instanceof Error ? err.message : "Failed to validate address";
         setError(errorMessage);
         setSuggestions(null);

@@ -4,6 +4,7 @@ import { Mail, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { RegistrationService } from '@/services/RegistrationService';
+import { logger } from '@/utils/logger';
 
 export default function CheckEmailPage() {
   const [visible, setVisible] = useState(false);
@@ -31,7 +32,7 @@ export default function CheckEmailPage() {
   // Analytics tracking
   useEffect(() => {
     if (email) {
-      console.log('analytics:page_view', { page: 'check_email', email_domain: email.split('@')[1] });
+      logger.log('analytics:page_view', { page: 'check_email', email_domain: email.split('@')[1] });
     }
   }, [email]);
 
@@ -47,7 +48,7 @@ export default function CheckEmailPage() {
   const handleResend = async () => {
     if (!email || !canResend) return;
 
-    console.log('analytics:cta_click', { type: 'resend_email', email_domain: email.split('@')[1] });
+    logger.log('analytics:cta_click', { type: 'resend_email', email_domain: email.split('@')[1] });
 
     setResending(true);
     try {
@@ -73,7 +74,7 @@ export default function CheckEmailPage() {
   };
 
   const handleBack = () => {
-    console.log('analytics:cta_click', { type: 'back_to_register' });
+    logger.log('analytics:cta_click', { type: 'back_to_register' });
     navigate('/register');
   };
 

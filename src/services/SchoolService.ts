@@ -2,6 +2,7 @@ import { schoolsApi, type SchoolData } from "@/api/supabase/schools";
 import { backendSchoolsApi } from "@/api/backend/schools";
 import { configsApi, type SFTPConfig } from "@/api/supabase/configs";
 import { authFetch } from "@/lib/authFetch";
+import { logger } from '@/utils/logger';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -25,7 +26,7 @@ export class SchoolService {
       const response = await backendSchoolsApi.getSchool(schoolId);
       return response.school;
     } catch (error) {
-      console.warn("SchoolService: Backend API failed, trying Supabase", error);
+      logger.warn("SchoolService: Backend API failed, trying Supabase", error);
       // Fallback to Supabase
       return await schoolsApi.getSchool(schoolId);
     }
@@ -40,7 +41,7 @@ export class SchoolService {
     try {
       return await schoolsApi.getCardFields(schoolId);
     } catch (error) {
-      console.error("SchoolService: Failed to get card fields", error);
+      logger.error("SchoolService: Failed to get card fields", error);
       throw error;
     }
   }
@@ -52,7 +53,7 @@ export class SchoolService {
     try {
       return await schoolsApi.getMajors(schoolId);
     } catch (error) {
-      console.error("SchoolService: Failed to get majors", error);
+      logger.error("SchoolService: Failed to get majors", error);
       throw error;
     }
   }
@@ -67,7 +68,7 @@ export class SchoolService {
     try {
       return await schoolsApi.updateSchool(schoolId, updates);
     } catch (error) {
-      console.error("SchoolService: Failed to update school", error);
+      logger.error("SchoolService: Failed to update school", error);
       throw error;
     }
   }
@@ -93,7 +94,7 @@ export class SchoolService {
 
       await schoolsApi.updateCardFields(schoolId, cardFields);
     } catch (error) {
-      console.error("SchoolService: Failed to update card fields", error);
+      logger.error("SchoolService: Failed to update card fields", error);
       throw error;
     }
   }
@@ -110,7 +111,7 @@ export class SchoolService {
 
       await schoolsApi.updateMajors(schoolId, cleanMajors);
     } catch (error) {
-      console.error("SchoolService: Failed to update majors", error);
+      logger.error("SchoolService: Failed to update majors", error);
       throw error;
     }
   }
@@ -122,7 +123,7 @@ export class SchoolService {
     try {
       return await configsApi.getSftpConfig(schoolId);
     } catch (error) {
-      console.error("SchoolService: Failed to get SFTP config", error);
+      logger.error("SchoolService: Failed to get SFTP config", error);
       throw error;
     }
   }
@@ -260,7 +261,7 @@ export class SchoolService {
 
       return await response.json();
     } catch (error) {
-      console.error("SchoolService: Failed to get notification settings", error);
+      logger.error("SchoolService: Failed to get notification settings", error);
       throw error;
     }
   }
@@ -292,7 +293,7 @@ export class SchoolService {
         throw new Error(error.error || "Failed to update notification settings");
       }
     } catch (error) {
-      console.error("SchoolService: Failed to update notification settings", error);
+      logger.error("SchoolService: Failed to update notification settings", error);
       throw error;
     }
   }

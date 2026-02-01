@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { accountLinkingApi, LinkRequest } from "@/api/backend/accountLinking";
 import { toast } from "@/lib/toast";
+import { logger } from '@/utils/logger';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -72,7 +73,7 @@ export function PendingMergeRequestsBanner({ onUserMerged }: PendingMergeRequest
       );
       setPendingCount(response.count);
     } catch (error) {
-      console.error("Error fetching pending count:", error);
+      logger.error("Error fetching pending count:", error);
     }
   }, [session?.access_token]);
 
@@ -90,7 +91,7 @@ export function PendingMergeRequestsBanner({ onUserMerged }: PendingMergeRequest
       );
       setRequests(response.requests);
     } catch (error) {
-      console.error("Error fetching requests:", error);
+      logger.error("Error fetching requests:", error);
       toast.error("Failed to load link requests");
     } finally {
       setLoading(false);
@@ -120,7 +121,7 @@ export function PendingMergeRequestsBanner({ onUserMerged }: PendingMergeRequest
       // Notify parent to refresh users list
       onUserMerged?.();
     } catch (error) {
-      console.error("Error approving request:", error);
+      logger.error("Error approving request:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to approve request"
       );
@@ -143,7 +144,7 @@ export function PendingMergeRequestsBanner({ onUserMerged }: PendingMergeRequest
       setRequests((prev) => prev.filter((r) => r.id !== request.id));
       setPendingCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error("Error rejecting request:", error);
+      logger.error("Error rejecting request:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to reject request"
       );

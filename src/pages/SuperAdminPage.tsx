@@ -12,14 +12,70 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Building2, Plus, UserPlus, Settings, LogOut } from "lucide-react";
+import { Building2, Plus, UserPlus, Settings, LogOut, Users, Calendar, CreditCard, BarChart3, TrendingUp } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { superAdminApi, type School } from "@/lib/superAdminApi";
+import { superAdminApi, type School, type PlatformStats } from "@/lib/superAdminApi";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from '@/utils/logger';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
 
 interface NewSchoolForm {
   name: string;
   docai_processor_id: string;
+}
+
+// Helper function to merge multiple time series into one dataset for charts
+function mergeTimeSeriesData(
+  students: { date: string; count: number }[],
+  cards: { date: string; count: number }[],
+  events: { date: string; count: number }[]
+) {
+  const dateMap = new Map<
+    string,
+    { date: string; students: number; cards: number; events: number }
+  >();
+
+  // Get all unique dates
+  const allDates = new Set<string>();
+  students.forEach((d) => allDates.add(d.date));
+  cards.forEach((d) => allDates.add(d.date));
+  events.forEach((d) => allDates.add(d.date));
+
+  // Initialize all dates with zero values
+  allDates.forEach((date) => {
+    dateMap.set(date, { date, students: 0, cards: 0, events: 0 });
+  });
+
+  // Fill in actual values
+  students.forEach((d) => {
+    const entry = dateMap.get(d.date);
+    if (entry) entry.students = d.count;
+  });
+
+  cards.forEach((d) => {
+    const entry = dateMap.get(d.date);
+    if (entry) entry.cards = d.count;
+  });
+
+  events.forEach((d) => {
+    const entry = dateMap.get(d.date);
+    if (entry) entry.events = d.count;
+  });
+
+  // Sort by date and return
+  return Array.from(dateMap.values()).sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
 }
 
 interface InviteUserForm {
@@ -31,7 +87,9 @@ interface InviteUserForm {
 const SuperAdminPage: React.FC = () => {
   const { session, signOut } = useAuth();
   const [schools, setSchools] = useState<School[]>([]);
+  const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   // Modal states
   const [isAddSchoolModalOpen, setIsAddSchoolModalOpen] = useState(false);
@@ -58,12 +116,26 @@ const SuperAdminPage: React.FC = () => {
       const schools = await superAdminApi.getSchools();
       setSchools(schools);
     } catch (error) {
-      console.error("Error fetching schools:", error);
+      logger.error("Error fetching schools:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to fetch schools"
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch platform stats
+  const fetchStats = async () => {
+    try {
+      setStatsLoading(true);
+      const platformStats = await superAdminApi.getStats();
+      setStats(platformStats);
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      // Don't show toast for stats error - it's not critical
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -88,7 +160,7 @@ const SuperAdminPage: React.FC = () => {
       setIsAddSchoolModalOpen(false);
       fetchSchools();
     } catch (error) {
-      console.error("Error creating school:", error);
+      logger.error("Error creating school:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to create school"
       );
@@ -126,7 +198,7 @@ const SuperAdminPage: React.FC = () => {
       setSelectedSchoolForInvite(null);
       fetchSchools();
     } catch (error) {
-      console.error("Error creating invitation:", error);
+      logger.error("Error creating invitation:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to create invitation"
       );
@@ -147,13 +219,14 @@ const SuperAdminPage: React.FC = () => {
       await signOut();
       toast.success("Logged out successfully");
     } catch (error) {
-      console.error("Error during logout:", error);
+      logger.error("Error during logout:", error);
       toast.error("Failed to logout. Please try again.");
     }
   };
 
   useEffect(() => {
     fetchSchools();
+    fetchStats();
   }, []);
 
   if (loading) {
@@ -197,6 +270,185 @@ const SuperAdminPage: React.FC = () => {
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Platform Analytics */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Platform Analytics
+          </h2>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Students</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {statsLoading ? "..." : stats?.total_students ?? 0}
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Schools</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {statsLoading ? "..." : stats?.total_schools ?? 0}
+                    </p>
+                  </div>
+                  <Building2 className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Events</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {statsLoading ? "..." : stats?.total_events ?? 0}
+                    </p>
+                  </div>
+                  <Calendar className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Cards</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {statsLoading ? "..." : stats?.total_cards ?? 0}
+                    </p>
+                  </div>
+                  <CreditCard className="h-8 w-8 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts */}
+          {!statsLoading && stats && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Activity Over Time */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Activity Over Time
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {stats.students_over_time.length > 0 ||
+                  stats.cards_over_time.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart
+                        data={mergeTimeSeriesData(
+                          stats.students_over_time,
+                          stats.cards_over_time,
+                          stats.events_over_time
+                        )}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) =>
+                            new Date(value).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })
+                          }
+                        />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          labelFormatter={(value) =>
+                            new Date(value).toLocaleDateString()
+                          }
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="students"
+                          stroke="#3b82f6"
+                          name="Students"
+                          strokeWidth={2}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="cards"
+                          stroke="#f97316"
+                          name="Cards"
+                          strokeWidth={2}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="events"
+                          stroke="#8b5cf6"
+                          name="Events"
+                          strokeWidth={2}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[250px] flex items-center justify-center text-gray-500">
+                      No activity data yet
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Schools Breakdown */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Activity by School
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {stats.schools_breakdown.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={stats.schools_breakdown.slice(0, 8)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="school_name"
+                          tick={{ fontSize: 10 }}
+                          interval={0}
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip />
+                        <Bar
+                          dataKey="students"
+                          fill="#3b82f6"
+                          name="Students"
+                        />
+                        <Bar dataKey="cards" fill="#f97316" name="Cards" />
+                        <Bar dataKey="events" fill="#8b5cf6" name="Events" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[250px] flex items-center justify-center text-gray-500">
+                      No school data yet
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
 
         {/* Schools Grid */}

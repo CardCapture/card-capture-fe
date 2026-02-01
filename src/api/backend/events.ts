@@ -1,5 +1,6 @@
 import { authFetch } from "@/lib/authFetch";
 import type { Event, EventWithStats } from "@/types/event";
+import { logger } from '@/utils/logger';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -33,7 +34,7 @@ export const backendEventsApi = {
     school_id: string;
     slate_event_id?: string | null;
   }): Promise<Event> {
-    console.log("Backend API DEBUG - Sending to backend:", eventData);
+    logger.log("Backend API DEBUG - Sending to backend:", eventData);
     
     const response = await authFetch(`${API_BASE_URL}/events`, {
       method: "POST",
@@ -43,16 +44,16 @@ export const backendEventsApi = {
       body: JSON.stringify(eventData),
     });
 
-    console.log("Backend API DEBUG - Response status:", response.status);
+    logger.log("Backend API DEBUG - Response status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Backend API DEBUG - Error response:", errorText);
+      logger.error("Backend API DEBUG - Error response:", errorText);
       throw new Error(`Failed to create event (${response.status})`);
     }
 
     const result = await response.json();
-    console.log("Backend API DEBUG - Success response:", result);
+    logger.log("Backend API DEBUG - Success response:", result);
     return result;
   },
 

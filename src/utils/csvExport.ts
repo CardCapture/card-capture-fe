@@ -1,5 +1,6 @@
 import type { ProspectCard } from "@/types/card";
 import { standardizeState } from "./stateUtils";
+import { logger } from '@/utils/logger';
 
 /**
  * Splits a full name into first name and last name
@@ -44,11 +45,11 @@ export function downloadCSV(
   slateEventId?: string | null
 ) {
   if (cards.length === 0) {
-    console.warn("No cards to export");
+    logger.warn("No cards to export");
     return;
   }
 
-  console.log(`📊 Exporting ${cards.length} cards to CSV`);
+  logger.log(`📊 Exporting ${cards.length} cards to CSV`);
 
   // Create a modified field order that ensures first_name and last_name are always included
   // and replaces any 'name' field with separate first/last fields
@@ -315,8 +316,8 @@ export function downloadCSV(
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     
-    console.log(`✅ CSV export completed: ${filename}`);
+    logger.log(`✅ CSV export completed: ${filename}`);
   } else {
-    console.error("❌ CSV download not supported in this browser");
+    logger.error("❌ CSV download not supported in this browser");
   }
 } 

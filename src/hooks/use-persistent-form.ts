@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/utils/logger';
 
 interface UsePersistentFormOptions<T> {
   key: string;
@@ -23,7 +24,7 @@ export function usePersistentForm<T>({
         setData({ ...initialData, ...parsedData });
       }
     } catch (error) {
-      console.warn('Failed to load form data from localStorage:', error);
+      logger.warn('Failed to load form data from localStorage:', error);
     } finally {
       setIsLoaded(true);
     }
@@ -37,7 +38,7 @@ export function usePersistentForm<T>({
       try {
         localStorage.setItem(key, JSON.stringify(data));
       } catch (error) {
-        console.warn('Failed to save form data to localStorage:', error);
+        logger.warn('Failed to save form data to localStorage:', error);
       }
     }, debounceMs);
 
@@ -57,7 +58,7 @@ export function usePersistentForm<T>({
       localStorage.removeItem(key);
       setData(initialData);
     } catch (error) {
-      console.warn('Failed to clear form data from localStorage:', error);
+      logger.warn('Failed to clear form data from localStorage:', error);
     }
   }, [key, initialData]);
 

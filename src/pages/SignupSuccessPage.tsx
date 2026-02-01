@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { logger } from '@/utils/logger';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, Loader2, XCircle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,7 @@ export default function SignupSuccessPage() {
           setMessage(result.message);
         }
       } catch (err) {
-        console.error('Payment verification error:', err);
+        logger.error('Payment verification error:', err);
         setStatus('error');
         setMessage('Unable to verify payment. Please contact support.');
         if (pollIntervalRef.current) {

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { logger } from '@/utils/logger';
 
 export interface ProfileData {
   id: string;
@@ -22,12 +23,12 @@ export const profilesApi = {
       .maybeSingle();
 
     if (error) {
-      console.error("getProfile error:", error);
+      logger.error("getProfile error:", error);
       throw new Error(`Failed to fetch profile: ${error.message}`);
     }
 
     if (!data) {
-      console.error("getProfile: Profile not found for user:", userId);
+      logger.error("getProfile: Profile not found for user:", userId);
       throw new Error(`Profile not found for user ${userId}. This may be an RLS policy issue.`);
     }
 
@@ -45,12 +46,12 @@ export const profilesApi = {
       .maybeSingle();
 
     if (error) {
-      console.error("getSchoolId error:", error);
+      logger.error("getSchoolId error:", error);
       throw new Error(`Failed to fetch profile school_id: ${error.message}`);
     }
 
     if (!data?.school_id) {
-      console.error("getSchoolId: No school ID found for user:", userId);
+      logger.error("getSchoolId: No school ID found for user:", userId);
       throw new Error(`No school ID found in profile for user ${userId}. This may be an RLS policy issue.`);
     }
 
@@ -72,12 +73,12 @@ export const profilesApi = {
       .maybeSingle();
 
     if (error) {
-      console.error("updateProfile error:", error);
+      logger.error("updateProfile error:", error);
       throw new Error(`Failed to update profile: ${error.message}`);
     }
 
     if (!data) {
-      console.error("updateProfile: No data returned for user:", userId);
+      logger.error("updateProfile: No data returned for user:", userId);
       throw new Error(`Failed to update profile for user ${userId}. This may be an RLS policy issue.`);
     }
 

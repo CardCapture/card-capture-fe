@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { logger } from '@/utils/logger';
 import {
   Card,
   CardContent,
@@ -236,7 +237,7 @@ const AdminSettings: React.FC = () => {
           setSftpConfig(sftpData);
         }
       } catch (error) {
-        console.error("Error fetching SFTP config:", error);
+        logger.error("Error fetching SFTP config:", error);
       }
     };
 
@@ -266,7 +267,7 @@ const AdminSettings: React.FC = () => {
         setInitialNotificationEmail(email);
         setInitialNotificationsEnabled(enabled);
       } catch (error) {
-        console.error("Error loading notification settings:", error);
+        logger.error("Error loading notification settings:", error);
       }
     };
 
@@ -315,7 +316,7 @@ const AdminSettings: React.FC = () => {
       const data = await UserService.getAllUsers(session?.access_token);
       setUsers(data || []);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      logger.error("Error fetching users:", error);
     } finally {
       setLoading(false);
     }
@@ -348,7 +349,7 @@ const AdminSettings: React.FC = () => {
       );
       window.open(portalUrl, "_blank");
     } catch (error) {
-      console.error("Error creating Stripe portal session:", error);
+      logger.error("Error creating Stripe portal session:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to open billing portal"
       );
@@ -370,7 +371,7 @@ const AdminSettings: React.FC = () => {
       );
       toast.saved();
     } catch (error) {
-      console.error("Error saving SFTP configuration:", error);
+      logger.error("Error saving SFTP configuration:", error);
       toast.error(
         error instanceof Error
           ? error.message
@@ -390,7 +391,7 @@ const AdminSettings: React.FC = () => {
       );
       toast.success("SFTP connection test successful!");
     } catch (error) {
-      console.error("Error testing SFTP connection:", error);
+      logger.error("Error testing SFTP connection:", error);
       toast.error(
         error instanceof Error
           ? error.message
@@ -432,7 +433,7 @@ const AdminSettings: React.FC = () => {
       setInitialFields(updatedFields);
       toast.saved();
     } catch (error) {
-      console.error("Error saving field preferences:", error);
+      logger.error("Error saving field preferences:", error);
       toast.error("Failed to save field preferences");
     }
   };
@@ -450,7 +451,7 @@ const AdminSettings: React.FC = () => {
       setMajors(majorsArr.join("\n"));
       setInitialMajors(majorsArr.join("\n"));
     } catch (error) {
-      console.error("Error loading majors:", error);
+      logger.error("Error loading majors:", error);
       toast.error("Failed to load majors");
     } finally {
       setLoadingMajors(false);
@@ -492,7 +493,7 @@ const AdminSettings: React.FC = () => {
       setShowImport(false);
       toast.success("Majors updated successfully");
     } catch (error) {
-      console.error("Error saving majors:", error);
+      logger.error("Error saving majors:", error);
       toast.error("Failed to save majors");
     }
   };
@@ -573,7 +574,7 @@ const AdminSettings: React.FC = () => {
                     setIsSchoolNameDirty(false);
                     toast.saved();
                   } catch (error) {
-                    console.error("Error updating school:", error);
+                    logger.error("Error updating school:", error);
                     toast.error("Failed to save account settings");
                   }
                 }}
@@ -636,7 +637,7 @@ const AdminSettings: React.FC = () => {
                     setIsNotificationSettingsDirty(false);
                     toast.saved();
                   } catch (error) {
-                    console.error("Error updating notification settings:", error);
+                    logger.error("Error updating notification settings:", error);
                     toast.error("Failed to save notification settings");
                   }
                 }}
@@ -651,7 +652,7 @@ const AdminSettings: React.FC = () => {
       break;
     case "field-preferences":
       heading = "Field Preferences";
-      console.log("[AdminSettings] Rendering field-preferences tab:", {
+      logger.log("[AdminSettings] Rendering field-preferences tab:", {
         loadingFields,
         fieldsLength: fields.length,
         activeTab,

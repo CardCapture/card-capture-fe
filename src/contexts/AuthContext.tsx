@@ -16,6 +16,7 @@ import {
   SignInWithPasswordCredentials,
 } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
+import { logger } from '@/utils/logger';
 
 // Profile cache configuration
 const PROFILE_CACHE_KEY = 'user_profile_cache';
@@ -68,13 +69,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
         if (Date.now() - timestamp < PROFILE_CACHE_TTL) {
-          console.log("DEBUG: Using cached profile for user:", userId);
+          logger.log("DEBUG: Using cached profile for user:", userId);
           return data;
         }
-        console.log("DEBUG: Cache expired for user:", userId);
+        logger.log("DEBUG: Cache expired for user:", userId);
       }
     } catch (error) {
-      console.error("Error reading profile cache:", error);
+      logger.error("Error reading profile cache:", error);
     }
     return null;
   }, []);
@@ -90,7 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         })
       );
     } catch (error) {
-      console.error("Error caching profile:", error);
+      logger.error("Error caching profile:", error);
     }
   }, []);
 
@@ -109,7 +110,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         });
       }
     } catch (error) {
-      console.error("Error clearing profile cache:", error);
+      logger.error("Error clearing profile cache:", error);
     }
   }, []);
 
@@ -125,7 +126,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       return;
     }
 
-    console.log("DEBUG: Refetching profile for user:", userId, "forceRefresh:", forceRefresh);
+    logger.log("DEBUG: Refetching profile for user:", userId, "forceRefresh:", forceRefresh);
 
     // Check cache first (unless forceRefresh is true)
     if (!forceRefresh) {
@@ -144,8 +145,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         .maybeSingle();
 
       if (error) {
-        console.error("Error fetching user profile:", error);
-        console.error("Profile fetch error details:", {
+        logger.error("Error fetching user profile:", error);
+        logger.error("Profile fetch error details:", {
           code: error.code,
           message: error.message,
           details: error.details,
@@ -156,16 +157,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }
 
       if (!data) {
-        console.error("Profile not found for user:", userId, "- This may be an RLS policy issue");
+        logger.error("Profile not found for user:", userId, "- This may be an RLS policy issue");
         setProfile(null);
         return;
       }
 
-      console.log("DEBUG: Profile refetched:", data);
+      logger.log("DEBUG: Profile refetched:", data);
       setProfile(data);
       cacheProfile(userId, data);
     } catch (error) {
-      console.error("Error in refetchProfile:", error);
+      logger.error("Error in refetchProfile:", error);
       setProfile(null);
     }
   }, [getCachedProfile, cacheProfile, clearProfileCache]);
@@ -185,15 +186,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         prevSessionRef.current?.user?.id === session.user.id &&
         prevSessionRef.current?.access_token === session.access_token
       ) {
-        console.log("DEBUG: Session unchanged, skipping profile fetch");
+        logger.log("DEBUG: Session unchanged, skipping profile fetch");
         return;
       }
 
       prevSessionRef.current = session;
 
-      console.log("DEBUG: Fetching profile for user:", session.user.id);
-      console.log("DEBUG: User metadata:", session.user.user_metadata);
-      console.log("DEBUG: App metadata:", session.user.app_metadata);
+      logger.log("DEBUG: Fetching profile for user:", session.user.id);
+      logger.log("DEBUG: User metadata:", session.user.user_metadata);
+      logger.log("DEBUG: App metadata:", session.user.app_metadata);
 
       // Try cache first
       const cachedProfile = getCachedProfile(session.user.id);
@@ -210,8 +211,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           .maybeSingle();
 
         if (error) {
-          console.error("Error fetching user profile:", error);
-          console.error("Profile fetch error details:", {
+          logger.error("Error fetching user profile:", error);
+          logger.error("Profile fetch error details:", {
             code: error.code,
             message: error.message,
             details: error.details,
@@ -222,16 +223,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         }
 
         if (!data) {
-          console.error("Profile not found for user:", session.user.id, "- This may be an RLS policy issue");
+          logger.error("Profile not found for user:", session.user.id, "- This may be an RLS policy issue");
           setProfile(null);
           return;
         }
 
-        console.log("DEBUG: Profile found:", data);
+        logger.log("DEBUG: Profile found:", data);
         setProfile(data);
         cacheProfile(session.user.id, data);
       } catch (error) {
-        console.error("Error in fetchProfile:", error);
+        logger.error("Error in fetchProfile:", error);
         setProfile(null);
       }
     };
@@ -249,19 +250,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         setLoading(false);
       })
       .catch((error) => {
-        console.error("Error getting initial session:", error);
+        logger.error("Error getting initial session:", error);
         setLoading(false);
       });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        console.log("Auth state changed:", _event, session);
-        console.log("Setting session:", !!session, "user:", !!session?.user);
+        logger.log("Auth state changed:", _event, session);
+        logger.log("Setting session:", !!session, "user:", !!session?.user);
         setSession(session);
         setUser(session?.user ?? null);
         // Clear profile when session is null (user logged out)
         if (!session) {
-          console.log("No session, clearing profile");
+          logger.log("No session, clearing profile");
           setProfile(null);
         }
         setLoading(false);
@@ -274,7 +275,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const signOut = useCallback(async () => {
-    console.log("signOut called, current session:", !!session);
+    logger.log("signOut called, current session:", !!session);
     // Only try to sign out if there's actually a session
     if (session?.user?.id) {
       // Clear MFA verification status in database
@@ -283,21 +284,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           .from("profiles")
           .update({ mfa_verified_at: null })
           .eq("id", session.user.id);
-        console.log("Cleared mfa_verified_at for user");
+        logger.log("Cleared mfa_verified_at for user");
       } catch (error) {
-        console.error("Error clearing mfa_verified_at:", error);
+        logger.error("Error clearing mfa_verified_at:", error);
       }
 
-      console.log("Calling supabase.auth.signOut()");
+      logger.log("Calling supabase.auth.signOut()");
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error("Error signing out:", error);
+        logger.error("Error signing out:", error);
       }
     } else {
-      console.log("No session to sign out from, just clearing local state");
+      logger.log("No session to sign out from, just clearing local state");
     }
     // Always clear local state regardless
-    console.log("Clearing local state and cache");
+    logger.log("Clearing local state and cache");
     setSession(null);
     setUser(null);
     setProfile(null);
@@ -311,7 +312,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       // No need to setLoading(true) here, as onAuthStateChange handles state updates
       const { error } = await supabase.auth.signInWithPassword(credentials);
       if (error) {
-        console.error("Error signing in:", error);
+        logger.error("Error signing in:", error);
       }
       // Return error status to the calling component
       return { error: error || null };

@@ -5,6 +5,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { determineCardStatus } from "@/lib/cardUtils";
 import { CardService } from "@/services/CardService";
 import { useLoader } from "@/contexts/LoaderContext";
+import { logger } from '@/utils/logger';
 
 // Define proper interface for raw card data from API
 interface RawCardData {
@@ -43,7 +44,7 @@ export function useCardsOverride(eventId?: string) {
   const LOADER_ID = `cards-${eventId || "default"}`;
 
   const fetchCards = useCallback(async () => {
-    console.log("useCardsOverride: fetchCards called", { eventId });
+    logger.log("useCardsOverride: fetchCards called", { eventId });
     
     // Prevent parallel requests and implement debouncing
     const now = Date.now();
@@ -51,7 +52,7 @@ export function useCardsOverride(eventId?: string) {
       fetchInProgressRef.current ||
       now - lastFetchTimeRef.current < DEBOUNCE_DELAY
     ) {
-      console.log("useCardsOverride: fetchCards blocked by debounce", { 
+      logger.log("useCardsOverride: fetchCards blocked by debounce", { 
         fetchInProgress: fetchInProgressRef.current, 
         timeSinceLastFetch: now - lastFetchTimeRef.current 
       });
@@ -60,11 +61,11 @@ export function useCardsOverride(eventId?: string) {
 
     // Only fetch if we have an eventId
     if (!eventId) {
-      console.log("useCardsOverride: no eventId, skipping fetch");
+      logger.log("useCardsOverride: no eventId, skipping fetch");
       return;
     }
 
-    console.log("useCardsOverride: Starting API fetch for event", eventId);
+    logger.log("useCardsOverride: Starting API fetch for event", eventId);
 
     try {
       fetchInProgressRef.current = true;
@@ -81,7 +82,7 @@ export function useCardsOverride(eventId?: string) {
         eventId
       )) as RawCardData[];
       
-      console.log("useCardsOverride: Received data from API", { count: data.length, eventId });
+      logger.log("useCardsOverride: Received data from API", { count: data.length, eventId });
 
 
       // Map the data to ensure all required fields are properly set
@@ -125,9 +126,9 @@ export function useCardsOverride(eventId?: string) {
       });
 
       setCards(mappedCards);
-      console.log("useCardsOverride: Cards state updated", { count: mappedCards.length });
+      logger.log("useCardsOverride: Cards state updated", { count: mappedCards.length });
     } catch (error) {
-      console.error("useCardsOverride: Error fetching cards:", error);
+      logger.error("useCardsOverride: Error fetching cards:", error);
     } finally {
       hideTableLoader(LOADER_ID);
       fetchInProgressRef.current = false;
@@ -136,7 +137,7 @@ export function useCardsOverride(eventId?: string) {
 
   // Effect for initial fetch and eventId changes
   useEffect(() => {
-    console.log("useCardsOverride: useEffect triggered", { eventId, hasEventId: !!eventId });
+    logger.log("useCardsOverride: useEffect triggered", { eventId, hasEventId: !!eventId });
     if (eventId) {
       fetchCards();
     } else {
@@ -148,7 +149,7 @@ export function useCardsOverride(eventId?: string) {
   // Effect for Supabase real-time subscription
   useEffect(() => {
     if (!eventId || !supabase) {
-      console.warn(
+      logger.warn(
         "useCardsOverride: EventId or Supabase client not available, real-time updates disabled."
       );
       return;
@@ -171,12 +172,12 @@ export function useCardsOverride(eventId?: string) {
         newRecord?.event_id === eventId || oldRecord?.event_id === eventId;
 
       if (isRelevantChange) {
-        console.log(
+        logger.log(
           "useCardsOverride: Change is relevant to current event, refreshing cards"
         );
         fetchCards();
       } else {
-        console.log(
+        logger.log(
           "useCardsOverride: Change not relevant to current event, skipping refresh"
         );
       }
@@ -208,37 +209,37 @@ export function useCardsOverride(eventId?: string) {
       )
       .subscribe((status, err) => {
         if (status === "SUBSCRIBED") {
-          console.log(
+          logger.log(
             `useCardsOverride: Supabase channel '${channelName}' subscribed successfully!`
           );
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.error(
+          logger.error(
             `useCardsOverride: Supabase channel error: ${status}`,
             err
           );
           // Attempt to reconnect after a delay
           setTimeout(() => {
-            console.log("useCardsOverride: Attempting to reconnect...");
+            logger.log("useCardsOverride: Attempting to reconnect...");
             channel?.unsubscribe();
             channel?.subscribe();
           }, 5000);
         }
-        console.log(`useCardsOverride: Supabase channel status: ${status}`);
+        logger.log(`useCardsOverride: Supabase channel status: ${status}`);
       });
 
     // Cleanup function
     return () => {
       if (supabase && channel) {
-        console.log(
+        logger.log(
           `useCardsOverride: Unsubscribing from Supabase channel '${channelName}'`
         );
         supabase
           .removeChannel(channel)
           .then((status) =>
-            console.log(`useCardsOverride: Unsubscribe status: ${status}`)
+            logger.log(`useCardsOverride: Unsubscribe status: ${status}`)
           )
           .catch((err) =>
-            console.error(
+            logger.error(
               "useCardsOverride: Error unsubscribing from Supabase channel:",
               err
             )
@@ -253,7 +254,7 @@ export function useCardsOverride(eventId?: string) {
       if (!Array.isArray(cards)) return 0;
 
       // Log the raw review_status of each card for debugging
-      console.log(
+      logger.log(
         "Raw card review_status:",
         cards.map((card) => ({
           id: card.id,

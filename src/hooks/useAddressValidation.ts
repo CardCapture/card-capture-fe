@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "@/lib/toast";
 import { authFetch } from "@/lib/authFetch";
+import { logger } from '@/utils/logger';
 
 // Type definitions for the 4-state validation system
 type ValidationState = "verified" | "can_be_verified" | "no_house_number" | "not_verified" | "loading";
@@ -75,7 +76,7 @@ export function useAddressValidation(
     
     // Check if this exact address was already verified in this session
     if (verifiedAddressesRef.current.has(requestHash)) {
-      console.log("🔄 Using cached verified address, no API call needed");
+      logger.log("🔄 Using cached verified address, no API call needed");
       setValidationState("verified");
       setHasValidated(true);
       lastRequestRef.current = requestHash;
@@ -83,7 +84,7 @@ export function useAddressValidation(
     }
     
     if (requestHash === lastRequestRef.current) {
-      console.log("🔄 Skipping duplicate validation request for same address");
+      logger.log("🔄 Skipping duplicate validation request for same address");
       return;
     }
 
@@ -119,15 +120,15 @@ export function useAddressValidation(
         // Minimum loading time for smooth UX
         const loadingStartTime = Date.now();
         
-        console.log("🔍 Validating address:", fields);
+        logger.log("🔍 Validating address:", fields);
         
         // Call the validation API
         const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
         const validationUrl = `${apiBaseUrl}/address/validate`;
         
-        console.log("🔗 API Base URL:", apiBaseUrl);
-        console.log("🔗 Full validation URL:", validationUrl);
-        console.log("🔗 Environment variables:", import.meta.env);
+        logger.log("🔗 API Base URL:", apiBaseUrl);
+        logger.log("🔗 Full validation URL:", validationUrl);
+        logger.log("🔗 Environment variables:", import.meta.env);
         
         const response = await authFetch(validationUrl, {
           method: "POST",
@@ -143,10 +144,10 @@ export function useAddressValidation(
 
         const data: ValidationResponse = await response.json();
         
-        console.log("✅ Validation response:", data);
+        logger.log("✅ Validation response:", data);
         
         if (data.validation?.suggestion) {
-          console.log("📋 Google Maps suggestion details:", {
+          logger.log("📋 Google Maps suggestion details:", {
             suggestion: data.validation.suggestion,
             originalInput: fields,
             suggestedAddress: data.validation.suggestion.address,
@@ -189,7 +190,7 @@ export function useAddressValidation(
         }, remainingLoadingTime);
         
       } catch (err) {
-        console.error("❌ Address validation failed:", err);
+        logger.error("❌ Address validation failed:", err);
         
         // Calculate remaining loading time for error case too
         const loadingElapsed = Date.now() - Date.now();
@@ -277,7 +278,7 @@ export function useAddressValidation(
 // Helper function to detect pipeline verification
 export function isPipelineVerified(fieldData?: { source?: string }): boolean {
   const result = fieldData?.source === "google_maps_verified";
-  console.log("🔍 isPipelineVerified check:", {
+  logger.log("🔍 isPipelineVerified check:", {
     fieldData,
     source: fieldData?.source,
     result
@@ -302,7 +303,7 @@ export function valuesMatchPipeline(
     currentFields.zip_code === (pipelineFields.zip_code?.value || "")
   );
   
-  console.log("🔄 valuesMatchPipeline check:", {
+  logger.log("🔄 valuesMatchPipeline check:", {
     currentFields,
     pipelineValues: {
       address: pipelineFields.address?.value || "",

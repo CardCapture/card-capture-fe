@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { Check, AlertCircle, MapPin, Loader2 } from 'lucide-react';
+import { logger } from '@/utils/logger';
 
 interface AddressAutocompleteProps {
   label: string;
@@ -46,7 +47,7 @@ export function AddressAutocomplete({
   autoFocus = false,
   ...props
 }: AddressAutocompleteProps) {
-  console.log('🎯 AddressAutocomplete rendered with:', { value, locationContext });
+  logger.log('🎯 AddressAutocomplete rendered with:', { value, locationContext });
   
   const [displayValue, setDisplayValue] = useState(value);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
@@ -82,7 +83,7 @@ export function AddressAutocomplete({
         searchQuery = `${input}, ${locationContext.state}`;
       }
       
-      console.log('🚀 Making Places API call with query:', searchQuery);
+      logger.log('🚀 Making Places API call with query:', searchQuery);
       
       // Use the new Places API Text Search (Autocomplete)
       const response = await fetch(`https://places.googleapis.com/v1/places:autocomplete`, {
@@ -100,26 +101,26 @@ export function AddressAutocomplete({
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Places API response:', data);
+        logger.log('✅ Places API response:', data);
         const formattedPredictions = data.suggestions?.map((suggestion: any) => ({
           description: suggestion.placePrediction?.text?.text || '',
           place_id: suggestion.placePrediction?.placeId || ''
         }))?.slice(0, 8) || []; // Show up to 8 results
         
-        console.log('📍 Formatted predictions:', formattedPredictions);
+        logger.log('📍 Formatted predictions:', formattedPredictions);
         setPredictions(formattedPredictions);
         if (formattedPredictions.length > 0) {
           setShowDropdown(true);
-          console.log('🎉 Setting showDropdown to true with predictions:', formattedPredictions.length);
+          logger.log('🎉 Setting showDropdown to true with predictions:', formattedPredictions.length);
         }
       } else {
-        console.error('Places API error:', response.status, response.statusText);
+        logger.error('Places API error:', response.status, response.statusText);
         const errorData = await response.text();
-        console.error('Error details:', errorData);
+        logger.error('Error details:', errorData);
         setPredictions([]);
       }
     } catch (error) {
-      console.error('Error fetching predictions:', error);
+      logger.error('Error fetching predictions:', error);
       setPredictions([]);
     } finally {
       setIsLoading(false);
@@ -127,7 +128,7 @@ export function AddressAutocomplete({
   };
 
   const getPlaceDetails = async (placeId: string, predictionDescription?: string) => {
-    console.log('🏠 Getting place details for placeId:', placeId);
+    logger.log('🏠 Getting place details for placeId:', placeId);
     try {
       const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
         method: 'GET',
@@ -140,7 +141,7 @@ export function AddressAutocomplete({
 
       if (response.ok) {
         const place = await response.json();
-        console.log('📦 Place details response:', place);
+        logger.log('📦 Place details response:', place);
         const components = place.addressComponents || [];
 
         let street = '';
@@ -171,14 +172,14 @@ export function AddressAutocomplete({
 
         // If Google didn't provide a street number, try to extract it from the prediction description
         if (!hasStreetNumber && predictionDescription) {
-          console.log('⚠️ No street number in place details, extracting from prediction:', predictionDescription);
+          logger.log('⚠️ No street number in place details, extracting from prediction:', predictionDescription);
           // Extract the house number from the beginning of the prediction description
           // e.g., "18829 Star Ranch Boulevard, Hutto, TX" -> "18829"
           const match = predictionDescription.match(/^(\d+)\s+/);
           if (match) {
             const houseNumber = match[1];
             street = houseNumber + ' ' + street.trim();
-            console.log('✅ Extracted house number from prediction:', houseNumber);
+            logger.log('✅ Extracted house number from prediction:', houseNumber);
           }
         }
 
@@ -196,33 +197,33 @@ export function AddressAutocomplete({
           zipCode
         };
 
-        console.log('🏡 Extracted address data:', addressData);
-        console.log('🔍 Component details:', { street, street2, city, state, zipCode, fullStreetAddress });
-        console.log('📦 Raw components from Google:', components);
+        logger.log('🏡 Extracted address data:', addressData);
+        logger.log('🔍 Component details:', { street, street2, city, state, zipCode, fullStreetAddress });
+        logger.log('📦 Raw components from Google:', components);
 
         // Update the display value to show the full street address including apt/suite
-        console.log('🔄 Setting displayValue to:', addressData.street);
+        logger.log('🔄 Setting displayValue to:', addressData.street);
         setDisplayValue(addressData.street);
 
         if (onAddressSelect) {
-          console.log('✅ Calling onAddressSelect callback with:', addressData);
+          logger.log('✅ Calling onAddressSelect callback with:', addressData);
           onAddressSelect(addressData);
         } else {
           // Only call onChange if onAddressSelect is not provided
-          console.log('⚠️ No onAddressSelect callback provided, using onChange');
+          logger.log('⚠️ No onAddressSelect callback provided, using onChange');
           onChange(addressData.street);
         }
 
         // Clear the flag after selection is complete
         setTimeout(() => {
           setIsSelectingFromDropdown(false);
-          console.log('🔄 Cleared isSelectingFromDropdown flag');
+          logger.log('🔄 Cleared isSelectingFromDropdown flag');
         }, 100);
       } else {
-        console.error('Place details error:', response.status, response.statusText);
+        logger.error('Place details error:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error('Error getting place details:', error);
+      logger.error('Error getting place details:', error);
     }
   };
 
@@ -249,20 +250,20 @@ export function AddressAutocomplete({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
-    console.log('📝 AddressAutocomplete input changed:', input);
+    logger.log('📝 AddressAutocomplete input changed:', input);
     setDisplayValue(input);
     
     // Only call onChange if we're not in the process of selecting from dropdown
     if (!isSelectingFromDropdown) {
       onChange(input);
     } else {
-      console.log('🚫 Skipping onChange - selecting from dropdown');
+      logger.log('🚫 Skipping onChange - selecting from dropdown');
     }
     
     setSelectedIndex(-1);
     
     if (input.length >= 3) {
-      console.log('🔍 Searching for:', input);
+      logger.log('🔍 Searching for:', input);
       updateDropdownPosition();
       setShowDropdown(true);
       searchPredictions(input);
@@ -273,14 +274,14 @@ export function AddressAutocomplete({
   };
 
   const handlePredictionSelect = (prediction: Prediction) => {
-    console.log('🔥 handlePredictionSelect called with:', prediction);
+    logger.log('🔥 handlePredictionSelect called with:', prediction);
     // Set flag to prevent onChange from interfering
     setIsSelectingFromDropdown(true);
     // Don't set displayValue here - let getPlaceDetails set it to just the street address
     // Don't call onChange here - let onAddressSelect handle all updates
     setShowDropdown(false);
     setPredictions([]);
-    console.log('📍 Getting place details for:', prediction.place_id);
+    logger.log('📍 Getting place details for:', prediction.place_id);
     getPlaceDetails(prediction.place_id, prediction.description);
   };
 
@@ -315,7 +316,7 @@ export function AddressAutocomplete({
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     // Don't hide dropdown on blur - let clicks handle it
     // This prevents the dropdown from closing before click events fire
-    console.log('Input blur event - keeping dropdown open for clicks');
+    logger.log('Input blur event - keeping dropdown open for clicks');
   };
 
   const handleFocus = () => {
@@ -328,7 +329,7 @@ export function AddressAutocomplete({
 
   // Update display value when prop value changes
   useEffect(() => {
-    console.log('🔄 useEffect: value prop changed from', displayValue, 'to', value);
+    logger.log('🔄 useEffect: value prop changed from', displayValue, 'to', value);
     setDisplayValue(value);
   }, [value]);
 
@@ -337,7 +338,7 @@ export function AddressAutocomplete({
     if (autoFocus && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
-      console.log('🎯 Auto-focused and selected address input');
+      logger.log('🎯 Auto-focused and selected address input');
     }
   }, [autoFocus]);
 
@@ -357,7 +358,7 @@ export function AddressAutocomplete({
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
-        console.log('Clicked outside - closing dropdown');
+        logger.log('Clicked outside - closing dropdown');
         setShowDropdown(false);
         setSelectedIndex(-1);
       }
@@ -470,7 +471,7 @@ export function AddressAutocomplete({
                 onMouseDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log('🎯 Prediction clicked:', prediction);
+                  logger.log('🎯 Prediction clicked:', prediction);
                   handlePredictionSelect(prediction);
                 }}
                 onMouseEnter={() => setSelectedIndex(index)}

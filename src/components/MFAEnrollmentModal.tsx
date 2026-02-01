@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import OTPInput from './OTPInput';
 import { supabase } from '../lib/supabaseClient';
+import { logger } from '@/utils/logger';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -62,7 +63,7 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
 
     try {
       const fullPhone = `${countryCode}${cleanPhone}`;
-      console.log('[Enroll] Sending code to:', fullPhone);
+      logger.log('[Enroll] Sending code to:', fullPhone);
 
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
@@ -89,7 +90,7 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
       setFactorId(data.factor_id);
       setChallengeId(data.challenge_id);
       setStep('verify');
-      console.log('[Enroll] Code sent successfully');
+      logger.log('[Enroll] Code sent successfully');
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to send code';
       setError(errorMsg);
@@ -104,7 +105,7 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
     setIsLoading(true);
 
     try {
-      console.log('[Enroll] Verifying code...');
+      logger.log('[Enroll] Verifying code...');
 
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
@@ -146,7 +147,7 @@ const MFAEnrollmentModal: React.FC<MFAEnrollmentModalProps> = ({
         }
       }
 
-      console.log('[Enroll] Enrollment successful!');
+      logger.log('[Enroll] Enrollment successful!');
 
       // Save device token if provided
       const deviceToken = data.device_token;

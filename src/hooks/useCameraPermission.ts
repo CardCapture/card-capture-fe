@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/utils/logger';
 
 const CAMERA_PERMISSION_KEY = 'camera_permission_granted';
 
@@ -13,7 +14,7 @@ export function useCameraPermission() {
       setHasPermission(true);
       return true;
     } catch (error) {
-      console.error('Error checking camera permission:', error);
+      logger.error('Error checking camera permission:', error);
       setHasPermission(false);
       return false;
     }

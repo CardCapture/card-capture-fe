@@ -8,6 +8,7 @@ import React, {
   useRef,
   memo,
 } from "react";
+import { logger } from '@/utils/logger';
 import {
   ColumnDef,
   flexRender,
@@ -136,7 +137,7 @@ const DashboardCopy = () => {
 
   // Debug effect to log events and their stats
   useEffect(() => {
-    console.log(
+    logger.log(
       "📈 DashboardCopy Events:",
       events?.map((event) => ({
         name: event.name,
@@ -158,8 +159,8 @@ const DashboardCopy = () => {
 
   // Fetch events on mount and when schoolId changes
   useEffect(() => {
-    console.log("EventsHome: useEffect triggered, schoolId:", schoolId);
-    console.log("EventsHome: fetchEvents function:", fetchEvents);
+    logger.log("EventsHome: useEffect triggered, schoolId:", schoolId);
+    logger.log("EventsHome: fetchEvents function:", fetchEvents);
     fetchEvents();
   }, [fetchEvents, schoolId]);
 
@@ -188,10 +189,10 @@ const DashboardCopy = () => {
               fetchEvents();
             }
           } else {
-            console.error("Purchase verification failed:", await response.text());
+            logger.error("Purchase verification failed:", await response.text());
           }
         } catch (error) {
-          console.error("Error verifying purchase:", error);
+          logger.error("Error verifying purchase:", error);
         } finally {
           // Clear the query params regardless of outcome
           setSearchParams({});
@@ -283,7 +284,7 @@ const DashboardCopy = () => {
 
   const now = new Date();
   const today = getDateOnly(now);
-  console.log("📅 TODAY for comparison:", today.toISOString(), "Local:", today.toString());
+  logger.log("📅 TODAY for comparison:", today.toISOString(), "Local:", today.toString());
 
   // Split and filter events based on tab selection
   const { upcomingEvents, completedEvents, archivedEvents, filteredEvents } =
@@ -323,7 +324,7 @@ const DashboardCopy = () => {
         .filter((event) => {
           const eventDate = getDateOnly(event.date);
           const isUpcoming = eventDate >= today && event.status !== "archived";
-          console.log(`📅 Event "${event.name}" date check:`, {
+          logger.log(`📅 Event "${event.name}" date check:`, {
             eventDate: event.date,
             eventDateParsed: eventDate.toISOString(),
             today: today.toISOString(),
@@ -377,7 +378,7 @@ const DashboardCopy = () => {
   };
 
   const handleArchiveSelected = async () => {
-    console.log("Archive triggered with selected events:", selectedEvents); // Debug
+    logger.log("Archive triggered with selected events:", selectedEvents); // Debug
     if (selectedEvents.length === 0) {
       toast.required("event selection");
       return;
@@ -391,7 +392,7 @@ const DashboardCopy = () => {
       // Refresh the events list
       await fetchEvents();
     } catch (error: unknown) {
-      console.error("Failed to archive events:", error);
+      logger.error("Failed to archive events:", error);
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -486,7 +487,7 @@ const DashboardCopy = () => {
       // Refresh events to update counts
       fetchEvents();
     } catch (error: unknown) {
-      console.error("Manual entry failed:", error);
+      logger.error("Manual entry failed:", error);
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -681,7 +682,7 @@ const DashboardCopy = () => {
     },
     enableRowSelection: true,
     onRowSelectionChange: (newSelection) => {
-      console.log("New Selection:", newSelection); // Debug the incoming selection
+      logger.log("New Selection:", newSelection); // Debug the incoming selection
       setRowSelection(newSelection);
 
       // Convert the selection state to an array of selected event IDs
@@ -693,12 +694,12 @@ const DashboardCopy = () => {
         .filter(([_, selected]) => selected)
         .map(([index]) => {
           const eventId = filteredEvents[parseInt(index)]?.id;
-          console.log(`Row ${index} maps to event ID:`, eventId); // Debug the mapping
+          logger.log(`Row ${index} maps to event ID:`, eventId); // Debug the mapping
           return eventId;
         })
         .filter(Boolean); // Remove any undefined values
 
-      console.log("Mapped to event IDs:", selectedIds); // Debug the final IDs
+      logger.log("Mapped to event IDs:", selectedIds); // Debug the final IDs
       setSelectedEvents(selectedIds);
     },
     onSortingChange: setSorting,
@@ -709,8 +710,8 @@ const DashboardCopy = () => {
 
   // Debug effect to log selection changes
   useEffect(() => {
-    console.log("Row Selection:", rowSelection);
-    console.log("Selected Events:", selectedEvents);
+    logger.log("Row Selection:", rowSelection);
+    logger.log("Selected Events:", selectedEvents);
   }, [rowSelection, selectedEvents]);
 
   // Selection action bar component

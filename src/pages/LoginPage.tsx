@@ -17,6 +17,7 @@ import {
 import { useLoader, ButtonLoader } from "@/contexts/LoaderContext";
 import MFAGuard from "@/components/MFAGuard";
 import { supabase } from "@/lib/supabaseClient";
+import { logger } from '@/utils/logger';
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -39,7 +40,7 @@ const LoginPage = () => {
     if (user && profile && !showMFAFlow) {
       // Use saved redirect path if available, otherwise use default
       const redirectPath = from || getDefaultRedirectPath(profile);
-      console.log('User already logged in, redirecting to:', redirectPath);
+      logger.log('User already logged in, redirecting to:', redirectPath);
       navigate(redirectPath, { replace: true });
     }
   }, [user, profile, navigate, showMFAFlow, from]);
@@ -49,9 +50,9 @@ const LoginPage = () => {
     showButtonLoader(LOADER_ID);
     setError(null);
 
-    console.log('=== LOGIN DEBUG ===');
-    console.log('Email:', email);
-    console.log('Signing in with password - MFA flow enabled');
+    logger.log('=== LOGIN DEBUG ===');
+    logger.log('Email:', email);
+    logger.log('Signing in with password - MFA flow enabled');
 
     try {
       // Sign in with password - then hand off to MFA flow
@@ -65,7 +66,7 @@ const LoginPage = () => {
 
       // Authentication successful - trigger MFA flow
       // MFAGuard will check device trust and show 2FA challenge if needed
-      console.log('Password authentication successful, starting MFA flow');
+      logger.log('Password authentication successful, starting MFA flow');
       setShowMFAFlow(true);
       hideButtonLoader(LOADER_ID);
     } catch (err: any) {
@@ -75,10 +76,10 @@ const LoginPage = () => {
   };
 
   const handleMFASuccess = async () => {
-    console.log('=== MFA SUCCESS ===');
+    logger.log('=== MFA SUCCESS ===');
 
     // MFA flow completed successfully (profile already refreshed by MFAGuard)
-    console.log('MFA completed, waiting for profile to load before redirecting');
+    logger.log('MFA completed, waiting for profile to load before redirecting');
 
     // Wait for profile state to update (MFAGuard has already called refetchProfile)
     // Give React time to propagate the state update
@@ -92,7 +93,7 @@ const LoginPage = () => {
 
     // Navigate to appropriate page - use saved redirect path if available
     const redirectPath = from || getDefaultRedirectPath(profile);
-    console.log('Redirecting to:', redirectPath, '(from saved path:', from, ')');
+    logger.log('Redirecting to:', redirectPath, '(from saved path:', from, ')');
     navigate(redirectPath, { replace: true });
 
     setShowMFAFlow(false);

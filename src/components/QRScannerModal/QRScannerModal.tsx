@@ -14,6 +14,7 @@ import { BrowserMultiFormatReader } from '@zxing/library';
 import { StudentService } from '@/services';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/utils/logger';
 
 interface QRScannerModalProps {
   isOpen: boolean;
@@ -28,7 +29,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   eventId,
   onSuccess,
 }) => {
-  console.log('QRScannerModal rendering, isOpen:', isOpen);
+  logger.log('QRScannerModal rendering, isOpen:', isOpen);
 
   const [mode, setMode] = useState<'scan' | 'manual'>('scan');
   const [manualToken, setManualToken] = useState('');
@@ -118,9 +119,9 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
   // Start the QR scanner
   const startScanner = async () => {
-    console.log('startScanner called, videoRef.current:', videoRef.current);
+    logger.log('startScanner called, videoRef.current:', videoRef.current);
     if (!videoRef.current) {
-      console.log('No video ref, returning');
+      logger.log('No video ref, returning');
       return;
     }
 
@@ -128,19 +129,19 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     setError(null);
 
     try {
-      console.log('Stopping any existing scanner...');
+      logger.log('Stopping any existing scanner...');
       // Stop any existing scanner first
       stopScanner();
 
-      console.log('Creating BrowserMultiFormatReader...');
+      logger.log('Creating BrowserMultiFormatReader...');
       // Create reader instance
       readerRef.current = new BrowserMultiFormatReader();
 
-      console.log('Getting video devices...');
+      logger.log('Getting video devices...');
       // Get video devices
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      console.log('Video devices found:', videoDevices.length);
+      logger.log('Video devices found:', videoDevices.length);
 
       if (videoDevices.length === 0) {
         throw new Error('No cameras found. Please ensure camera access is granted.');
@@ -152,9 +153,9 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         device.label.toLowerCase().includes('rear')
       );
       const selectedDeviceId = backCamera?.deviceId || videoDevices[0].deviceId;
-      console.log('Selected device:', selectedDeviceId);
+      logger.log('Selected device:', selectedDeviceId);
 
-      console.log('Getting user media...');
+      logger.log('Getting user media...');
       // Get video stream
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -163,18 +164,18 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         }
       });
 
-      console.log('Got stream:', stream);
+      logger.log('Got stream:', stream);
       streamRef.current = stream;
 
       if (videoRef.current) {
-        console.log('Setting video source...');
+        logger.log('Setting video source...');
         videoRef.current.srcObject = stream;
 
         try {
           await videoRef.current.play();
-          console.log('Video playing, setting scanning state...');
+          logger.log('Video playing, setting scanning state...');
         } catch (playErr) {
-          console.error('Error playing video:', playErr);
+          logger.error('Error playing video:', playErr);
         }
 
         setIsScanning(true);
@@ -183,12 +184,12 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
         // Start continuous scanning after a brief delay to ensure video is ready
         setTimeout(() => {
-          console.log('Starting continuous scanning...');
+          logger.log('Starting continuous scanning...');
           startContinuousScanning();
         }, 500);
       }
     } catch (err: any) {
-      console.error('Failed to start scanner:', err);
+      logger.error('Failed to start scanner:', err);
       setError(err.message || 'Failed to initialize camera. Please check permissions.');
       setIsInitializing(false);
       setIsScanning(false);
@@ -197,24 +198,24 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
   // Continuous scanning loop
   const startContinuousScanning = () => {
-    console.log('startContinuousScanning called');
+    logger.log('startContinuousScanning called');
     if (!videoRef.current || !readerRef.current) {
-      console.log('Missing video or reader ref, cannot scan');
+      logger.log('Missing video or reader ref, cannot scan');
       return;
     }
 
     const scanFrame = async () => {
       if (!videoRef.current || !readerRef.current || !isScanningRef.current) {
-        console.log('Scanning stopped or refs missing');
+        logger.log('Scanning stopped or refs missing');
         return;
       }
 
       try {
-        console.log('Attempting to decode frame...');
+        logger.log('Attempting to decode frame...');
         const result = await readerRef.current.decodeOnce(videoRef.current);
 
         if (result) {
-          console.log('QR code detected:', result.getText());
+          logger.log('QR code detected:', result.getText());
           // Stop scanning before processing
           stopScanner();
           await processToken(result.getText());
@@ -231,13 +232,13 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     };
 
     // Start the scanning loop
-    console.log('Starting scan loop...');
+    logger.log('Starting scan loop...');
     requestAnimationFrame(scanFrame);
   };
 
   // Effect to manage scanner lifecycle
   useEffect(() => {
-    console.log('QRScannerModal useEffect - isOpen:', isOpen, 'mode:', mode);
+    logger.log('QRScannerModal useEffect - isOpen:', isOpen, 'mode:', mode);
 
     if (!isOpen) {
       stopScanner();
@@ -248,10 +249,10 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     }
 
     if (isOpen && mode === 'scan') {
-      console.log('Starting scanner...');
+      logger.log('Starting scanner...');
       // Wait for next tick to ensure video element is rendered
       const timer = setTimeout(() => {
-        console.log('Starting scanner after timeout...');
+        logger.log('Starting scanner after timeout...');
         startScanner();
       }, 100);
 

@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/authFetch";
+import { logger } from '@/utils/logger';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -29,7 +30,7 @@ export class CRMEventsService {
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("API Error:", response.status, errorText);
+      logger.error("API Error:", response.status, errorText);
       
       // If it's HTML (404 page), the endpoint doesn't exist
       if (errorText.includes("<!DOCTYPE") || errorText.includes("<html")) {
