@@ -43,6 +43,7 @@ interface RegistrationFormData {
   zip_code: string;
 
   // Step 3: School Info
+  student_type: string;
   high_school: string;
   grade_level: string;
   grad_year: string;
@@ -72,6 +73,7 @@ const initialFormData: RegistrationFormData = {
   city: '',
   state: '',
   zip_code: '',
+  student_type: '',
   high_school: '',
   grade_level: '',
   grad_year: '',
@@ -256,6 +258,7 @@ export default function MultiStepRegistrationPage() {
           city: student.city || '',
           state: student.state || '',
           zip_code: student.zip_code || '',
+          student_type: student.student_type || '',
           high_school: student.high_school || '',
           grade_level: student.grade_level || '',
           grad_year: student.grad_year || '',
@@ -679,7 +682,7 @@ export default function MultiStepRegistrationPage() {
                     <Label>Grade Level</Label>
                     <Select
                       value={formData.grade_level}
-                      onValueChange={(value) => updateData({ grade_level: value })}
+                      onValueChange={(value) => updateData({ grade_level: value, student_type: value === 'College Transfer' ? 'Transfer' : 'Freshman' })}
                     >
                       <SelectTrigger className="h-12">
                         <SelectValue placeholder="Select grade" />
@@ -693,9 +696,9 @@ export default function MultiStepRegistrationPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label>Graduation Year</Label>
+                    <Label>{formData.grade_level === 'College Transfer' ? 'HS Graduation Year' : 'Graduation Year'}</Label>
                     <Select
                       value={formData.grad_year}
                       onValueChange={(value) => updateData({ grad_year: value })}
@@ -960,21 +963,21 @@ export default function MultiStepRegistrationPage() {
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+            <div className="flex flex-wrap justify-between items-center gap-3 mt-8 pt-6 border-t border-gray-200">
               <Button
                 variant="outline"
                 onClick={prevStep}
                 disabled={currentStep === 0}
-                className="flex items-center gap-2 px-6 py-3"
+                className="flex items-center gap-2 px-3 sm:px-6 py-3"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Back
               </Button>
-              
+
               {currentStep < steps.length - 1 ? (
                 <Button
                   onClick={nextStep}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800"
+                  className="flex items-center gap-2 px-3 sm:px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800"
                 >
                   Continue
                   <ChevronRight className="w-4 h-4" />
@@ -983,17 +986,17 @@ export default function MultiStepRegistrationPage() {
                 <Button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                  className="flex items-center gap-2 px-3 sm:px-6 py-3 min-w-0 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 >
                   {submitting ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Creating...
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                      <span className="truncate">Creating...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4" />
-                      Complete Registration
+                      <Sparkles className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Complete Registration</span>
                     </>
                   )}
                 </Button>

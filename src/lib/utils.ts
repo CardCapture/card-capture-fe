@@ -220,8 +220,8 @@ export const formatPhoneNumber = (phoneStr: string | null | undefined): string =
 export const formatBirthday = (dateStr: string | null | undefined): string => {
   if (!dateStr) return '';
 
-  // Handle common non-date strings explicitly before attempting parsing
-  const trimmedUpper = dateStr.trim().toUpperCase();
+  const trimmed = dateStr.trim();
+  const trimmedUpper = trimmed.toUpperCase();
   if (trimmedUpper === 'NA' || trimmedUpper === '') {
     return '';
   }
@@ -231,59 +231,66 @@ export const formatBirthday = (dateStr: string | null | undefined): string => {
     const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
     const monthIndex = months.indexOf(trimmedUpper);
     if (monthIndex !== -1) {
-      // If only month is provided, return it formatted
       return `${monthIndex + 1}/DD/YYYY`;
     }
 
-    // Standardize potential separators to '/'
-    const standardizedDateStr = dateStr.replace(/[-\.]/g, '/');
-
-    // Try to parse the date
-    const date = new Date(standardizedDateStr);
-
-    // Check if the date parsing resulted in a valid date object
-    if (isNaN(date.getTime())) {
-      // If not a valid date, try to extract month/day/year parts
-      const parts = standardizedDateStr.split('/');
-      if (parts.length >= 2) {
-        const month = parseInt(parts[0]);
-        const day = parseInt(parts[1]);
-        const year = parts[2] ? parseInt(parts[2]) : null;
-
-        // Validate month and day
-        if (month >= 1 && month <= 12) {
-          if (day >= 1 && day <= 31) {
-            return year ? 
-              `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}` :
-              `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/YYYY`;
-          }
-          return `${month.toString().padStart(2, '0')}/DD/YYYY`;
-        }
+    // ISO format YYYY-MM-DD — split manually to avoid timezone shifts
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      let year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10);
+      const day = parseInt(isoMatch[3], 10);
+      // Fix 2-digit years stored with leading zeros (e.g., 0008 → 2008)
+      if (year >= 0 && year <= 99) {
+        const currentYear = new Date().getFullYear();
+        const cutoff = (currentYear % 100) + 1;
+        year += (year < cutoff) ? 2000 : 1900;
       }
-      
-      logger.warn("Invalid date string for birthday:", dateStr);
-      return dateStr; // Return original string if we can't parse it
+      return `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
     }
 
-    // Handle potential 2-digit year inputs
-    let year = date.getFullYear();
-    if (year >= 0 && year <= 99) {
-      const currentYear = new Date().getFullYear();
-      const cutoff = (currentYear % 100) + 1;
-      year += (year < cutoff) ? 2000 : 1900;
-      date.setFullYear(year);
+    // MM/DD/YYYY or MM.DD.YYYY — split manually
+    const slashMatch = trimmed.replace(/\./g, '/').match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (slashMatch) {
+      const month = parseInt(slashMatch[1], 10);
+      const day = parseInt(slashMatch[2], 10);
+      let year = parseInt(slashMatch[3], 10);
+      if (year >= 0 && year <= 99) {
+        const currentYear = new Date().getFullYear();
+        const cutoff = (currentYear % 100) + 1;
+        year += (year < cutoff) ? 2000 : 1900;
+      }
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        return `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+      }
     }
 
-    // Format the valid date
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+    // Partial dates (MM/DD without year)
+    const partialMatch = trimmed.replace(/\./g, '/').match(/^(\d{1,2})\/(\d{1,2})$/);
+    if (partialMatch) {
+      const month = parseInt(partialMatch[1], 10);
+      const day = parseInt(partialMatch[2], 10);
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        return `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/YYYY`;
+      }
+    }
+
+    // MMDDYYYY (8 digits)
+    if (/^\d{8}$/.test(trimmed)) {
+      const month = parseInt(trimmed.slice(0, 2), 10);
+      const day = parseInt(trimmed.slice(2, 4), 10);
+      const year = parseInt(trimmed.slice(4, 8), 10);
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        return `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+      }
+    }
+
+    logger.warn("Invalid date string for birthday:", dateStr);
+    return dateStr;
 
   } catch (e) {
     logger.warn("Error formatting birthday:", dateStr, e);
-    return dateStr; // Return original string on error
+    return dateStr;
   }
 };
 

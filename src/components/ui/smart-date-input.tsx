@@ -50,12 +50,27 @@ export function SmartDateInput({
     return digits;
   };
 
+  // Convert 2-digit year to 4-digit
+  const expandYear = (yy: number): number => {
+    const currentYear = new Date().getFullYear();
+    const cutoff = (currentYear % 100) + 1;
+    return yy + (yy < cutoff ? 2000 : 1900);
+  };
+
   // Convert display format to ISO format (YYYY-MM-DD)
   const toISODate = (formattedDate: string): string => {
-    const match = formattedDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (match) {
-      const [, month, day, year] = match;
+    // Match MM/DD/YYYY (4-digit year)
+    const match4 = formattedDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (match4) {
+      const [, month, day, year] = match4;
       return `${year}-${month}-${day}`;
+    }
+    // Match MM/DD/YY (2-digit year)
+    const match2 = formattedDate.match(/^(\d{2})\/(\d{2})\/(\d{2})$/);
+    if (match2) {
+      const [, month, day, yy] = match2;
+      const fullYear = expandYear(parseInt(yy, 10));
+      return `${fullYear}-${month}-${day}`;
     }
     return '';
   };
@@ -67,8 +82,10 @@ export function SmartDateInput({
     setDisplayValue(formatted);
     
     // Only call onChange with ISO format if we have a complete date
-    if (formatted.length === 10) {
-      onChange(toISODate(formatted));
+    // Length 10 = MM/DD/YYYY, length 8 = MM/DD/YY
+    const isoDate = toISODate(formatted);
+    if (isoDate) {
+      onChange(isoDate);
     } else {
       onChange('');
     }
@@ -97,8 +114,9 @@ export function SmartDateInput({
           setDisplayValue(formatted);
           
           // Update parent
-          if (formatted.length === 10) {
-            onChange(toISODate(formatted));
+          const isoDate = toISODate(formatted);
+          if (isoDate) {
+            onChange(isoDate);
           } else {
             onChange('');
           }
