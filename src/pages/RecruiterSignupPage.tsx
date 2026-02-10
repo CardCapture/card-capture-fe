@@ -503,7 +503,7 @@ const RecruiterSignupPage: React.FC = () => {
           )}
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <div className="flex gap-2 w-full">
+          <div className="flex flex-wrap gap-2 w-full">
             <Button
               type="button"
               variant="outline"
@@ -515,7 +515,7 @@ const RecruiterSignupPage: React.FC = () => {
             </Button>
             <Button
               type="submit"
-              className="flex-1"
+              className="flex-1 min-w-0"
               size="lg"
               disabled={loading}
             >
