@@ -963,7 +963,7 @@ export default function MultiStepRegistrationPage() {
                   <div className="space-y-1">
                     <Label htmlFor="tos_agreed" className="text-sm font-medium cursor-pointer">
                       I agree to the{' '}
-                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">
+                      <a href="/terms#student-terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">
                         Terms of Service
                       </a>
                     </Label>
