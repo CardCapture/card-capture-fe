@@ -50,6 +50,32 @@ export const StudentService = {
     return res.json() as Promise<{ sent: boolean }>;
   },
 
+  async getStudentByToken(token: string) {
+    const res = await fetch(`${API_BASE_URL}/students/me?token=${encodeURIComponent(token)}`);
+    if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
+    return res.json();
+  },
+
+  async updateStudentByToken(token: string, data: Record<string, any>) {
+    const res = await fetch(`${API_BASE_URL}/students/me`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, ...data }),
+    });
+    if (!res.ok) throw new Error(`Update failed (${res.status})`);
+    return res.json();
+  },
+
+  async sendQrSms(phone: string) {
+    const res = await fetch(`${API_BASE_URL}/students/lookup-sms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone }),
+    });
+    if (!res.ok) throw new Error(`SMS lookup failed (${res.status})`);
+    return res.json() as Promise<{ sent: boolean }>;
+  },
+
   async scanStudent(token: string, eventId: string, rating?: number, notes?: string, authToken?: string) {
     const res = await authFetch(
       `${API_BASE_URL}/students/scan`,

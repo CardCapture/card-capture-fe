@@ -70,6 +70,9 @@ const PurchaseEventsPage = React.lazy(() => import("./pages/PurchaseEventsPage")
 // Public event submission page
 const CreateEventPage = React.lazy(() => import("./pages/CreateEventPage"));
 
+// Student self-service manage page (token-based, opened from SMS/email links)
+const StudentManagePage = React.lazy(() => import("./pages/StudentManagePage"));
+
 // Documentation page
 const DocsPage = React.lazy(() => import("./pages/DocsPage"));
 
@@ -114,6 +117,7 @@ function App() {
                   <Route path="/register-legacy" element={<StudentSignupPage />} />
                   <Route path="/register/form-legacy" element={<RegistrationFormPage />} />
                   <Route path="/lookup" element={<StudentLookupPage />} />
+                  <Route path="/student-manage" element={<StudentManagePage />} />
                 </Route>
 
                 {/* Registration flow with minimal layout (no header/footer) */}

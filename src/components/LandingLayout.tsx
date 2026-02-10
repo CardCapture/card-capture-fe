@@ -223,6 +223,7 @@ const LandingLayout = ({ children }: LandingLayoutProps) => {
                 <li><Link to="/about" className="text-foreground/70 hover:text-foreground">About</Link></li>
                 <li><Link to="/contact" className="text-foreground/70 hover:text-foreground">Contact</Link></li>
                 <li><Link to="/privacy" className="text-foreground/70 hover:text-foreground">Privacy Policy</Link></li>
+                <li><Link to="/terms" className="text-foreground/70 hover:text-foreground">Terms of Service</Link></li>
               </ul>
             </div>
           </div>

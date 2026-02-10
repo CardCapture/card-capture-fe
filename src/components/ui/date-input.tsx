@@ -16,11 +16,22 @@ export function DateInput({
 }: DateInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Convert ISO date (YYYY-MM-DD) to MM/DD/YYYY before formatting
+  const normalizeInput = (input: string): string => {
+    const isoMatch = input.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return `${month}/${day}/${year}`;
+    }
+    return input;
+  };
+
   // Format the date as MM/DD/YYYY
   const formatDate = (input: string) => {
+    const normalized = normalizeInput(input);
     // Remove all non-numeric characters
-    const cleaned = input.replace(/\D/g, '');
-    
+    const cleaned = normalized.replace(/\D/g, '');
+
     // Apply formatting based on length
     if (cleaned.length <= 2) {
       return cleaned;

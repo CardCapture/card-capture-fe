@@ -198,7 +198,7 @@ export default function StudentSignupPage() {
             </div>
             <div>
               <Label>Grade</Label>
-              <Select value={(form as any).grade_level || ""} onValueChange={(v) => setForm((f) => ({ ...f, grade_level: v }))}>
+              <Select value={(form as any).grade_level || ""} onValueChange={(v) => setForm((f) => ({ ...f, grade_level: v, student_type: v === 'College Transfer' ? 'Transfer' : 'Freshman' }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select grade" />
                 </SelectTrigger>
@@ -210,7 +210,7 @@ export default function StudentSignupPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="grad_year">Graduation Year</Label>
+              <Label htmlFor="grad_year">{(form as any).grade_level === 'College Transfer' ? 'HS Graduation Year' : 'Graduation Year'}</Label>
               <Input id="grad_year" name="grad_year" value={(form as any).grad_year || ""} onChange={handleChange} />
             </div>
             <div>

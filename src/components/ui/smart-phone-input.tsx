@@ -36,8 +36,12 @@ export function SmartPhoneInput({
 
   // Format phone as XXX-XXX-XXXX
   const formatPhone = (input: string): string => {
-    // Remove all non-digits
-    const digits = input.replace(/\D/g, '').slice(0, 10);
+    // Remove all non-digits, strip leading '1' country code if 11 digits
+    let digits = input.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) {
+      digits = digits.slice(1);
+    }
+    digits = digits.slice(0, 10);
     
     // Apply formatting
     if (digits.length >= 6) {
@@ -59,8 +63,12 @@ export function SmartPhoneInput({
     const input = e.target.value;
     const cursorPosition = e.target.selectionStart || 0;
     
-    // Extract only digits from the input
-    const digits = input.replace(/\D/g, '').slice(0, 10);
+    // Extract only digits, strip leading '1' country code if 11 digits
+    let digits = input.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) {
+      digits = digits.slice(1);
+    }
+    digits = digits.slice(0, 10);
     const formatted = formatPhone(digits);
     
     setDisplayValue(formatted);

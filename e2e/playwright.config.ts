@@ -8,7 +8,7 @@ export default defineConfig({
   testDir: './tests',
 
   // Global setup to authenticate before tests
-  globalSetup: require.resolve('./global-setup'),
+  globalSetup: './global-setup.ts',
 
   // Run tests in parallel
   fullyParallel: true,

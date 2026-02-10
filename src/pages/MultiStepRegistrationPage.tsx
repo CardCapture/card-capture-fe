@@ -43,6 +43,7 @@ interface RegistrationFormData {
   zip_code: string;
 
   // Step 3: School Info
+  student_type: string;
   high_school: string;
   grade_level: string;
   grad_year: string;
@@ -58,6 +59,7 @@ interface RegistrationFormData {
   academic_interests: MajorItem[];
   email_opt_in: boolean;
   permission_to_text: boolean;
+  tos_agreed: boolean;
 }
 
 const initialFormData: RegistrationFormData = {
@@ -72,6 +74,7 @@ const initialFormData: RegistrationFormData = {
   city: '',
   state: '',
   zip_code: '',
+  student_type: '',
   high_school: '',
   grade_level: '',
   grad_year: '',
@@ -84,7 +87,8 @@ const initialFormData: RegistrationFormData = {
   major: '',
   academic_interests: [],
   email_opt_in: true,
-  permission_to_text: false,
+  permission_to_text: true,
+  tos_agreed: false,
 };
 
 const steps = [
@@ -256,6 +260,7 @@ export default function MultiStepRegistrationPage() {
           city: student.city || '',
           state: student.state || '',
           zip_code: student.zip_code || '',
+          student_type: student.student_type || '',
           high_school: student.high_school || '',
           grade_level: student.grade_level || '',
           grad_year: student.grad_year || '',
@@ -271,7 +276,8 @@ export default function MultiStepRegistrationPage() {
             typeof interest === 'string' ? { id: interest, label: interest } : interest
           ),
           email_opt_in: student.email_opt_in ?? true,
-          permission_to_text: student.permission_to_text ?? false,
+          permission_to_text: student.permission_to_text ?? true,
+          tos_agreed: false,
         });
         toast({
           title: "Welcome back!",
@@ -318,7 +324,13 @@ export default function MultiStepRegistrationPage() {
         if (formData.grad_year && validators.graduationYear(formData.grad_year)) errors.push('Valid graduation year is required');
         break;
         
-      case 3: // Academic Interests - no required fields
+      case 3: // Academic Interests
+        if (!formData.email_opt_in && !formData.permission_to_text) {
+          errors.push('Please select at least one QR delivery method (email or text)');
+        }
+        if (!formData.tos_agreed) {
+          errors.push('You must agree to the Terms of Service');
+        }
         break;
     }
 
@@ -347,9 +359,10 @@ export default function MultiStepRegistrationPage() {
     setSubmitting(true);
 
     try {
-      // Prepare form data for submission
+      // Prepare form data for submission (strip tos_agreed — frontend-only)
+      const { tos_agreed, ...formFields } = formData;
       const submissionData = {
-        ...formData,
+        ...formFields,
         academic_interests: formData.academic_interests?.map(item => item.label) || [],
         gpa: formData.gpa ? parseFloat(formData.gpa) : undefined,
         gpa_scale: formData.gpa_scale ? parseFloat(formData.gpa_scale) : undefined,
@@ -679,7 +692,7 @@ export default function MultiStepRegistrationPage() {
                     <Label>Grade Level</Label>
                     <Select
                       value={formData.grade_level}
-                      onValueChange={(value) => updateData({ grade_level: value })}
+                      onValueChange={(value) => updateData({ grade_level: value, student_type: value === 'College Transfer' ? 'Transfer' : 'Freshman' })}
                     >
                       <SelectTrigger className="h-12">
                         <SelectValue placeholder="Select grade" />
@@ -693,9 +706,9 @@ export default function MultiStepRegistrationPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label>Graduation Year</Label>
+                    <Label>{formData.grade_level === 'College Transfer' ? 'HS Graduation Year' : 'Graduation Year'}</Label>
                     <Select
                       value={formData.grad_year}
                       onValueChange={(value) => updateData({ grad_year: value })}
@@ -904,8 +917,8 @@ export default function MultiStepRegistrationPage() {
                 />
                 
                 <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-medium text-gray-900">Communication Preferences</h3>
-                  
+                  <h3 className="font-medium text-gray-900">How should we send your QR code?</h3>
+
                   <div className="flex items-start space-x-3">
                     <Checkbox
                       id="email_opt_in"
@@ -914,28 +927,46 @@ export default function MultiStepRegistrationPage() {
                     />
                     <div className="space-y-1">
                       <Label htmlFor="email_opt_in" className="text-sm font-medium cursor-pointer">
-                        Email updates
+                        Email me my QR code
                       </Label>
                       <p className="text-sm text-gray-600">
-                        Receive information from schools and college fair updates
+                        We'll email your QR code and future updates
                       </p>
                     </div>
                   </div>
-                  
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id="permission_to_text"
-                      checked={formData.permission_to_text}
-                      onCheckedChange={(checked) => updateData({ permission_to_text: !!checked })}
-                    />
-                    <div className="space-y-1">
-                      <Label htmlFor="permission_to_text" className="text-sm font-medium cursor-pointer">
-                        Text messages
-                      </Label>
-                      <p className="text-sm text-gray-600">
-                        Get important reminders and time-sensitive updates via SMS
-                      </p>
+
+                  {formData.cell && (
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="permission_to_text"
+                        checked={formData.permission_to_text}
+                        onCheckedChange={(checked) => updateData({ permission_to_text: !!checked })}
+                      />
+                      <div className="space-y-1">
+                        <Label htmlFor="permission_to_text" className="text-sm font-medium cursor-pointer">
+                          Text me my QR code
+                        </Label>
+                        <p className="text-sm text-gray-600">
+                          We'll text a link to view your QR code
+                        </p>
+                      </div>
                     </div>
+                  )}
+                </div>
+
+                <div className="flex items-start space-x-3 mt-4">
+                  <Checkbox
+                    id="tos_agreed"
+                    checked={formData.tos_agreed}
+                    onCheckedChange={(checked) => updateData({ tos_agreed: !!checked })}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="tos_agreed" className="text-sm font-medium cursor-pointer">
+                      I agree to the{' '}
+                      <a href="/terms#student-terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">
+                        Terms of Service
+                      </a>
+                    </Label>
                   </div>
                 </div>
               </FormStep>
@@ -960,21 +991,21 @@ export default function MultiStepRegistrationPage() {
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+            <div className="flex flex-wrap justify-between items-center gap-3 mt-8 pt-6 border-t border-gray-200">
               <Button
                 variant="outline"
                 onClick={prevStep}
                 disabled={currentStep === 0}
-                className="flex items-center gap-2 px-6 py-3"
+                className="flex items-center gap-2 px-3 sm:px-6 py-3"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Back
               </Button>
-              
+
               {currentStep < steps.length - 1 ? (
                 <Button
                   onClick={nextStep}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800"
+                  className="flex items-center gap-2 px-3 sm:px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800"
                 >
                   Continue
                   <ChevronRight className="w-4 h-4" />
@@ -983,17 +1014,17 @@ export default function MultiStepRegistrationPage() {
                 <Button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                  className="flex items-center gap-2 px-3 sm:px-6 py-3 min-w-0 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 >
                   {submitting ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Creating...
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                      <span className="truncate">Creating...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4" />
-                      Complete Registration
+                      <Sparkles className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Complete Registration</span>
                     </>
                   )}
                 </Button>
