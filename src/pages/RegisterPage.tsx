@@ -7,11 +7,22 @@ import { useToast } from '@/hooks/use-toast';
 import { RegistrationService } from '@/services/RegistrationService';
 import { logger } from '@/utils/logger';
 
+function isSchoolEmail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return false;
+  const segments = domain.split('.');
+  if (segments.includes('k12')) return true;
+  if (domain.endsWith('.org')) return true;
+  if (domain.endsWith('.edu')) return true;
+  return false;
+}
+
 export default function RegisterPage() {
   const [visible, setVisible] = useState(false);
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [eventCode, setEventCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [codeError, setCodeError] = useState('');
@@ -55,6 +66,11 @@ export default function RegisterPage() {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || submitting || submissionRef.current) return;
+
+    if (isSchoolEmail(email)) {
+      setEmailError('Please use a personal email address (Gmail, Yahoo, iCloud, etc.). School and university emails often block messages from CardCapture.');
+      return;
+    }
 
     // Analytics tracking
     logger.log('analytics:cta_click', { type: 'email_registration', email_domain: email.split('@')[1] });
@@ -253,14 +269,23 @@ export default function RegisterPage() {
                         type="email"
                         placeholder="your.email@example.com"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="text-lg py-6"
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setEmailError('');
+                        }}
+                        onBlur={() => {
+                          if (email.trim() && isSchoolEmail(email)) {
+                            setEmailError('Please use a personal email address (Gmail, Yahoo, iCloud, etc.). School and university emails often block messages from CardCapture.');
+                          }
+                        }}
+                        className={`text-lg py-6 ${emailError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                         autoFocus
                         required
                         aria-describedby="email-help"
+                        aria-invalid={!!emailError}
                       />
-                      <p id="email-help" className="text-xs text-foreground/60">
-                        We'll send you a secure link to complete registration
+                      <p id="email-help" className={`text-xs ${emailError ? 'text-destructive' : 'text-foreground/60'}`} role={emailError ? 'alert' : undefined}>
+                        Use a personal email like Gmail or Yahoo — school emails often don't receive our messages
                       </p>
                     </div>
 
@@ -271,6 +296,7 @@ export default function RegisterPage() {
                         onClick={() => {
                           setShowEmailInput(false);
                           setEmail('');
+                          setEmailError('');
                         }}
                         className="flex-1"
                         aria-label="Go back to main options"
@@ -279,7 +305,7 @@ export default function RegisterPage() {
                       </Button>
                       <Button
                         type="submit"
-                        disabled={submitting || !email.trim()}
+                        disabled={submitting || !email.trim() || !!emailError}
                         className="flex-1"
                         aria-label={submitting ? 'Sending magic link to your email' : 'Send magic link to continue'}
                       >
