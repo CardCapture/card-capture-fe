@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { CompactProcessingStatus } from "@/components/CompactProcessingStatus";
 import { ProcessingService } from "@/services/processingService";
+import { useProcessingStatus } from "@/hooks/useProcessingStatus";
 
 interface EventHeaderProps {
   selectedEvent: { id: string; name: string; school_id?: string; date?: string; slate_event_id?: string | null } | null;
@@ -26,6 +27,7 @@ interface EventHeaderProps {
   hideExported: boolean;
   onEditEvent: () => void;
   onRefreshCards?: () => void;
+  processingRefreshRef?: React.MutableRefObject<((force?: boolean) => void) | null>;
 }
 
 const EventHeader: React.FC<EventHeaderProps> = ({
@@ -37,9 +39,21 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   hideExported,
   onEditEvent,
   onRefreshCards,
+  processingRefreshRef,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Single processing status hook shared by both desktop and mobile instances
+  const { status: processingStatus, loading: processingLoading, refresh: processingRefresh } =
+    useProcessingStatus(selectedEvent?.id, onRefreshCards);
+
+  // Expose refresh to parent via ref (for triggering after upload)
+  useEffect(() => {
+    if (processingRefreshRef) {
+      processingRefreshRef.current = processingRefresh;
+    }
+  }, [processingRefreshRef, processingRefresh]);
 
   // Get the previous tab from location state (passed when navigating to this event)
   const previousTab = (location.state as { previousTab?: string })?.previousTab;
@@ -73,7 +87,7 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   // Processing handlers
   const handleRetryFailed = useCallback(async () => {
     if (!selectedEvent?.id) return;
-    
+
     await ProcessingService.retryFailedJobs(selectedEvent.id);
     if (onRefreshCards) {
       onRefreshCards();
@@ -82,7 +96,7 @@ const EventHeader: React.FC<EventHeaderProps> = ({
 
   const handleStopProcessing = useCallback(async () => {
     if (!selectedEvent?.id) return;
-    
+
     await ProcessingService.stopActiveJobs(selectedEvent.id);
     if (onRefreshCards) {
       onRefreshCards();
@@ -91,12 +105,13 @@ const EventHeader: React.FC<EventHeaderProps> = ({
 
   const handleDismissFailure = useCallback(async () => {
     if (!selectedEvent?.id) return;
-    
+
     await ProcessingService.clearFailedJobs(selectedEvent.id);
     if (onRefreshCards) {
       onRefreshCards();
     }
   }, [selectedEvent?.id, onRefreshCards]);
+
   return (
     <>
       {/* Breadcrumb Navigation */}
@@ -169,17 +184,18 @@ const EventHeader: React.FC<EventHeaderProps> = ({
                 </div>
               </div>
             </div>
-            
+
             {/* Processing Status - Desktop: Absolutely positioned top-right */}
             {selectedEvent && (
               <div className="absolute top-4 right-4 sm:top-6 sm:right-6 hidden sm:block">
                 <CompactProcessingStatus
-                  eventId={selectedEvent.id}
+                  status={processingStatus}
+                  loading={processingLoading}
+                  refresh={processingRefresh}
                   className="min-w-[240px]"
                   onRetryFailed={handleRetryFailed}
                   onStopProcessing={handleStopProcessing}
                   onDismissFailure={handleDismissFailure}
-                  onCardsRefresh={onRefreshCards}
                 />
               </div>
             )}
@@ -188,12 +204,13 @@ const EventHeader: React.FC<EventHeaderProps> = ({
             {selectedEvent && (
               <div className="block sm:hidden w-full">
                 <CompactProcessingStatus
-                  eventId={selectedEvent.id}
+                  status={processingStatus}
+                  loading={processingLoading}
+                  refresh={processingRefresh}
                   className="w-full"
                   onRetryFailed={handleRetryFailed}
                   onStopProcessing={handleStopProcessing}
                   onDismissFailure={handleDismissFailure}
-                  onCardsRefresh={onRefreshCards}
                 />
               </div>
             )}

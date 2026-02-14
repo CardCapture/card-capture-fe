@@ -1,29 +1,38 @@
 import { useState } from "react";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Loader2, RotateCcw, X, Pause } from "lucide-react";
-import { useProcessingStatus } from "@/hooks/useProcessingStatus";
 import { toast } from "@/lib/toast";
 import { logger } from '@/utils/logger';
 
+interface ProcessingStatusData {
+  queued: number;
+  processing: number;
+  failed: number;
+  completed: number;
+  total: number;
+  timeRemaining: string;
+  isProcessing: boolean;
+}
+
 interface CompactProcessingStatusProps {
-  eventId: string;
+  status: ProcessingStatusData;
+  loading: boolean;
+  refresh: (force?: boolean) => Promise<void>;
   className?: string;
   onRetryFailed?: () => Promise<void> | void;
   onStopProcessing?: () => Promise<void> | void;
   onDismissFailure?: () => Promise<void> | void;
-  onCardsRefresh?: () => void;
 }
 
 export function CompactProcessingStatus({
-  eventId,
+  status,
+  loading,
+  refresh,
   className = "",
   onRetryFailed,
   onStopProcessing,
   onDismissFailure,
-  onCardsRefresh
 }: CompactProcessingStatusProps) {
-  const { status, loading, refresh } = useProcessingStatus(eventId, onCardsRefresh);
   const [isRetrying, setIsRetrying] = useState(false);
   const [isStopping, setStopping] = useState(false);
 
@@ -45,7 +54,7 @@ export function CompactProcessingStatus({
   // Handle retry failed cards
   const handleRetry = async () => {
     if (!onRetryFailed || isRetrying) return;
-    
+
     setIsRetrying(true);
     try {
       await Promise.resolve(onRetryFailed());
@@ -61,7 +70,7 @@ export function CompactProcessingStatus({
   // Handle stop processing
   const handleStop = async () => {
     if (!onStopProcessing || isStopping) return;
-    
+
     setStopping(true);
     try {
       await Promise.resolve(onStopProcessing());
@@ -77,18 +86,18 @@ export function CompactProcessingStatus({
   // Handle dismiss failure
   const handleDismiss = async () => {
     if (!onDismissFailure) return;
-    
+
     try {
-      logger.log('🗑️ Dismissing failure state...');
+      logger.log('Dismissing failure state...');
       await Promise.resolve(onDismissFailure());
-      
+
       // Small delay to ensure database changes propagate
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Force refresh the processing status to update UI immediately
-      logger.log('🔄 Refreshing processing status after dismiss...');
+      logger.log('Refreshing processing status after dismiss...');
       await refresh();
-      
+
       toast.success('Failure dismissed');
     } catch (error) {
       logger.error('Failed to dismiss failure:', error);
@@ -120,7 +129,7 @@ export function CompactProcessingStatus({
             </div>
           )}
         </div>
-        
+
         {/* Action Buttons */}
         <div className="flex items-center gap-1">
           {/* Stop button for active processing */}
@@ -140,7 +149,7 @@ export function CompactProcessingStatus({
               )}
             </Button>
           )}
-          
+
           {/* Retry button for failed state */}
           {showFailedState && onRetryFailed && (
             <Button
@@ -158,7 +167,7 @@ export function CompactProcessingStatus({
               )}
             </Button>
           )}
-          
+
           {/* Dismiss button for failed state */}
           {showFailedState && onDismissFailure && (
             <Button
@@ -173,11 +182,11 @@ export function CompactProcessingStatus({
           )}
         </div>
       </div>
-      
+
       {/* Progress Bar */}
       <div className="mb-2">
         <div className="w-full bg-gray-100 rounded-full h-1.5">
-          <div 
+          <div
             className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
               showFailedState ? 'bg-red-500' : 'bg-blue-500'
             }`}
@@ -185,7 +194,7 @@ export function CompactProcessingStatus({
           />
         </div>
       </div>
-      
+
       {/* Time Estimate Below */}
       {status.timeRemaining && (
         <div className="text-center">
@@ -196,4 +205,4 @@ export function CompactProcessingStatus({
       )}
     </div>
   );
-} 
+}
