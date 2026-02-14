@@ -21,13 +21,11 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 type MFAStep = 'checking' | 'trusted' | 'need-enrollment' | 'need-challenge' | 'complete';
 
 interface MFAGuardProps {
-  email: string;
-  password: string;
   onError: (error: string) => void;
   onSuccess: () => void;
 }
 
-const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess }) => {
+const MFAGuard: React.FC<MFAGuardProps> = ({ onError, onSuccess }) => {
   const [step, setStep] = useState<MFAStep>('checking');
   const [factorId, setFactorId] = useState('');
   const [challengeId, setChallengeId] = useState('');
@@ -35,7 +33,7 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
   const [attemptCount, setAttemptCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { signInWithPassword, user, refetchProfile } = useAuth();
+  const { refetchProfile } = useAuth();
   const navigate = useNavigate();
 
   // Maximum retry attempts before forcing logout
@@ -56,16 +54,8 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
     setIsLoading(true);
 
     try {
-      // Step 1: Authenticate with Supabase
-      logger.log('[MFAGuard] Step 1: Authenticating with Supabase');
-      const result = await signInWithPassword({ email, password });
-
-      if (result.error) {
-        onError(result.error.message || 'Authentication failed');
-        return;
-      }
-
-      // Get session after successful authentication
+      // Step 1: Get existing session (LoginPage already authenticated)
+      logger.log('[MFAGuard] Step 1: Getting existing session');
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
@@ -153,37 +143,6 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ email, password, onError, onSuccess
     } catch (error) {
       logger.error('[MFAGuard] Device trust check error:', error);
       return false;
-    }
-  };
-
-  const checkMFAStatus = async (userId: string): Promise<boolean> => {
-    try {
-      const { data: mfaSettings } = await supabase
-        .from('user_mfa_settings')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      // If user is explicitly exempt from MFA, skip enrollment
-      // This is for shared accounts like admissions@mc.edu
-      if (mfaSettings?.mfa_exempt === true) {
-        logger.log('[MFAGuard] User is exempt from MFA - skipping enrollment');
-        return false; // Don't need enrollment
-      }
-
-      // User needs enrollment if:
-      // 1. No MFA settings exist
-      // 2. MFA not enabled
-      // 3. MFA enabled but no phone number (corrupted state)
-      const needsEnrollment =
-        !mfaSettings ||
-        !mfaSettings.mfa_enabled ||
-        !mfaSettings.phone_number;
-
-      return needsEnrollment;
-    } catch (error) {
-      logger.error('[MFAGuard] Error checking MFA status:', error);
-      return true; // Default to enrollment if check fails
     }
   };
 

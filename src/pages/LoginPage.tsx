@@ -28,16 +28,25 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get the redirect path from location state (set by ProtectedRoute)
+  // Get the redirect path and MFA flag from location state (set by ProtectedRoute)
   const from = (location.state as any)?.from || null;
+  const requiresMfaRedirect = (location.state as any)?.requiresMfa === true;
 
   // Use global loader instead of local loading state
   const { showButtonLoader, hideButtonLoader, isLoading } = useLoader();
   const LOADER_ID = "login-button";
 
+  // If ProtectedRoute redirected here because MFA is needed, auto-trigger MFA flow
+  useEffect(() => {
+    if (requiresMfaRedirect && user && !showMFAFlow) {
+      logger.log('User redirected for MFA verification, starting MFA flow');
+      setShowMFAFlow(true);
+    }
+  }, [requiresMfaRedirect, user, showMFAFlow]);
+
   // Redirect if user is already logged in, but not during MFA flow
   useEffect(() => {
-    if (user && profile && !showMFAFlow) {
+    if (user && profile && !showMFAFlow && !requiresMfaRedirect) {
       // Use saved redirect path if available, otherwise use default
       const redirectPath = from || getDefaultRedirectPath(profile);
       logger.log('User already logged in, redirecting to:', redirectPath);
@@ -111,8 +120,6 @@ const LoginPage = () => {
   if (showMFAFlow) {
     return (
       <MFAGuard
-        email={email}
-        password={password}
         onError={handleMFAError}
         onSuccess={handleMFASuccess}
       />
