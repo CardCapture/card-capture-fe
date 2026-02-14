@@ -11,7 +11,8 @@ export function useCardUploadActions(
     onUploadStart: () => void
   ) => Promise<unknown>,
   fetchCards: () => void,
-  fileInputRef: React.RefObject<HTMLInputElement>
+  fileInputRef: React.RefObject<HTMLInputElement>,
+  onUploadComplete?: () => void
 ) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -41,12 +42,14 @@ export function useCardUploadActions(
           setUploadProgress(0);
         }, 200);
         await fetchCards();
+        // Trigger processing status refresh after upload completes
+        onUploadComplete?.();
       } catch (error) {
         setIsUploading(false);
         setUploadProgress(0);
       }
     },
-    [selectedEvent, uploadCard, fetchCards]
+    [selectedEvent, uploadCard, fetchCards, onUploadComplete]
   );
 
   const handleCaptureCard = useCallback(() => {
@@ -59,14 +62,14 @@ export function useCardUploadActions(
     const mimeString = imageDataUrl.split(',')[0].split(':')[1].split(';')[0];
     const ab = new ArrayBuffer(byteString.length);
     const ia = new Uint8Array(ab);
-    
+
     for (let i = 0; i < byteString.length; i++) {
       ia[i] = byteString.charCodeAt(i);
     }
-    
+
     const blob = new Blob([ab], { type: mimeString });
     const file = new File([blob], `capture-${Date.now()}.jpg`, { type: mimeString });
-    
+
     startUploadProcess(file);
     setIsCameraModalOpen(false);
   }, [startUploadProcess]);

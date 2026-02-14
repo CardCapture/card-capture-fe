@@ -43,18 +43,18 @@ export function useCardsOverride(eventId?: string) {
   const { showTableLoader, hideTableLoader, isLoading } = useLoader();
   const LOADER_ID = `cards-${eventId || "default"}`;
 
-  const fetchCards = useCallback(async () => {
-    logger.log("useCardsOverride: fetchCards called", { eventId });
-    
-    // Prevent parallel requests and implement debouncing
+  const fetchCardsInternal = useCallback(async (force = false) => {
+    logger.log("useCardsOverride: fetchCards called", { eventId, force });
+
+    // Prevent parallel requests; skip debounce when forced (e.g. realtime events)
     const now = Date.now();
-    if (
-      fetchInProgressRef.current ||
-      now - lastFetchTimeRef.current < DEBOUNCE_DELAY
-    ) {
-      logger.log("useCardsOverride: fetchCards blocked by debounce", { 
-        fetchInProgress: fetchInProgressRef.current, 
-        timeSinceLastFetch: now - lastFetchTimeRef.current 
+    if (fetchInProgressRef.current) {
+      logger.log("useCardsOverride: fetchCards blocked - fetch in progress");
+      return;
+    }
+    if (!force && now - lastFetchTimeRef.current < DEBOUNCE_DELAY) {
+      logger.log("useCardsOverride: fetchCards blocked by debounce", {
+        timeSinceLastFetch: now - lastFetchTimeRef.current
       });
       return;
     }
@@ -81,7 +81,7 @@ export function useCardsOverride(eventId?: string) {
       const data: RawCardData[] = (await CardService.getCardsByEvent(
         eventId
       )) as RawCardData[];
-      
+
       logger.log("useCardsOverride: Received data from API", { count: data.length, eventId });
 
 
@@ -135,6 +135,12 @@ export function useCardsOverride(eventId?: string) {
     }
   }, [eventId, showTableLoader, hideTableLoader, LOADER_ID]);
 
+  // Default fetchCards respects debounce (used by manual calls)
+  const fetchCards = useCallback(() => fetchCardsInternal(false), [fetchCardsInternal]);
+
+  // Force fetch bypasses debounce (used by realtime handlers)
+  const forceFetchCards = useCallback(() => fetchCardsInternal(true), [fetchCardsInternal]);
+
   // Effect for initial fetch and eventId changes
   useEffect(() => {
     logger.log("useCardsOverride: useEffect triggered", { eventId, hasEventId: !!eventId });
@@ -175,7 +181,7 @@ export function useCardsOverride(eventId?: string) {
         logger.log(
           "useCardsOverride: Change is relevant to current event, refreshing cards"
         );
-        fetchCards();
+        forceFetchCards();
       } else {
         logger.log(
           "useCardsOverride: Change not relevant to current event, skipping refresh"
@@ -183,8 +189,7 @@ export function useCardsOverride(eventId?: string) {
       }
     };
 
-    // Subscribe to realtime changes on both tables
-    // V1 legacy cards go to reviewed_data, V2 universal cards go to student_school_interactions
+    // Subscribe to realtime changes on all three card-related tables
     channel = supabase
       .channel(channelName)
       .on(
@@ -203,6 +208,16 @@ export function useCardsOverride(eventId?: string) {
           event: "*" as const,
           schema: "public",
           table: "student_school_interactions",
+          filter: `event_id=eq.${eventId}`,
+        },
+        handleDbChange
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*" as const,
+          schema: "public",
+          table: "processing_jobs",
           filter: `event_id=eq.${eventId}`,
         },
         handleDbChange
@@ -246,7 +261,7 @@ export function useCardsOverride(eventId?: string) {
           );
       }
     };
-  }, [eventId, fetchCards]);
+  }, [eventId, forceFetchCards]);
 
   // Add getStatusCount function
   const getStatusCount = useCallback(

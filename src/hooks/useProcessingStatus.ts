@@ -1,7 +1,6 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { debounce } from "@/utils/debounce";
 import { logger } from '@/utils/logger';
 
 interface ProcessingJob {
@@ -59,11 +58,11 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
   }, []);
 
   // Fetch processing status from Supabase
-  const fetchProcessingStatus = useCallback(async () => {
+  const fetchProcessingStatus = useCallback(async (force = false) => {
     if (!eventId || !supabase) return;
 
     const now = Date.now();
-    if (now - lastFetchTimeRef.current < 1000) return; // Debounce rapid calls
+    if (!force && now - lastFetchTimeRef.current < 1000) return; // Debounce rapid calls
     lastFetchTimeRef.current = now;
 
     try {
@@ -108,9 +107,6 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
         failed,
         completed,
         activeCards,
-        hasActiveCards,
-        hasFailedCards,
-        timeRemaining,
         isProcessing,
       });
 
@@ -166,12 +162,6 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
     }
   }, [eventId, calculateTimeRemaining]);
 
-  // Create debounced fetchProcessingStatus to prevent rapid consecutive calls
-  const debouncedFetchProcessingStatus = useMemo(
-    () => debounce(fetchProcessingStatus, 1000), // 1 second debounce
-    [fetchProcessingStatus]
-  );
-
   // Setup real-time subscription
   useEffect(() => {
     if (!eventId || !supabase) return;
@@ -193,8 +183,8 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
 
       if (isRelevant) {
         logger.log('useProcessingStatus: Relevant change detected, refreshing status');
-        // Use debounced fetch to prevent multiple rapid updates
-        debouncedFetchProcessingStatus();
+        // Force fetch immediately on realtime changes (bypass debounce)
+        fetchProcessingStatus(true);
       }
     };
 
@@ -245,7 +235,7 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
         hideTimeoutRef.current = null;
       }
     };
-  }, [eventId, fetchProcessingStatus, debouncedFetchProcessingStatus]);
+  }, [eventId, fetchProcessingStatus]);
 
   return {
     status,

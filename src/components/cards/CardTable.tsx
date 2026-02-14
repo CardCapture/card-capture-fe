@@ -302,12 +302,10 @@ const CardTable: React.FC<CardTableProps> = ({
                 <Upload className="w-4 h-4 mr-2" />
                 <span>Import Card(s)</span>
               </DropdownMenuItem>
-              {school?.enable_qr_scanning && (
-                <DropdownMenuItem onSelect={() => setShowQRScanner(true)}>
-                  <QrCode className="w-4 h-4 mr-2" />
-                  <span>Scan QR Code</span>
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onSelect={() => setShowQRScanner(true)}>
+                <QrCode className="w-4 h-4 mr-2" />
+                <span>Scan QR Code</span>
+              </DropdownMenuItem>
               {school?.enable_signup_sheets && (
                 <DropdownMenuItem onSelect={handleSignupSheet}>
                   <FileSpreadsheet className="w-4 h-4 mr-2" />

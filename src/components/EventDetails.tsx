@@ -265,9 +265,17 @@ const Dashboard = () => {
   const debounceTimerRef = useRef<NodeJS.Timeout>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevHideExported = useRef(hideExported);
+  const processingRefreshRef = useRef<((force?: boolean) => void) | null>(null);
 
   // --- Custom Hooks ---
   const zoomState = useZoom();
+
+  // Callback to refresh processing status after upload
+  const handleUploadComplete = useCallback(() => {
+    processingRefreshRef.current?.(true);
+    setTimeout(() => processingRefreshRef.current?.(true), 1500);
+  }, []);
+
   const {
     isUploading,
     setIsUploading,
@@ -280,7 +288,7 @@ const Dashboard = () => {
     startUploadProcess,
     isCameraModalOpen,
     setIsCameraModalOpen,
-  } = useCardUploadActions(selectedEvent, uploadCard, fetchCards, fileInputRef);
+  } = useCardUploadActions(selectedEvent, uploadCard, fetchCards, fileInputRef, handleUploadComplete);
   const {
     isReviewModalOpen,
     setIsReviewModalOpen,
@@ -1075,6 +1083,7 @@ const Dashboard = () => {
           hideExported={hideExported}
           onEditEvent={handleEditEvent}
           onRefreshCards={fetchCards}
+          processingRefreshRef={processingRefreshRef}
         />
 
         {/* Main Content - Mobile Responsive */}
