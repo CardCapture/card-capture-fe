@@ -313,6 +313,7 @@ export default function MultiStepRegistrationPage() {
       case 1: // Contact Info
         if (!formData.email.trim()) errors.push('Email is required');
         if (formData.email && validators.email(formData.email)) errors.push('Valid email is required');
+        if (!formData.cell.trim()) errors.push('Phone number is required');
         if (formData.cell && validators.phone(formData.cell)) errors.push('Valid phone number is required');
         if (formData.zip_code && validators.zipCode(formData.zip_code)) errors.push('Valid zip code is required');
         break;
@@ -525,8 +526,9 @@ export default function MultiStepRegistrationPage() {
                   label="Phone Number"
                   value={formData.cell}
                   onChange={(value) => updateData({ cell: value })}
-                  onValidate={validators.phone}
+                  onValidate={combineValidators(validators.required, validators.phone)}
                   helpText="For important updates from schools"
+                  required
                 />
                 
                 <div className="space-y-4">
@@ -935,23 +937,21 @@ export default function MultiStepRegistrationPage() {
                     </div>
                   </div>
 
-                  {formData.cell && (
-                    <div className="flex items-start space-x-3">
-                      <Checkbox
-                        id="permission_to_text"
-                        checked={formData.permission_to_text}
-                        onCheckedChange={(checked) => updateData({ permission_to_text: !!checked })}
-                      />
-                      <div className="space-y-1">
-                        <Label htmlFor="permission_to_text" className="text-sm font-medium cursor-pointer">
-                          Text me my QR code
-                        </Label>
-                        <p className="text-sm text-gray-600">
-                          We'll text a link to view your QR code
-                        </p>
-                      </div>
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="permission_to_text"
+                      checked={formData.permission_to_text}
+                      onCheckedChange={(checked) => updateData({ permission_to_text: !!checked })}
+                    />
+                    <div className="space-y-1">
+                      <Label htmlFor="permission_to_text" className="text-sm font-medium cursor-pointer">
+                        Text me my QR code
+                      </Label>
+                      <p className="text-sm text-gray-600">
+                        We'll text a link to view your QR code
+                      </p>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 <div className="flex items-start space-x-3 mt-4">
