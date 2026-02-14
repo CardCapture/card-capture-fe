@@ -27,6 +27,7 @@ const MFAChallengeModal: React.FC<MFAChallengeModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rememberDevice, setRememberDevice] = useState(false);
+  const [currentChallengeId, setCurrentChallengeId] = useState(challengeId);
 
   if (!isOpen) return null;
 
@@ -52,7 +53,7 @@ const MFAChallengeModal: React.FC<MFAChallengeModalProps> = ({
         },
         body: JSON.stringify({
           factor_id: factorId,
-          challenge_id: challengeId,
+          challenge_id: currentChallengeId,
           code,
           remember_device: rememberDevice,
           device_name: navigator.userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop'
@@ -95,7 +96,14 @@ const MFAChallengeModal: React.FC<MFAChallengeModalProps> = ({
     } catch (err: any) {
       const errorMsg = err.message || 'Verification failed';
       setError(errorMsg);
-      onError(errorMsg);
+
+      // Only escalate fatal errors to parent (dismisses modal).
+      // Recoverable errors (invalid/expired code) stay in the modal for retry.
+      const isFatal = errorMsg.includes('No active session') ||
+        errorMsg.includes('Too many attempts');
+      if (isFatal) {
+        onError(errorMsg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -130,12 +138,16 @@ const MFAChallengeModal: React.FC<MFAChallengeModalProps> = ({
         throw new Error(data.detail || 'Failed to resend code');
       }
 
+      // Update challengeId so verification uses the new challenge
+      if (data.challenge_id) {
+        setCurrentChallengeId(data.challenge_id);
+      }
+
       logger.log('[Challenge] Code resent successfully');
       setError(null);
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to resend code';
       setError(errorMsg);
-      onError(errorMsg);
     } finally {
       setIsLoading(false);
     }
