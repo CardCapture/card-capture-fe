@@ -2,6 +2,7 @@ import { offlineQueue, type PendingCard } from './offlineQueue';
 import { Capacitor } from '@capacitor/core';
 import { Network } from '@capacitor/network';
 import { logger } from '@/utils/logger';
+import { fetchWithRetry } from '@/utils/retry';
 
 const MAX_RETRIES = 3;
 
@@ -163,17 +164,23 @@ class SyncService {
 
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-    const uploadResponse = await fetch(`${apiBaseUrl}/upload`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+    await fetchWithRetry(
+      () =>
+        fetch(`${apiBaseUrl}/upload`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: formData,
+        }),
+      {
+        maxRetries: 3,
+        baseDelay: 1000,
+        onRetry: (attempt, maxRetries) => {
+          logger.log(`[SyncService] Retry attempt ${attempt}/${maxRetries} for card ${card.id}`);
+        },
       },
-      body: formData,
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
-    }
+    );
   }
 
   /**
