@@ -2,6 +2,7 @@ import { toast } from "@/lib/toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { offlineQueue } from "@/services/offlineQueue";
+import { fetchWithRetry, NonRetryableError } from "@/utils/retry";
 
 interface UploadResult {
   document_id?: string;
@@ -52,7 +53,7 @@ export const useCardUpload = () => {
       }
     }
 
-    // Online: upload directly
+    // Online: upload directly with retry on network/server errors
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -63,21 +64,35 @@ export const useCardUpload = () => {
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const endpoint = "/upload";
 
-      const response = await fetch(`${apiBaseUrl}${endpoint}`, {
-        method: "POST",
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
+      const response = await fetchWithRetry(
+        () =>
+          fetch(`${apiBaseUrl}${endpoint}`, {
+            method: "POST",
+            headers: {
+              'Authorization': `Bearer ${session?.access_token}`,
+            },
+            body: formData,
+          }),
+        {
+          maxRetries: 3,
+          baseDelay: 1000,
+          onRetry: (attempt, maxRetries) => {
+            toast.warning(
+              `Upload failed, retrying... (attempt ${attempt}/${maxRetries})`,
+              "Retrying",
+            );
+          },
         },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
-      }
+      );
 
       const data = await response.json();
       return data;
     } catch (error: unknown) {
+      // For client errors, surface the specific status info
+      if (error instanceof NonRetryableError) {
+        toast.error(error.message, "Upload Failed");
+        throw error;
+      }
       const errorMessage =
         error instanceof Error ? error.message : "Upload failed";
       toast.error(errorMessage, "Upload Failed");
