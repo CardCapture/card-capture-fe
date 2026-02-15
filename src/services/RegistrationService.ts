@@ -232,19 +232,23 @@ class RegistrationServiceClass {
    * Get CAPTCHA token from hCaptcha
    */
   private async getCaptchaToken(): Promise<string | undefined> {
-    // Temporarily disable hCaptcha for testing
-    logger.log('hCaptcha temporarily disabled for testing');
-    return undefined;
-    
-    // Check if hCaptcha is loaded
+    const siteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY;
+
+    // Skip captcha when site key is not configured (local dev/testing)
+    if (!siteKey) {
+      logger.log('hCaptcha skipped: VITE_HCAPTCHA_SITE_KEY not set');
+      return undefined;
+    }
+
+    // Check if hCaptcha JS is loaded on the page
     if (typeof window.hcaptcha === 'undefined') {
-      logger.warn('hCaptcha not loaded, proceeding without CAPTCHA token');
+      logger.warn('hCaptcha script not loaded, proceeding without CAPTCHA token');
       return undefined;
     }
 
     try {
-      // Execute invisible hCaptcha
-      const token = await window.hcaptcha.execute(import.meta.env.VITE_HCAPTCHA_SITE_KEY, {
+      // Execute invisible hCaptcha programmatically
+      const token = await window.hcaptcha.execute(siteKey, {
         action: 'registration'
       });
       return token;
