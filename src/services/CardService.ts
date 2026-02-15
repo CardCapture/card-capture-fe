@@ -1,7 +1,14 @@
-import { cardsApi } from "@/api/backend/cards";
+import { cardsApi, type PaginatedCardsResponse } from "@/api/backend/cards";
 import { determineCardStatus, isAIFailed } from "@/lib/cardUtils";
 import type { ProspectCard, CardStatus, FieldData } from "@/types/card";
 import { logger } from '@/utils/logger';
+
+export interface PaginatedCards {
+  cards: ProspectCard[];
+  total: number;
+  limit: number;
+  offset: number;
+}
 
 export interface RawCardData {
   document_id?: string;
@@ -28,12 +35,12 @@ export interface RawCardData {
 
 export class CardService {
   /**
-   * Get all cards with proper transformation
+   * Get all cards with proper transformation (returns flat array for backward compat)
    */
   static async getAllCards(): Promise<ProspectCard[]> {
     try {
-      const rawCards = await cardsApi.getCards();
-      return this.transformCardsData(rawCards);
+      const response = await cardsApi.getCards();
+      return this.transformCardsData(response.cards);
     } catch (error) {
       logger.error("CardService: Failed to get all cards", error);
       throw error;
@@ -41,14 +48,56 @@ export class CardService {
   }
 
   /**
-   * Get cards for a specific event
+   * Get all cards (paginated) with proper transformation
+   */
+  static async getAllCardsPaginated(params?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<PaginatedCards> {
+    try {
+      const response = await cardsApi.getCards(params);
+      return {
+        cards: this.transformCardsData(response.cards),
+        total: response.total,
+        limit: response.limit,
+        offset: response.offset,
+      };
+    } catch (error) {
+      logger.error("CardService: Failed to get all cards (paginated)", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get cards for a specific event (returns flat array for backward compat)
    */
   static async getCardsByEvent(eventId: string): Promise<ProspectCard[]> {
     try {
-      const rawCards = await cardsApi.getCardsByEvent(eventId);
-      return this.transformCardsData(rawCards);
+      const response = await cardsApi.getCardsByEvent(eventId);
+      return this.transformCardsData(response.cards);
     } catch (error) {
       logger.error("CardService: Failed to get cards by event", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get cards for a specific event (paginated) with proper transformation
+   */
+  static async getCardsByEventPaginated(
+    eventId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<PaginatedCards> {
+    try {
+      const response = await cardsApi.getCardsByEvent(eventId, params);
+      return {
+        cards: this.transformCardsData(response.cards),
+        total: response.total,
+        limit: response.limit,
+        offset: response.offset,
+      };
+    } catch (error) {
+      logger.error("CardService: Failed to get cards by event (paginated)", error);
       throw error;
     }
   }

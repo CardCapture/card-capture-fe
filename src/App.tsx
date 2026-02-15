@@ -6,12 +6,23 @@ import {
   Route,
   Outlet,
 } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { Toaster } from "./components/ui/toaster";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LoaderProvider } from "./contexts/LoaderContext";
 import { muiTheme } from "./lib/muiTheme";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30 seconds
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
 import SuperAdminRoute from "./components/SuperAdminRoute";
@@ -81,6 +92,7 @@ import "./App.css";
 
 function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <ThemeProvider theme={muiTheme}>
       <CssBaseline />
       <Router>
@@ -297,6 +309,7 @@ function App() {
         </AuthProvider>
       </Router>
     </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

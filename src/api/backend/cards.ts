@@ -4,27 +4,64 @@ import type { ProspectCard } from "@/types/card";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
+/**
+ * Paginated response shape returned by GET /cards.
+ * The backend now returns { cards, total, limit, offset } instead of a plain array.
+ */
+export interface PaginatedCardsResponse {
+  cards: ProspectCard[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Normalize the API response: if the backend returns a plain array (old format),
+ * wrap it in the paginated shape for backward compatibility.
+ */
+function normalizePaginatedResponse(data: unknown): PaginatedCardsResponse {
+  if (Array.isArray(data)) {
+    return { cards: data, total: data.length, limit: data.length, offset: 0 };
+  }
+  const resp = data as PaginatedCardsResponse;
+  return {
+    cards: Array.isArray(resp.cards) ? resp.cards : [],
+    total: resp.total ?? 0,
+    limit: resp.limit ?? 50,
+    offset: resp.offset ?? 0,
+  };
+}
+
 export const cardsApi = {
   /**
-   * Get all cards
+   * Get all cards (paginated)
    */
-  async getCards(): Promise<ProspectCard[]> {
-    const response = await authFetch(`${API_BASE_URL}/cards`);
+  async getCards(params?: { limit?: number; offset?: number }): Promise<PaginatedCardsResponse> {
+    const url = new URL(`${API_BASE_URL}/cards`);
+    if (params?.limit != null) url.searchParams.append("limit", String(params.limit));
+    if (params?.offset != null) url.searchParams.append("offset", String(params.offset));
+
+    const response = await authFetch(url.toString());
 
     if (!response.ok) {
       throw new Error(`Failed to fetch cards (${response.status})`);
     }
 
     const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    return normalizePaginatedResponse(data);
   },
 
   /**
-   * Get cards for a specific event
+   * Get cards for a specific event (paginated)
    */
-  async getCardsByEvent(eventId: string): Promise<ProspectCard[]> {
+  async getCardsByEvent(
+    eventId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<PaginatedCardsResponse> {
     const url = new URL(`${API_BASE_URL}/cards`);
     url.searchParams.append("event_id", eventId);
+    if (params?.limit != null) url.searchParams.append("limit", String(params.limit));
+    if (params?.offset != null) url.searchParams.append("offset", String(params.offset));
 
     const response = await authFetch(url.toString());
 
@@ -33,7 +70,7 @@ export const cardsApi = {
     }
 
     const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    return normalizePaginatedResponse(data);
   },
 
   /**
