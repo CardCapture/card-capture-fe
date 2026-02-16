@@ -23,6 +23,8 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { SyncStatusBadge } from '@/components/SyncStatusBadge';
 import { StudentService } from '@/services';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { offlineQueue } from '@/services/offlineQueue';
 import { logger } from '@/utils/logger';
 
 const ScanPage: React.FC = () => {
@@ -38,7 +40,8 @@ const ScanPage: React.FC = () => {
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const { uploadCard, isOnline } = useCardUpload();
+  const { uploadCard } = useCardUpload();
+  const { isOnline } = useNetworkStatus();
   const [forceShowProcessing, setForceShowProcessing] = useState(false);
   const [isProcessingQR, setIsProcessingQR] = useState(false);
   const [qrSuccess, setQrSuccess] = useState(false);
@@ -185,6 +188,32 @@ const ScanPage: React.FC = () => {
     logger.log('Processing QR token:', token);
     setIsProcessingQR(true);
     setQrSuccess(false);
+
+    // If offline, queue the QR scan for later sync
+    if (!isOnline) {
+      try {
+        await offlineQueue.addQRScan({
+          token: token.trim(),
+          eventId: selectedEventId,
+          eventName: selectedEvent?.name || '',
+        });
+
+        setQrSuccess(true);
+        toast.success("QR scan saved! Will sync when you're back online.");
+
+        setTimeout(() => {
+          setQrSuccess(false);
+          setIsProcessingQR(false);
+          setIsCameraOpen(false);
+        }, 1500);
+      } catch (error: any) {
+        logger.error('Failed to queue QR scan:', error);
+        toast.error("Failed to save QR scan offline");
+        setIsProcessingQR(false);
+        setIsCameraOpen(false);
+      }
+      return;
+    }
 
     try {
       await StudentService.scanStudent(

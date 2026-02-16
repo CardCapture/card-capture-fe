@@ -7,12 +7,21 @@ interface OfflineBannerProps {
   className?: string;
 }
 
+function formatPendingSummary(cardCount: number, qrCount: number): string {
+  const parts: string[] = [];
+  if (cardCount > 0) parts.push(`${cardCount} card${cardCount !== 1 ? 's' : ''}`);
+  if (qrCount > 0) parts.push(`${qrCount} QR scan${qrCount !== 1 ? 's' : ''}`);
+  return parts.join(' and ');
+}
+
 export const OfflineBanner: React.FC<OfflineBannerProps> = ({ className = '' }) => {
   const { isOnline } = useNetworkStatus();
-  const { pendingCount, syncStatus, triggerSync } = useOfflineQueue();
+  const { pendingCount, pendingQRCount, syncStatus, triggerSync } = useOfflineQueue();
 
-  // Don't show anything if online and no pending cards
-  if (isOnline && pendingCount === 0) {
+  const totalPending = pendingCount + pendingQRCount;
+
+  // Don't show anything if online and nothing pending
+  if (isOnline && totalPending === 0) {
     return null;
   }
 
@@ -23,7 +32,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ className = '' }) 
         <div className="flex items-center gap-2 text-blue-700">
           <RefreshCw className="h-4 w-4 animate-spin" />
           <span className="text-sm font-medium">
-            Syncing cards... {syncStatus.progress}%
+            Syncing... {syncStatus.progress}%
           </span>
         </div>
         {syncStatus.currentCard && (
@@ -35,15 +44,15 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ className = '' }) 
     );
   }
 
-  // Show pending cards when online
-  if (isOnline && pendingCount > 0) {
+  // Show pending items when online
+  if (isOnline && totalPending > 0) {
     return (
       <div className={`bg-yellow-50 border border-yellow-200 rounded-lg p-3 ${className}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-yellow-700">
             <RefreshCw className="h-4 w-4" />
             <span className="text-sm font-medium">
-              {pendingCount} card{pendingCount !== 1 ? 's' : ''} pending sync
+              {formatPendingSummary(pendingCount, pendingQRCount)} pending sync
             </span>
           </div>
           <button
@@ -67,9 +76,9 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ className = '' }) 
         </span>
       </div>
       <p className="text-xs text-gray-600 mt-1 ml-6">
-        {pendingCount > 0
-          ? `${pendingCount} card${pendingCount !== 1 ? 's' : ''} will sync when you're back online`
-          : 'Cards will be saved and synced when you reconnect'
+        {totalPending > 0
+          ? `${formatPendingSummary(pendingCount, pendingQRCount)} will sync when you're back online`
+          : 'Scans will be saved and synced when you reconnect'
         }
       </p>
     </div>

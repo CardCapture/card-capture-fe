@@ -14,7 +14,8 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
   showWhenEmpty = false,
 }) => {
   const { isOnline } = useNetworkStatus();
-  const { pendingCount, syncStatus } = useOfflineQueue();
+  const { pendingCount, pendingQRCount, syncStatus } = useOfflineQueue();
+  const totalPending = pendingCount + pendingQRCount;
 
   // Syncing state
   if (syncStatus.isSyncing) {
@@ -26,12 +27,12 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     );
   }
 
-  // Offline with pending cards
-  if (!isOnline && pendingCount > 0) {
+  // Offline with pending items
+  if (!isOnline && totalPending > 0) {
     return (
       <Badge variant="secondary" className={`bg-yellow-100 text-yellow-700 ${className}`}>
         <CloudOff className="h-3 w-3 mr-1" />
-        {pendingCount} pending
+        {totalPending} pending
       </Badge>
     );
   }
@@ -46,12 +47,12 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     );
   }
 
-  // Online with pending cards (shouldn't happen often, sync should auto-trigger)
-  if (pendingCount > 0) {
+  // Online with pending items (shouldn't happen often, sync should auto-trigger)
+  if (totalPending > 0) {
     return (
       <Badge variant="secondary" className={`bg-yellow-100 text-yellow-700 ${className}`}>
         <Cloud className="h-3 w-3 mr-1" />
-        {pendingCount} to sync
+        {totalPending} to sync
       </Badge>
     );
   }

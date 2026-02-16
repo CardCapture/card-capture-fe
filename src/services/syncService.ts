@@ -1,4 +1,5 @@
-import { offlineQueue, type PendingCard } from './offlineQueue';
+import { offlineQueue, type PendingCard, type PendingQRScan } from './offlineQueue';
+import { StudentService } from '@/services/StudentService';
 import { Capacitor } from '@capacitor/core';
 import { Network } from '@capacitor/network';
 import { logger } from '@/utils/logger';
@@ -11,6 +12,7 @@ type SyncListener = (status: SyncStatus) => void;
 export interface SyncStatus {
   isSyncing: boolean;
   pendingCount: number;
+  pendingQRCount: number;
   currentCard?: PendingCard;
   progress: number; // 0-100
   lastSyncTime?: number;
@@ -22,6 +24,7 @@ class SyncService {
   private syncStatus: SyncStatus = {
     isSyncing: false,
     pendingCount: 0,
+    pendingQRCount: 0,
     progress: 0,
   };
 
@@ -34,13 +37,13 @@ class SyncService {
       Network.addListener('networkStatusChange', async (status) => {
         if (status.connected) {
           logger.log('[SyncService] Network connected, starting sync...');
-          await this.syncPendingCards();
+          await this.syncAll();
         }
       });
     } else {
       window.addEventListener('online', async () => {
         logger.log('[SyncService] Browser online, starting sync...');
-        await this.syncPendingCards();
+        await this.syncAll();
       });
     }
   }
@@ -65,17 +68,20 @@ class SyncService {
   }
 
   /**
-   * Sync all pending cards to the server
+   * Sync all pending items (cards + QR scans)
    */
-  async syncPendingCards(): Promise<void> {
+  async syncAll(): Promise<void> {
     if (this.isSyncing) {
       logger.log('[SyncService] Sync already in progress');
       return;
     }
 
     const pendingCards = await offlineQueue.getPendingCards();
-    if (pendingCards.length === 0) {
-      this.updateStatus({ pendingCount: 0, isSyncing: false });
+    const pendingQRScans = await offlineQueue.getPendingQRScans();
+    const totalItems = pendingCards.length + pendingQRScans.length;
+
+    if (totalItems === 0) {
+      this.updateStatus({ pendingCount: 0, pendingQRCount: 0, isSyncing: false });
       return;
     }
 
@@ -83,25 +89,50 @@ class SyncService {
     this.updateStatus({
       isSyncing: true,
       pendingCount: pendingCards.length,
+      pendingQRCount: pendingQRScans.length,
       progress: 0,
     });
 
     let successCount = 0;
-    const total = pendingCards.length;
 
+    // Sync QR scans first (they're fast, just JSON POSTs)
+    for (const scan of pendingQRScans) {
+      if (!scan.id) continue;
+
+      this.updateStatus({
+        progress: Math.round((successCount / totalItems) * 100),
+      });
+
+      try {
+        await this.uploadQRScan(scan);
+        await offlineQueue.removeQRScan(scan.id);
+        successCount++;
+        logger.log(`[SyncService] Synced QR scan ${scan.id} (${successCount}/${totalItems})`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Scan sync failed';
+        logger.error(`[SyncService] Failed to sync QR scan ${scan.id}:`, errorMessage);
+
+        if (scan.retryCount >= MAX_RETRIES) {
+          logger.warn(`[SyncService] QR scan ${scan.id} exceeded max retries, keeping in queue`);
+        }
+        await offlineQueue.markQRRetry(scan.id, errorMessage);
+      }
+    }
+
+    // Then sync cards
     for (const card of pendingCards) {
       if (!card.id) continue;
 
       this.updateStatus({
         currentCard: card,
-        progress: Math.round((successCount / total) * 100),
+        progress: Math.round((successCount / totalItems) * 100),
       });
 
       try {
         await this.uploadCard(card);
         await offlineQueue.removeCard(card.id);
         successCount++;
-        logger.log(`[SyncService] Uploaded card ${card.id} (${successCount}/${total})`);
+        logger.log(`[SyncService] Uploaded card ${card.id} (${successCount}/${totalItems})`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Upload failed';
         logger.error(`[SyncService] Failed to upload card ${card.id}:`, errorMessage);
@@ -114,16 +145,25 @@ class SyncService {
     }
 
     this.isSyncing = false;
-    const remaining = await offlineQueue.getPendingCount();
+    const remainingCards = await offlineQueue.getPendingCount();
+    const remainingQR = await offlineQueue.getPendingQRCount();
     this.updateStatus({
       isSyncing: false,
-      pendingCount: remaining,
+      pendingCount: remainingCards,
+      pendingQRCount: remainingQR,
       progress: 100,
       currentCard: undefined,
       lastSyncTime: Date.now(),
     });
 
-    logger.log(`[SyncService] Sync complete. ${successCount}/${total} uploaded, ${remaining} remaining.`);
+    logger.log(`[SyncService] Sync complete. ${successCount}/${totalItems} synced, ${remainingCards} cards + ${remainingQR} QR scans remaining.`);
+  }
+
+  /**
+   * Sync all pending cards to the server (legacy, calls syncAll)
+   */
+  async syncPendingCards(): Promise<void> {
+    await this.syncAll();
   }
 
   private async uploadCard(card: PendingCard): Promise<void> {
@@ -183,6 +223,40 @@ class SyncService {
     );
   }
 
+  private async uploadQRScan(scan: PendingQRScan): Promise<void> {
+    // Get auth token from localStorage (same pattern as uploadCard)
+    const authData = localStorage.getItem('supabase.auth.token');
+    let accessToken = '';
+    if (authData) {
+      try {
+        const parsed = JSON.parse(authData);
+        accessToken = parsed.currentSession?.access_token || '';
+      } catch {
+        const altKey = Object.keys(localStorage).find(k => k.includes('supabase') && k.includes('auth'));
+        if (altKey) {
+          try {
+            const altData = JSON.parse(localStorage.getItem(altKey) || '{}');
+            accessToken = altData.access_token || '';
+          } catch {
+            logger.error('[SyncService] Could not parse auth token');
+          }
+        }
+      }
+    }
+
+    if (!accessToken) {
+      throw new Error('No auth token available');
+    }
+
+    await StudentService.scanStudent(
+      scan.token,
+      scan.eventId,
+      scan.rating,
+      scan.notes,
+      accessToken
+    );
+  }
+
   /**
    * Get current pending count
    */
@@ -191,10 +265,17 @@ class SyncService {
   }
 
   /**
+   * Get current pending QR scan count
+   */
+  async getPendingQRCount(): Promise<number> {
+    return offlineQueue.getPendingQRCount();
+  }
+
+  /**
    * Manually trigger sync
    */
   async manualSync(): Promise<void> {
-    await this.syncPendingCards();
+    await this.syncAll();
   }
 }
 

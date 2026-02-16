@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { offlineQueue, type PendingCard } from '@/services/offlineQueue';
+import { offlineQueue, type PendingCard, type PendingQRScan } from '@/services/offlineQueue';
 import { syncService, type SyncStatus } from '@/services/syncService';
 
 export interface OfflineQueueState {
   pendingCards: PendingCard[];
   pendingCount: number;
+  pendingQRScans: PendingQRScan[];
+  pendingQRCount: number;
   isLoading: boolean;
   syncStatus: SyncStatus;
   addCard: (card: Omit<PendingCard, 'id' | 'timestamp' | 'retryCount'>) => Promise<number>;
+  addQRScan: (scan: Omit<PendingQRScan, 'id' | 'timestamp' | 'retryCount'>) => Promise<number>;
   removeCard: (id: number) => Promise<void>;
   refreshQueue: () => Promise<void>;
   triggerSync: () => Promise<void>;
@@ -16,10 +19,13 @@ export interface OfflineQueueState {
 export function useOfflineQueue(): OfflineQueueState {
   const [pendingCards, setPendingCards] = useState<PendingCard[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingQRScans, setPendingQRScans] = useState<PendingQRScan[]>([]);
+  const [pendingQRCount, setPendingQRCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
     isSyncing: false,
     pendingCount: 0,
+    pendingQRCount: 0,
     progress: 0,
   });
 
@@ -27,9 +33,13 @@ export function useOfflineQueue(): OfflineQueueState {
     setIsLoading(true);
     try {
       const cards = await offlineQueue.getPendingCards();
-      const count = await offlineQueue.getPendingCount();
+      const cardCount = await offlineQueue.getPendingCount();
+      const qrScans = await offlineQueue.getPendingQRScans();
+      const qrCount = await offlineQueue.getPendingQRCount();
       setPendingCards(cards);
-      setPendingCount(count);
+      setPendingCount(cardCount);
+      setPendingQRScans(qrScans);
+      setPendingQRCount(qrCount);
     } finally {
       setIsLoading(false);
     }
@@ -37,6 +47,12 @@ export function useOfflineQueue(): OfflineQueueState {
 
   const addCard = useCallback(async (card: Omit<PendingCard, 'id' | 'timestamp' | 'retryCount'>) => {
     const id = await offlineQueue.addCard(card);
+    await refreshQueue();
+    return id;
+  }, [refreshQueue]);
+
+  const addQRScan = useCallback(async (scan: Omit<PendingQRScan, 'id' | 'timestamp' | 'retryCount'>) => {
+    const id = await offlineQueue.addQRScan(scan);
     await refreshQueue();
     return id;
   }, [refreshQueue]);
@@ -61,6 +77,7 @@ export function useOfflineQueue(): OfflineQueueState {
     const unsubscribe = syncService.subscribe((status) => {
       setSyncStatus(status);
       setPendingCount(status.pendingCount);
+      setPendingQRCount(status.pendingQRCount);
     });
 
     return unsubscribe;
@@ -69,9 +86,12 @@ export function useOfflineQueue(): OfflineQueueState {
   return {
     pendingCards,
     pendingCount,
+    pendingQRScans,
+    pendingQRCount,
     isLoading,
     syncStatus,
     addCard,
+    addQRScan,
     removeCard,
     refreshQueue,
     triggerSync,

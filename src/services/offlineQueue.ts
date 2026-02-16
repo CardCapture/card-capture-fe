@@ -11,13 +11,30 @@ export interface PendingCard {
   lastError?: string;
 }
 
+export interface PendingQRScan {
+  id?: number;
+  token: string;
+  eventId: string;
+  eventName: string;
+  rating?: number;
+  notes?: string;
+  timestamp: number;
+  retryCount: number;
+  lastError?: string;
+}
+
 class OfflineQueueDB extends Dexie {
   pendingCards!: Table<PendingCard>;
+  pendingQRScans!: Table<PendingQRScan>;
 
   constructor() {
     super('CardCaptureOfflineQueue');
     this.version(1).stores({
       pendingCards: '++id, eventId, timestamp',
+    });
+    this.version(2).stores({
+      pendingCards: '++id, eventId, timestamp',
+      pendingQRScans: '++id, eventId, timestamp',
     });
   }
 }
@@ -83,6 +100,61 @@ export const offlineQueue = {
    */
   async getCardsByEvent(eventId: string): Promise<PendingCard[]> {
     return db.pendingCards.where('eventId').equals(eventId).toArray();
+  },
+
+  // --- QR Scan queue methods ---
+
+  /**
+   * Add a QR scan to the offline queue
+   */
+  async addQRScan(scan: Omit<PendingQRScan, 'id' | 'timestamp' | 'retryCount'>): Promise<number> {
+    const id = await db.pendingQRScans.add({
+      ...scan,
+      timestamp: Date.now(),
+      retryCount: 0,
+    });
+    return id as number;
+  },
+
+  /**
+   * Get all pending QR scans
+   */
+  async getPendingQRScans(): Promise<PendingQRScan[]> {
+    return db.pendingQRScans.orderBy('timestamp').toArray();
+  },
+
+  /**
+   * Get count of pending QR scans
+   */
+  async getPendingQRCount(): Promise<number> {
+    return db.pendingQRScans.count();
+  },
+
+  /**
+   * Remove a QR scan from the queue (after successful sync)
+   */
+  async removeQRScan(id: number): Promise<void> {
+    await db.pendingQRScans.delete(id);
+  },
+
+  /**
+   * Update retry count and error for a QR scan
+   */
+  async markQRRetry(id: number, error: string): Promise<void> {
+    const scan = await db.pendingQRScans.get(id);
+    if (scan) {
+      await db.pendingQRScans.update(id, {
+        retryCount: scan.retryCount + 1,
+        lastError: error,
+      });
+    }
+  },
+
+  /**
+   * Get QR scans by event
+   */
+  async getQRScansByEvent(eventId: string): Promise<PendingQRScan[]> {
+    return db.pendingQRScans.where('eventId').equals(eventId).toArray();
   },
 };
 
