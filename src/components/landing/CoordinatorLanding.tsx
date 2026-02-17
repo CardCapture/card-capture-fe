@@ -128,7 +128,7 @@ const CoordinatorLanding = () => {
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-foreground">Universal Support</h3>
                 <p className="text-foreground/70">
-                  Works for schools with any tech preference—digital or traditional
+                  Works for schools with any tech preference, digital or traditional
                 </p>
               </div>
 
@@ -138,7 +138,7 @@ const CoordinatorLanding = () => {
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-foreground">No Pre-Work Required</h3>
                 <p className="text-foreground/70">
-                  Just hand out inquiry cards at the event—no complex setup
+                  Just hand out inquiry cards at the event. No complex setup needed
                 </p>
               </div>
 

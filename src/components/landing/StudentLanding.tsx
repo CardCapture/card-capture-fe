@@ -69,7 +69,7 @@ const StudentLanding = () => {
     },
     {
       question: "Is it free?",
-      answer: "Absolutely free for students. No hidden fees, no subscriptions—just a simple way to connect with colleges."
+      answer: "Absolutely free for students. No hidden fees, no subscriptions. Just a simple way to connect with colleges."
     }
   ];
 
@@ -259,7 +259,7 @@ const StudentLanding = () => {
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-foreground">Your Choice</h3>
                 <p className="text-foreground/70">
-                  Use your phone or fill out an inquiry card—it's up to you
+                  Use your phone or fill out an inquiry card. It's up to you
                 </p>
               </div>
 

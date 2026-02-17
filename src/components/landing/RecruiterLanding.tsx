@@ -78,7 +78,7 @@ const RecruiterLanding = () => {
                 </h1>
 
                 <p className="text-xl md:text-2xl text-foreground/70 font-medium max-w-3xl mx-auto">
-                  Scan student QR codes or photograph handwritten inquiry cards
+                  Scan student QR codes or handwritten inquiry cards
                   <br />
                   <span className="text-primary">One app for both</span>
                 </p>
@@ -223,7 +223,7 @@ const RecruiterLanding = () => {
                 AI-Powered <span className="text-primary">Handwriting Recognition</span>
               </h2>
               <p className="text-xl text-foreground/70 mt-4">
-                Inquiry cards are automatically transcribed—no manual data entry required
+                Inquiry cards are automatically transcribed. No manual data entry required
               </p>
             </div>
 
