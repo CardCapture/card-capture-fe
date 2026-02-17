@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getDefaultRedirectPath } from '@/utils/roleRedirect';
 import MFAEnrollmentModal from './MFAEnrollmentModal';
 import MFAChallengeModal from './MFAChallengeModal';
 import { supabase } from '@/lib/supabaseClient';
@@ -28,15 +26,11 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   const [challengeId, setChallengeId] = useState<string>('');
   const [phoneLastFour, setPhoneLastFour] = useState<string>('');
   const [userId, setUserId] = useState<string>('');
-  const [rememberDevice, setRememberDevice] = useState(true); // Default to true for better UX
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isRateLimited, setIsRateLimited] = useState(false);
   const [isFirstPasswordLogin, setIsFirstPasswordLogin] = useState(false);
   const [enrollmentRequired, setEnrollmentRequired] = useState(false);
 
-  const { signInWithPassword, profile, user, refetchProfile } = useAuth();
-  const navigate = useNavigate();
+  const { refetchProfile } = useAuth();
 
   useEffect(() => {
     logger.log('=== MFA LOGIN FLOW MOUNTED ===');
@@ -63,7 +57,6 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   const handleExistingSession = async (session: any) => {
     logger.log('=== HANDLE EXISTING SESSION ===');
     setIsLoading(true);
-    setError(null);
 
     try {
       const userId = session.user.id;
@@ -204,7 +197,6 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
   const handleLogin = async () => {
     logger.log('=== HANDLE LOGIN CALLED ===');
     setIsLoading(true);
-    setError(null);
 
     try {
       // Step 1: Attempt password login
@@ -372,141 +364,6 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
     }
   };
 
-  const handleMFAVerify = async (code: string) => {
-    // Don't allow new attempts if rate limited
-    if (isRateLimited) {
-      return;
-    }
-
-    setIsLoading(true);
-    // Don't clear error if already rate limited
-    if (!isRateLimited) {
-      setError(null);
-    }
-
-    logger.log('MFA Verify called with factorId:', factorId);
-    logger.log('Code:', code);
-
-    try {
-      const verifyEndpoint = USE_V2_MFA ? '/mfa2/verify' : '/mfa/verify';
-
-      // Prepare headers with current device token if available
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-      };
-
-      // Include current device token in headers for smart token management
-      const currentDeviceToken = localStorage.getItem('device_token');
-      if (currentDeviceToken) {
-        headers['X-Device-Token'] = currentDeviceToken;
-      }
-
-      const response = await fetch(`${API_BASE_URL}${verifyEndpoint}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          factor_id: factorId,
-          challenge_id: challengeId,
-          code,
-          remember_device: rememberDevice,
-          device_name: navigator.userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop'
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Check if this is a rate limit error
-        if (response.status === 429) {
-          setIsRateLimited(true);
-          setError(data.detail || 'Too many attempts. Please try again in 15 minutes.');
-          throw new Error(data.detail || 'Too many attempts. Please try again in 15 minutes.');
-        }
-        throw new Error(data.detail || 'Invalid code');
-      }
-
-      // Update the session if MFA verification returned new tokens
-      if (data.session) {
-        logger.log('MFA verify returned new session, updating auth state');
-        await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token
-        });
-      }
-      
-      // Store device token if remember device was selected
-      if (rememberDevice && data.device_token) {
-        logger.log('Storing device token for 30-day trust:', data.device_token.substring(0, 8) + '...');
-        localStorage.setItem('device_token', data.device_token);
-        localStorage.setItem('device_expires', data.device_expires_at);
-      } else {
-        logger.log('Device token not stored. rememberDevice:', rememberDevice, 'device_token present:', !!data.device_token);
-      }
-
-      // CRITICAL: Set mfa_verified_at in profiles after successful MFA verification
-      // This ensures the user can access protected routes
-      const currentSession = await supabase.auth.getSession();
-      const currentUserId = currentSession.data.session?.user?.id;
-
-      if (currentUserId) {
-        try {
-          logger.log('Setting mfa_verified_at after successful MFA verification');
-          await supabase
-            .from('profiles')
-            .update({ mfa_verified_at: new Date().toISOString() })
-            .eq('id', currentUserId);
-          logger.log('Successfully set mfa_verified_at for user:', currentUserId);
-        } catch (error) {
-          logger.error('Error setting mfa_verified_at:', error);
-          // Don't block login if this fails - the backend might have already set it
-        }
-      }
-
-      onSuccess();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid code');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleMFAResend = async () => {
-    setError(null);
-    
-    try {
-      const resendEndpoint = USE_V2_MFA ? '/mfa2/challenge' : '/mfa/challenge';
-      const response = await fetch(`${API_BASE_URL}${resendEndpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: JSON.stringify({})
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Failed to resend code');
-      }
-
-      setChallengeId(data.challenge_id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resend');
-    }
-  };
-
-  const handleEnrollmentComplete = () => {
-    // User just completed MFA enrollment and verified their phone
-    // No need for additional verification - complete login
-    onSuccess();
-  };
-
-  const handleEnrollmentSkip = () => {
-    // User skipped enrollment, complete login
-    onSuccess();
-  };
 
   logger.log('MFALoginFlow render - current step:', step);
   logger.log('MFALoginFlow render - factorId:', factorId);
@@ -517,9 +374,25 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
       <MFAEnrollmentModal
         isOpen={true}
         onClose={() => onSuccess()}
-        onComplete={handleEnrollmentComplete}
-        onSkip={handleEnrollmentSkip}
-        isRequired={enrollmentRequired} // Required if user has corrupted MFA state
+        onSuccess={async () => {
+          // Enrollment complete, set mfa_verified_at and finish login
+          const currentSession = await supabase.auth.getSession();
+          const currentUserId = currentSession.data.session?.user?.id;
+          if (currentUserId) {
+            try {
+              logger.log('Setting mfa_verified_at after successful MFA enrollment');
+              await supabase
+                .from('profiles')
+                .update({ mfa_verified_at: new Date().toISOString() })
+                .eq('id', currentUserId);
+              await refetchProfile(true);
+            } catch (error) {
+              logger.error('Error setting mfa_verified_at:', error);
+            }
+          }
+          onSuccess();
+        }}
+        onError={onError}
       />
     );
   }
@@ -528,13 +401,30 @@ const MFALoginFlow: React.FC<MFALoginFlowProps> = ({
     return (
       <MFAChallengeModal
         isOpen={true}
-        onComplete={handleMFAVerify}
-        onResend={handleMFAResend}
-        isLoading={isLoading || isRateLimited}
-        error={error}
-        phoneLastFour={phoneLastFour}
-        rememberDevice={rememberDevice}
-        onRememberDeviceChange={setRememberDevice}
+        onClose={() => onError('MFA verification cancelled')}
+        factorId={factorId}
+        challengeId={challengeId}
+        phoneMasked={phoneLastFour}
+        onSuccess={async () => {
+          // MFAChallengeModal handles device token storage and session refresh internally.
+          // We still need to set mfa_verified_at and refresh the profile.
+          const currentSession = await supabase.auth.getSession();
+          const currentUserId = currentSession.data.session?.user?.id;
+          if (currentUserId) {
+            try {
+              logger.log('Setting mfa_verified_at after successful MFA verification');
+              await supabase
+                .from('profiles')
+                .update({ mfa_verified_at: new Date().toISOString() })
+                .eq('id', currentUserId);
+              await refetchProfile(true);
+            } catch (error) {
+              logger.error('Error setting mfa_verified_at:', error);
+            }
+          }
+          onSuccess();
+        }}
+        onError={onError}
       />
     );
   }
