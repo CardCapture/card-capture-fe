@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { logger } from '@/utils/logger';
 
 interface ProcessingJob {
@@ -32,12 +33,15 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
     isProcessing: false,
   });
 
+  const { isOnline } = useNetworkStatus();
   const [loading, setLoading] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchTimeRef = useRef<number>(0);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const wasProcessingRef = useRef<boolean>(false);
+  const retryCountRef = useRef(0);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const onCompleteRef = useRef(onComplete);
 
   // Keep onComplete ref up to date
@@ -60,6 +64,10 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
   // Fetch processing status from Supabase
   const fetchProcessingStatus = useCallback(async (force = false) => {
     if (!eventId || !supabase) return;
+    if (!isOnline) {
+      logger.log('useProcessingStatus: offline, skipping fetch');
+      return;
+    }
 
     const now = Date.now();
     if (!force && now - lastFetchTimeRef.current < 1000) return; // Debounce rapid calls
@@ -160,20 +168,27 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
     } finally {
       setLoading(false);
     }
-  }, [eventId, calculateTimeRemaining]);
+  }, [eventId, isOnline, calculateTimeRemaining]);
 
-  // Setup real-time subscription
+  // Setup real-time subscription (network-aware with bounded retries)
   useEffect(() => {
     if (!eventId || !supabase) return;
 
+    if (!isOnline) {
+      logger.log('useProcessingStatus: Offline, skipping real-time subscription');
+      return;
+    }
+
+    const MAX_RETRIES = 3;
+    retryCountRef.current = 0;
+
     logger.log('useProcessingStatus: Setting up real-time subscription for event:', eventId);
 
-    const channelName = `processing_status_${eventId}`;
+    const channelName = `processing_status_${eventId}_${Date.now()}`;
 
     const handleRealtimeChange = (payload: any) => {
       logger.log('useProcessingStatus: Real-time change received:', payload);
 
-      // Check if change is relevant to our event
       const newRecord = payload.new as ProcessingJob | undefined;
       const oldRecord = payload.old as ProcessingJob | undefined;
 
@@ -183,48 +198,84 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
 
       if (isRelevant) {
         logger.log('useProcessingStatus: Relevant change detected, refreshing status');
-        // Force fetch immediately on realtime changes (bypass debounce)
         fetchProcessingStatus(true);
       }
     };
 
-    // Create real-time subscription with server-side filtering for better performance
-    // Only listen to changes for our specific event
-    const channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'processing_jobs',
-        filter: `event_id=eq.${eventId}` // Server-side filtering!
-      }, handleRealtimeChange)
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          logger.log(`useProcessingStatus: Real-time subscription active for ${channelName}`);
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          logger.error(`useProcessingStatus: Real-time error: ${status}`, err);
-          
-          // Setup polling fallback (reduced frequency)
-          if (!pollingIntervalRef.current) {
-            logger.log('useProcessingStatus: Setting up polling fallback');
-            pollingIntervalRef.current = setInterval(fetchProcessingStatus, 10000); // 10 seconds instead of 3
-          }
-        }
-      });
+    const subscribe = () => {
+      // Remove existing channel before creating a new one
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
 
-    channelRef.current = channel;
+      // Stop any existing polling when attempting a fresh subscription
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+
+      const retryChannelName = `${channelName}_r${retryCountRef.current}`;
+
+      const channel = supabase
+        .channel(retryChannelName)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'processing_jobs',
+          filter: `event_id=eq.${eventId}`
+        }, handleRealtimeChange)
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            logger.log(`useProcessingStatus: Channel '${retryChannelName}' subscribed successfully`);
+            retryCountRef.current = 0;
+            // Stop polling fallback since realtime is working
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            logger.error(`useProcessingStatus: Channel error: ${status}`, err);
+
+            if (retryCountRef.current < MAX_RETRIES) {
+              const backoff = 3000 * Math.pow(2, retryCountRef.current) + Math.random() * 1000;
+              retryCountRef.current += 1;
+              logger.log(
+                `useProcessingStatus: Retry ${retryCountRef.current}/${MAX_RETRIES} in ${Math.round(backoff)}ms`
+              );
+              retryTimeoutRef.current = setTimeout(subscribe, backoff);
+            } else {
+              logger.warn(
+                `useProcessingStatus: Max retries (${MAX_RETRIES}) reached, falling back to polling`
+              );
+              if (!pollingIntervalRef.current) {
+                pollingIntervalRef.current = setInterval(fetchProcessingStatus, 10000);
+              }
+            }
+          }
+        });
+
+      channelRef.current = channel;
+    };
+
+    subscribe();
 
     // Initial fetch
     fetchProcessingStatus();
 
     return () => {
       logger.log('useProcessingStatus: Cleaning up subscriptions');
-      
+
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
-      
+
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
@@ -235,7 +286,7 @@ export function useProcessingStatus(eventId?: string, onComplete?: () => void) {
         hideTimeoutRef.current = null;
       }
     };
-  }, [eventId, fetchProcessingStatus]);
+  }, [eventId, isOnline, fetchProcessingStatus]);
 
   return {
     status,

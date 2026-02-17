@@ -13,6 +13,8 @@ import { QrCode, X, Keyboard, AlertCircle, CheckCircle, Loader2 } from 'lucide-r
 import { BrowserMultiFormatReader } from '@zxing/library';
 import { StudentService } from '@/services';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { offlineQueue } from '@/services/offlineQueue';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/utils/logger';
 
@@ -43,6 +45,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const isScanningRef = useRef<boolean>(false);
   const { session } = useAuth();
+  const { isOnline } = useNetworkStatus();
   const { toast } = useToast();
 
   // Process scanned or manually entered token
@@ -60,6 +63,27 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
       // Check for invalid formats
       if (token.startsWith('data:') || token.includes('base64,')) {
         throw new Error('Invalid code format. Please scan the QR code, not paste the image.');
+      }
+
+      // If offline, queue the scan for later sync
+      if (!isOnline) {
+        await offlineQueue.addQRScan({
+          token: token.trim(),
+          eventId,
+          eventName: '',
+        });
+
+        setSuccess(true);
+        toast({
+          title: 'Saved offline',
+          description: "QR scan saved! Will sync when you're back online.",
+        });
+
+        setTimeout(() => {
+          handleClose();
+          onSuccess?.();
+        }, 1500);
+        return;
       }
 
       const response = await StudentService.scanStudent(

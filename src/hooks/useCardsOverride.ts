@@ -5,6 +5,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { determineCardStatus } from "@/lib/cardUtils";
 import { CardService } from "@/services/CardService";
 import { useLoader } from "@/contexts/LoaderContext";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { logger } from '@/utils/logger';
 
 // Define proper interface for raw card data from API
@@ -35,8 +36,12 @@ interface RawCardData {
 export function useCardsOverride(eventId?: string) {
   const [cards, setCards] = useState<ProspectCard[]>([]);
   const [reviewModalState, setReviewModalState] = useState(false);
+  const { isOnline } = useNetworkStatus();
   const fetchInProgressRef = useRef(false);
   const lastFetchTimeRef = useRef<number>(0);
+  const retryCountRef = useRef(0);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const DEBOUNCE_DELAY = 1000; // 1 second debounce
 
   // Use global loader instead of local loading state
@@ -45,6 +50,12 @@ export function useCardsOverride(eventId?: string) {
 
   const fetchCardsInternal = useCallback(async (force = false) => {
     logger.log("useCardsOverride: fetchCards called", { eventId, force });
+
+    // Skip API calls when offline
+    if (!isOnline) {
+      logger.log("useCardsOverride: offline, skipping fetch");
+      return;
+    }
 
     // Prevent parallel requests; skip debounce when forced (e.g. realtime events)
     const now = Date.now();
@@ -133,7 +144,7 @@ export function useCardsOverride(eventId?: string) {
       hideTableLoader(LOADER_ID);
       fetchInProgressRef.current = false;
     }
-  }, [eventId, showTableLoader, hideTableLoader, LOADER_ID]);
+  }, [eventId, isOnline, showTableLoader, hideTableLoader, LOADER_ID]);
 
   // Default fetchCards respects debounce (used by manual calls)
   const fetchCards = useCallback(() => fetchCardsInternal(false), [fetchCardsInternal]);
@@ -152,7 +163,7 @@ export function useCardsOverride(eventId?: string) {
     }
   }, [eventId, fetchCards]); // Include fetchCards to ensure fresh closure
 
-  // Effect for Supabase real-time subscription
+  // Effect for Supabase real-time subscription (network-aware with bounded retries)
   useEffect(() => {
     if (!eventId || !supabase) {
       logger.warn(
@@ -161,16 +172,21 @@ export function useCardsOverride(eventId?: string) {
       return;
     }
 
-    const channelName = `event_cards_changes_${eventId}`;
-    let channel: RealtimeChannel | null = null;
+    if (!isOnline) {
+      logger.log("useCardsOverride: Offline, skipping real-time subscription");
+      return;
+    }
+
+    const MAX_RETRIES = 5;
+    retryCountRef.current = 0;
+
+    const channelName = `event_cards_changes_${eventId}_${Date.now()}`;
 
     const handleDbChange = (payload: {
       eventType: string;
       new?: Record<string, unknown>;
       old?: Record<string, unknown>;
     }) => {
-
-      // Check if the change is relevant to our event
       const newRecord = payload.new as { event_id?: string } | undefined;
       const oldRecord = payload.old as { event_id?: string } | undefined;
 
@@ -182,86 +198,95 @@ export function useCardsOverride(eventId?: string) {
           "useCardsOverride: Change is relevant to current event, refreshing cards"
         );
         forceFetchCards();
-      } else {
-        logger.log(
-          "useCardsOverride: Change not relevant to current event, skipping refresh"
-        );
       }
     };
 
-    // Subscribe to realtime changes on all three card-related tables
-    channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "*" as const,
-          schema: "public",
-          table: "reviewed_data",
-          filter: `event_id=eq.${eventId}`,
-        },
-        handleDbChange
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*" as const,
-          schema: "public",
-          table: "student_school_interactions",
-          filter: `event_id=eq.${eventId}`,
-        },
-        handleDbChange
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*" as const,
-          schema: "public",
-          table: "processing_jobs",
-          filter: `event_id=eq.${eventId}`,
-        },
-        handleDbChange
-      )
-      .subscribe((status, err) => {
-        if (status === "SUBSCRIBED") {
-          logger.log(
-            `useCardsOverride: Supabase channel '${channelName}' subscribed successfully!`
-          );
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          logger.error(
-            `useCardsOverride: Supabase channel error: ${status}`,
-            err
-          );
-          // Attempt to reconnect after a delay
-          setTimeout(() => {
-            logger.log("useCardsOverride: Attempting to reconnect...");
-            channel?.unsubscribe();
-            channel?.subscribe();
-          }, 5000);
-        }
-        logger.log(`useCardsOverride: Supabase channel status: ${status}`);
-      });
+    const subscribe = () => {
+      // Remove existing channel before creating a new one
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      const retryChannelName = `${channelName}_r${retryCountRef.current}`;
+
+      const channel = supabase
+        .channel(retryChannelName)
+        .on(
+          "postgres_changes",
+          {
+            event: "*" as const,
+            schema: "public",
+            table: "reviewed_data",
+            filter: `event_id=eq.${eventId}`,
+          },
+          handleDbChange
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*" as const,
+            schema: "public",
+            table: "student_school_interactions",
+            filter: `event_id=eq.${eventId}`,
+          },
+          handleDbChange
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*" as const,
+            schema: "public",
+            table: "processing_jobs",
+            filter: `event_id=eq.${eventId}`,
+          },
+          handleDbChange
+        )
+        .subscribe((status, err) => {
+          if (status === "SUBSCRIBED") {
+            logger.log(
+              `useCardsOverride: Channel '${retryChannelName}' subscribed successfully`
+            );
+            retryCountRef.current = 0;
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            logger.error(
+              `useCardsOverride: Channel error: ${status}`,
+              err
+            );
+
+            if (retryCountRef.current < MAX_RETRIES) {
+              const backoff = 2000 * Math.pow(2, retryCountRef.current) + Math.random() * 1000;
+              retryCountRef.current += 1;
+              logger.log(
+                `useCardsOverride: Retry ${retryCountRef.current}/${MAX_RETRIES} in ${Math.round(backoff)}ms`
+              );
+              retryTimeoutRef.current = setTimeout(subscribe, backoff);
+            } else {
+              logger.warn(
+                `useCardsOverride: Max retries (${MAX_RETRIES}) reached, stopping reconnection attempts`
+              );
+            }
+          }
+        });
+
+      channelRef.current = channel;
+    };
+
+    subscribe();
 
     // Cleanup function
     return () => {
-      if (supabase && channel) {
-        logger.log(
-          `useCardsOverride: Unsubscribing from Supabase channel '${channelName}'`
-        );
-        supabase
-          .removeChannel(channel)
-          .then((status) =>
-            logger.log(`useCardsOverride: Unsubscribe status: ${status}`)
-          )
-          .catch((err) =>
-            logger.error(
-              "useCardsOverride: Error unsubscribing from Supabase channel:",
-              err
-            )
-          );
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+      if (channelRef.current) {
+        logger.log("useCardsOverride: Cleaning up real-time channel");
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
     };
-  }, [eventId, forceFetchCards]);
+  }, [eventId, isOnline, forceFetchCards]);
 
   // Add getStatusCount function
   const getStatusCount = useCallback(

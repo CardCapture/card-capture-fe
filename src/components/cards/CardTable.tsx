@@ -52,6 +52,7 @@ import { useState, useEffect } from "react";
 import { IntegrationsService } from "@/services/IntegrationsService";
 import type { SchoolData } from "@/api/supabase/schools";
 import { QRScannerModal } from "@/components/QRScannerModal";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 // Add any additional imports as needed
 
@@ -271,6 +272,7 @@ const CardTable: React.FC<CardTableProps> = ({
   return (
     <div className="w-full">
       <div className="space-y-4">
+        <OfflineBanner className="mb-2" />
         {/* Mobile-Responsive Toolbar */}
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <div className="w-full sm:w-auto sm:flex-1 sm:max-w-sm">

@@ -1,5 +1,6 @@
 import { offlineQueue, type PendingCard, type PendingQRScan } from './offlineQueue';
 import { StudentService } from '@/services/StudentService';
+import { supabase } from '@/lib/supabaseClient';
 import { Capacitor } from '@capacitor/core';
 import { Network } from '@capacitor/network';
 import { logger } from '@/utils/logger';
@@ -166,36 +167,21 @@ class SyncService {
     await this.syncAll();
   }
 
+  private async getAccessToken(): Promise<string> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      return session.access_token;
+    }
+    throw new Error('No auth token available');
+  }
+
   private async uploadCard(card: PendingCard): Promise<void> {
     // Convert base64 to blob
     const response = await fetch(card.imageData);
     const blob = await response.blob();
     const file = new File([blob], `card-${card.timestamp}.jpg`, { type: 'image/jpeg' });
 
-    // Get auth token from localStorage (Supabase stores it there)
-    const authData = localStorage.getItem('supabase.auth.token');
-    let accessToken = '';
-    if (authData) {
-      try {
-        const parsed = JSON.parse(authData);
-        accessToken = parsed.currentSession?.access_token || '';
-      } catch {
-        // Try alternative storage key
-        const altKey = Object.keys(localStorage).find(k => k.includes('supabase') && k.includes('auth'));
-        if (altKey) {
-          try {
-            const altData = JSON.parse(localStorage.getItem(altKey) || '{}');
-            accessToken = altData.access_token || '';
-          } catch {
-            logger.error('[SyncService] Could not parse auth token');
-          }
-        }
-      }
-    }
-
-    if (!accessToken) {
-      throw new Error('No auth token available');
-    }
+    const accessToken = await this.getAccessToken();
 
     const formData = new FormData();
     formData.append('file', file);
@@ -224,29 +210,7 @@ class SyncService {
   }
 
   private async uploadQRScan(scan: PendingQRScan): Promise<void> {
-    // Get auth token from localStorage (same pattern as uploadCard)
-    const authData = localStorage.getItem('supabase.auth.token');
-    let accessToken = '';
-    if (authData) {
-      try {
-        const parsed = JSON.parse(authData);
-        accessToken = parsed.currentSession?.access_token || '';
-      } catch {
-        const altKey = Object.keys(localStorage).find(k => k.includes('supabase') && k.includes('auth'));
-        if (altKey) {
-          try {
-            const altData = JSON.parse(localStorage.getItem(altKey) || '{}');
-            accessToken = altData.access_token || '';
-          } catch {
-            logger.error('[SyncService] Could not parse auth token');
-          }
-        }
-      }
-    }
-
-    if (!accessToken) {
-      throw new Error('No auth token available');
-    }
+    const accessToken = await this.getAccessToken();
 
     await StudentService.scanStudent(
       scan.token,

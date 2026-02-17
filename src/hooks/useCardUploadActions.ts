@@ -8,7 +8,8 @@ export function useCardUploadActions(
     file: File,
     eventId: string,
     schoolId: string,
-    onUploadStart: () => void
+    eventName?: string,
+    onUploadStart?: () => void
   ) => Promise<unknown>,
   fetchCards: () => void,
   fileInputRef: React.RefObject<HTMLInputElement>,
@@ -34,6 +35,7 @@ export function useCardUploadActions(
           file,
           selectedEvent.id,
           selectedEvent.school_id,
+          selectedEvent.name || 'Unknown Event',
           onUploadStart
         );
         setUploadProgress(100);
