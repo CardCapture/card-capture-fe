@@ -1,5 +1,5 @@
-import React from 'react';
-import { WifiOff, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { WifiOff, RefreshCw, Trash2 } from 'lucide-react';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useOfflineQueue } from '@/hooks/useOfflineQueue';
 
@@ -16,7 +16,8 @@ function formatPendingSummary(cardCount: number, qrCount: number): string {
 
 export const OfflineBanner: React.FC<OfflineBannerProps> = ({ className = '' }) => {
   const { isOnline } = useNetworkStatus();
-  const { pendingCount, pendingQRCount, syncStatus, triggerSync } = useOfflineQueue();
+  const { pendingCount, pendingQRCount, syncStatus, triggerSync, clearAll } = useOfflineQueue();
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const totalPending = pendingCount + pendingQRCount;
 
@@ -55,12 +56,33 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ className = '' }) 
               {formatPendingSummary(pendingCount, pendingQRCount)} pending sync
             </span>
           </div>
-          <button
-            onClick={triggerSync}
-            className="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-2 py-1 rounded transition-colors"
-          >
-            Sync Now
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={triggerSync}
+              className="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-2 py-1 rounded transition-colors"
+            >
+              Sync Now
+            </button>
+            {!showConfirm ? (
+              <button
+                onClick={() => setShowConfirm(true)}
+                className="text-xs text-yellow-600 hover:text-red-600 px-1 py-1 rounded transition-colors"
+                title="Clear pending items"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <button
+                onClick={async () => {
+                  await clearAll();
+                  setShowConfirm(false);
+                }}
+                className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded transition-colors"
+              >
+                Confirm Clear
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

@@ -93,6 +93,7 @@ export const offlineQueue = {
    */
   async clearAll(): Promise<void> {
     await db.pendingCards.clear();
+    await db.pendingQRScans.clear();
   },
 
   /**

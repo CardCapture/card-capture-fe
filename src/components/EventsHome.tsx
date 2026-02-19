@@ -130,6 +130,8 @@ const DashboardCopy = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [isVerifyingPurchase, setIsVerifyingPurchase] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Refs
   const eventsRef = useRef<{ fetchEvents: () => Promise<void> } | null>(null);
@@ -360,6 +362,18 @@ const DashboardCopy = () => {
       };
     }, [events, searchQuery, hideExported, selectedTab]);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedTab, searchQuery, hideExported]);
+
+  // Paginate filtered events
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / pageSize));
+  const paginatedEvents = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredEvents.slice(start, start + pageSize);
+  }, [filteredEvents, currentPage, pageSize]);
+
   // Update the archived events count in the tabs
   const archivedEventsCount = archivedEvents.length;
 
@@ -503,7 +517,7 @@ const DashboardCopy = () => {
       const apiBaseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const selectedIds = Object.keys(rowSelection).map(
-        (index) => filteredEvents[parseInt(index)].id
+        (index) => paginatedEvents[parseInt(index)].id
       );
       for (const eventId of selectedIds) {
         await EventService.deleteEvent(eventId);
@@ -522,7 +536,7 @@ const DashboardCopy = () => {
       setDeleteLoading(false);
       setIsDeleteConfirmOpen(false);
     }
-  }, [rowSelection, filteredEvents]);
+  }, [rowSelection, paginatedEvents]);
 
   // Define columns for the table
   const columns = useMemo<ColumnDef<EventWithStats>[]>(
@@ -674,7 +688,7 @@ const DashboardCopy = () => {
 
   // Table configuration
   const table = useReactTable({
-    data: filteredEvents,
+    data: paginatedEvents,
     columns,
     state: {
       sorting,
@@ -693,7 +707,7 @@ const DashboardCopy = () => {
       const selectedIds = Object.entries(newSelection)
         .filter(([_, selected]) => selected)
         .map(([index]) => {
-          const eventId = filteredEvents[parseInt(index)]?.id;
+          const eventId = paginatedEvents[parseInt(index)]?.id;
           logger.log(`Row ${index} maps to event ID:`, eventId); // Debug the mapping
           return eventId;
         })
@@ -978,7 +992,7 @@ const DashboardCopy = () => {
                   </TableHeader>
                   <TableBody>
                     <TableLoader id={LOADER_ID} rowCount={5} colCount={7} />
-                    {!isLoading(LOADER_ID) && filteredEvents.length > 0
+                    {!isLoading(LOADER_ID) && paginatedEvents.length > 0
                       ? table.getRowModel().rows.map((row) => (
                           <TableRow
                             key={row.id}
@@ -1041,6 +1055,58 @@ const DashboardCopy = () => {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Pagination Controls */}
+              {filteredEvents.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t px-4 sm:px-6 py-4">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <span>Rows per page:</span>
+                    <Select
+                      value={pageSize.toString()}
+                      onValueChange={(value) => {
+                        setPageSize(Number(value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-16 sm:w-20 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="75">75</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs sm:text-sm">
+                    <span className="text-muted-foreground">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="min-h-[36px] px-3"
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage(Math.min(totalPages, currentPage + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="min-h-[36px] px-3"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

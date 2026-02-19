@@ -12,6 +12,7 @@ export interface OfflineQueueState {
   addCard: (card: Omit<PendingCard, 'id' | 'timestamp' | 'retryCount'>) => Promise<number>;
   addQRScan: (scan: Omit<PendingQRScan, 'id' | 'timestamp' | 'retryCount'>) => Promise<number>;
   removeCard: (id: number) => Promise<void>;
+  clearAll: () => Promise<void>;
   refreshQueue: () => Promise<void>;
   triggerSync: () => Promise<void>;
 }
@@ -62,6 +63,11 @@ export function useOfflineQueue(): OfflineQueueState {
     await refreshQueue();
   }, [refreshQueue]);
 
+  const clearAll = useCallback(async () => {
+    await offlineQueue.clearAll();
+    await refreshQueue();
+  }, [refreshQueue]);
+
   const triggerSync = useCallback(async () => {
     await syncService.manualSync();
     await refreshQueue();
@@ -93,6 +99,7 @@ export function useOfflineQueue(): OfflineQueueState {
     addCard,
     addQRScan,
     removeCard,
+    clearAll,
     refreshQueue,
     triggerSync,
   };
