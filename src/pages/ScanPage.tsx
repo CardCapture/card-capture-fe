@@ -98,7 +98,7 @@ const ScanPage: React.FC = () => {
     const options = {
       maxWidthOrHeight: 2048,
       initialQuality: 0.85,
-      useWebWorker: true,
+      useWebWorker: false,
     };
     const resizedFile = await imageCompression(file, options);
     // Get resized dimensions

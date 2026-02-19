@@ -91,7 +91,8 @@ export default function RegistrationFormPage() {
 
     try {
       logger.log('🔍 Searching schools for:', query);
-      const response = await fetch(`http://localhost:8000/high_schools/search?q=${encodeURIComponent(query)}&limit=10`);
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiBaseUrl}/high_schools/search?q=${encodeURIComponent(query)}&limit=10`);
       const data = await response.json();
       logger.log('🔍 School search results:', data);
       setSchoolSuggestions(data.results || []);
@@ -113,7 +114,8 @@ export default function RegistrationFormPage() {
 
     try {
       logger.log('🔍 Searching majors for:', query);
-      const response = await fetch(`http://localhost:8000/majors/search?q=${encodeURIComponent(query)}&limit=10`);
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiBaseUrl}/majors/search?q=${encodeURIComponent(query)}&limit=10`);
       const data = await response.json();
       logger.log('🔍 Major search results:', data);
       setMajorSuggestions(data.results || []);
