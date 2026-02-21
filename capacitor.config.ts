@@ -5,6 +5,8 @@ const config: CapacitorConfig = {
   appName: 'CardCapture',
   webDir: 'dist',
   server: {
+    // Use the real domain so iOS matches saved passwords for autofill
+    hostname: 'cardcapture.io',
     // For development, you can enable live reload:
     // url: 'http://YOUR_IP:5173',
     // cleartext: true,
