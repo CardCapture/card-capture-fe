@@ -30,34 +30,6 @@ const OTPInput: React.FC<OTPInputProps> = ({
   }, []);
   
   useEffect(() => {
-    // Add input event listeners to detect auto-fill
-    const handleInput = (event: Event) => {
-      const target = event.target as HTMLInputElement;
-      const index = inputRefs.current.findIndex(ref => ref === target);
-      if (index !== -1 && target.value.length > 1) {
-        // This is likely auto-fill, handle it as multi-character input
-        handleChange(index, target.value);
-        // Clear the input to prevent display issues
-        target.value = '';
-      }
-    };
-    
-    inputRefs.current.forEach(input => {
-      if (input) {
-        input.addEventListener('input', handleInput);
-      }
-    });
-    
-    return () => {
-      inputRefs.current.forEach(input => {
-        if (input) {
-          input.removeEventListener('input', handleInput);
-        }
-      });
-    };
-  }, [otp]); // Add otp dependency to recreate listeners when state changes
-
-  useEffect(() => {
     // Start resend timer
     if (resendTimer > 0) {
       const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
@@ -246,6 +218,7 @@ const OTPInput: React.FC<OTPInputProps> = ({
         inputMode="numeric"
         autoComplete="one-time-code"
         maxLength={length}
+        value={otp.join('')}
         style={{
           position: 'absolute',
           top: '0',
@@ -301,7 +274,7 @@ const OTPInput: React.FC<OTPInputProps> = ({
               ${(isLoading || (lockoutUntil !== null && lockoutUntil > Date.now())) ? 'opacity-50 cursor-not-allowed' : ''}
               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
             `}
-            autoComplete={index === 0 ? "one-time-code" : "off"}
+            autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}

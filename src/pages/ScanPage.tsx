@@ -45,6 +45,8 @@ const ScanPage: React.FC = () => {
   const [forceShowProcessing, setForceShowProcessing] = useState(false);
   const [isProcessingQR, setIsProcessingQR] = useState(false);
   const [qrSuccess, setQrSuccess] = useState(false);
+  const [scanKey, setScanKey] = useState(0);
+  const [captureSuccess, setCaptureSuccess] = useState(false);
 
   // Fetch events on mount
   useEffect(() => {
@@ -60,6 +62,18 @@ const ScanPage: React.FC = () => {
         if (event) {
           setSelectedEventId(lastEventId);
           setSelectedEvent(event);
+        } else if (events.length === 0) {
+          // Offline fallback: use the persisted event object
+          const stored = localStorage.getItem("lastEventObject");
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored) as Event;
+              setSelectedEventId(lastEventId);
+              setSelectedEvent(parsed);
+            } catch {
+              // Ignore bad JSON
+            }
+          }
         }
       }
     }
@@ -160,7 +174,14 @@ const ScanPage: React.FC = () => {
     // Resize the image before upload
     const resizedFile = await resizeImage(imageDataUrl);
     logger.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
-    setIsCameraOpen(false); // Close camera after capture
+
+    // Show brief success overlay, then resume scanning
+    setCaptureSuccess(true);
+    setTimeout(() => {
+      setCaptureSuccess(false);
+      setScanKey(prev => prev + 1);
+    }, 1500);
+
     processImage(resizedFile);
   };
 
@@ -204,13 +225,13 @@ const ScanPage: React.FC = () => {
         setTimeout(() => {
           setQrSuccess(false);
           setIsProcessingQR(false);
-          setIsCameraOpen(false);
+          setScanKey(prev => prev + 1);
         }, 1500);
       } catch (error: any) {
         logger.error('Failed to queue QR scan:', error);
         toast.error("Failed to save QR scan offline");
         setIsProcessingQR(false);
-        setIsCameraOpen(false);
+        setScanKey(prev => prev + 1);
       }
       return;
     }
@@ -227,11 +248,11 @@ const ScanPage: React.FC = () => {
       setQrSuccess(true);
       toast.success("Student added successfully!");
 
-      // Auto-close after success and allow scanning another
+      // Resume scanning after brief success feedback
       setTimeout(() => {
         setQrSuccess(false);
         setIsProcessingQR(false);
-        setIsCameraOpen(false);
+        setScanKey(prev => prev + 1);
       }, 1500);
 
     } catch (error: any) {
@@ -239,7 +260,7 @@ const ScanPage: React.FC = () => {
       const errorMessage = error?.message || 'Failed to process QR code';
       toast.error(errorMessage);
       setIsProcessingQR(false);
-      setIsCameraOpen(false);
+      setScanKey(prev => prev + 1);
     }
   };
 
@@ -254,6 +275,9 @@ const ScanPage: React.FC = () => {
     setSelectedEventId(id);
     setSelectedEvent(event || null);
     localStorage.setItem("lastEventId", id);
+    if (event) {
+      localStorage.setItem("lastEventObject", JSON.stringify(event));
+    }
   };
 
   const handleEventCreated = () => {
@@ -314,33 +338,40 @@ const ScanPage: React.FC = () => {
         </div>
 
         {/* Camera Capture Component */}
-        <div className="flex-1 flex items-center justify-center p-4">
-          {isProcessingQR ? (
-            // QR Processing overlay
-            <div className="flex flex-col items-center justify-center text-white">
+        <div className="flex-1 flex items-center justify-center p-4 relative">
+          {isProcessingQR && (
+            // QR Processing overlay (shown on top of camera)
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/60">
               {qrSuccess ? (
                 <>
                   <CheckCircle className="h-16 w-16 text-green-400 mb-4" />
-                  <p className="text-xl font-semibold">Student Added!</p>
+                  <p className="text-xl font-semibold text-white">Student Added!</p>
                 </>
               ) : (
                 <>
-                  <Loader2 className="h-12 w-12 animate-spin mb-4" />
-                  <p className="text-lg">Processing QR code...</p>
+                  <Loader2 className="h-12 w-12 animate-spin mb-4 text-white" />
+                  <p className="text-lg text-white">Processing QR code...</p>
                 </>
               )}
             </div>
-          ) : (
-            <CameraCapture
-              onCapture={handleImageCaptured}
-              onCancel={() => {
-                setIsCameraOpen(false);
-                navigate('/scan');
-              }}
-              onQRDetected={handleQRDetected}
-              hideBackButton={true}
-            />
           )}
+          {captureSuccess && (
+            // Photo capture success overlay
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/60">
+              <CheckCircle className="h-16 w-16 text-green-400 mb-4" />
+              <p className="text-xl font-semibold text-white">Card Captured!</p>
+            </div>
+          )}
+          <CameraCapture
+            onCapture={handleImageCaptured}
+            onCancel={() => {
+              setIsCameraOpen(false);
+              navigate('/scan');
+            }}
+            onQRDetected={handleQRDetected}
+            hideBackButton={true}
+            scanKey={scanKey}
+          />
         </div>
       </div>
     );

@@ -157,6 +157,7 @@ export const offlineQueue = {
   async getQRScansByEvent(eventId: string): Promise<PendingQRScan[]> {
     return db.pendingQRScans.where('eventId').equals(eventId).toArray();
   },
+
 };
 
 export default offlineQueue;

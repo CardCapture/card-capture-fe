@@ -11,9 +11,10 @@ interface CameraCaptureProps {
   onCancel: () => void;
   onQRDetected?: (token: string) => void;
   hideBackButton?: boolean;
+  scanKey?: number;
 }
 
-const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQRDetected, hideBackButton }) => {
+const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQRDetected, hideBackButton, scanKey = 0 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -93,7 +94,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQR
     }
   }, [stream]);
 
-  // QR code scanning effect (web only)
+  // QR code scanning effect (web only, restarts when scanKey changes)
   useEffect(() => {
     // Skip QR scanning on native platforms or if no stream or no callback
     if (useNativeCamera || !stream || !onQRDetected || !videoRef.current) return;
@@ -101,6 +102,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQR
     // Initialize QR reader
     qrReaderRef.current = new BrowserMultiFormatReader();
     isScanningRef.current = true;
+    setQrDetected(false);
 
     const scanForQR = async () => {
       if (!videoRef.current || !qrReaderRef.current || !isScanningRef.current) return;
@@ -114,16 +116,13 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQR
             logger.log('QR code detected:', token);
             isScanningRef.current = false;
             setQrDetected(true);
-            // Stop the stream
-            if (stream) {
-              stream.getTracks().forEach(track => track.stop());
-            }
+            // Keep stream running so camera stays open for the next scan
             onQRDetected(token);
             return;
           }
         }
       } catch {
-        // No QR code found in this frame - continue scanning
+        // No QR code found in this frame, continue scanning
       }
 
       // Continue scanning if still active
@@ -136,7 +135,6 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQR
     const video = videoRef.current;
     const startScanning = () => {
       if (video.readyState >= 2) {
-        // Video has enough data
         requestAnimationFrame(scanForQR);
       } else {
         video.addEventListener('loadeddata', () => {
@@ -153,12 +151,12 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQR
       isScanningRef.current = false;
       qrReaderRef.current = null;
     };
-  }, [stream, useNativeCamera, onQRDetected]);
+  }, [stream, useNativeCamera, onQRDetected, scanKey]);
 
   const captureImage = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    // Stop QR scanning
+    // Pause QR scanning while capture processes
     isScanningRef.current = false;
 
     const video = videoRef.current;
@@ -169,10 +167,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQR
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageDataUrl = canvas.toDataURL('image/png');
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
+    // Keep stream running so camera stays open for the next capture
     onCapture(imageDataUrl);
   };
 

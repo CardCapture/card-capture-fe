@@ -17,21 +17,58 @@ interface UseEventsReturn {
   fetchEvents: () => Promise<void>;
 }
 
+function getInitialEvents(): EventWithStats[] {
+  try {
+    const raw = localStorage.getItem('cachedEvents');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return [];
+}
+
 export function useEvents(schoolId?: string): UseEventsReturn {
-  const [events, setEvents] = useState<EventWithStats[]>([]);
+  const [events, setEvents] = useState<EventWithStats[]>(getInitialEvents);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       logger.log("useEvents: fetchEvents called with schoolId:", schoolId);
       const eventsWithStats = await EventService.getEventsWithStats(schoolId);
       logger.log("useEvents: fetched events:", eventsWithStats.length, "events");
       setEvents(eventsWithStats);
+
+      // Cache events in localStorage for offline fallback
+      try {
+        localStorage.setItem('cachedEvents', JSON.stringify(eventsWithStats));
+      } catch (cacheErr) {
+        logger.error("useEvents: failed to cache events:", cacheErr);
+      }
     } catch (err) {
       logger.error("useEvents: fetchEvents error:", err);
+
+      // Fall back to localStorage cache when API fails
+      try {
+        const raw = localStorage.getItem('cachedEvents');
+        if (raw) {
+          const cached: EventWithStats[] = JSON.parse(raw);
+          if (cached.length > 0) {
+            setEvents(cached);
+            return;
+          }
+        }
+      } catch {
+        // Ignore cache read errors
+      }
+
       setError(err as Error);
       toast("Failed to fetch events");
     } finally {
