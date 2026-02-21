@@ -3,7 +3,7 @@
     {
       "target": "prod",
       "public": "dist",
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "ignore": ["firebase.json", "**/node_modules/**"],
       "rewrites": [
         {
           "source": "/for-coordinators",
@@ -19,6 +19,15 @@
         }
       ],
       "headers": [
+        {
+          "source": ".well-known/apple-app-site-association",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         {
           "source": "**/*.@(js|jsx|ts|tsx)",
           "headers": [
@@ -52,7 +61,7 @@
     {
       "target": "staging",
       "public": "dist",
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "ignore": ["firebase.json", "**/node_modules/**"],
       "rewrites": [
         {
           "source": "/for-coordinators",
@@ -68,6 +77,15 @@
         }
       ],
       "headers": [
+        {
+          "source": ".well-known/apple-app-site-association",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         {
           "source": "**/*.@(js|jsx|ts|tsx)",
           "headers": [

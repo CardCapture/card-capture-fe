@@ -1,0 +1,14 @@
+{
+  "webcredentials": {
+    "apps": ["5643SFY6SQ.com.cardcapture.app"]
+  },
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "5643SFY6SQ.com.cardcapture.app",
+        "paths": ["/login", "/signup", "/scan/*"]
+      }
+    ]
+  }
+}

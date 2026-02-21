@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, KeyboardEvent, ClipboardEvent } from 'react';
+import React, { useState, useRef, useEffect, ClipboardEvent } from 'react';
 
 interface OTPInputProps {
   length?: number;
@@ -22,22 +22,21 @@ const OTPInput: React.FC<OTPInputProps> = ({
   const [attemptCount, setAttemptCount] = useState<number>(0);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
   const [clientError, setClientError] = useState<string | null>(null);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [isFocused, setIsFocused] = useState(false);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Focus first input on mount
-    inputRefs.current[0]?.focus();
+    // Focus the hidden input on mount so iOS autofill targets it
+    hiddenInputRef.current?.focus();
   }, []);
-  
+
   useEffect(() => {
-    // Start resend timer
     if (resendTimer > 0) {
       const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
       return () => clearTimeout(timer);
     }
   }, [resendTimer]);
 
-  // Effect to handle client-side rate limit lockout countdown
   useEffect(() => {
     if (lockoutUntil && lockoutUntil > Date.now()) {
       const timer = setInterval(() => {
@@ -54,140 +53,73 @@ const OTPInput: React.FC<OTPInputProps> = ({
     }
   }, [lockoutUntil]);
 
-  const handleChange = (index: number, value: string) => {
-    if (isLoading) return;
-
-    // Check if user is in lockout period
-    if (lockoutUntil && lockoutUntil > Date.now()) {
-      return; // Prevent any input during lockout
-    }
-    
-    // Handle multi-character input (like auto-fill or paste)
-    const digits = value.replace(/[^0-9]/g, '');
-    
-    if (digits.length > 1) {
-      // Multiple digits - treat as auto-fill or paste
-      const newOtp = [...otp];
-      
-      // Fill from current index onwards
-      for (let i = 0; i < digits.length && (index + i) < length; i++) {
-        newOtp[index + i] = digits[i];
-      }
-      
-      setOtp(newOtp);
-      
-      // Focus the next empty input or last input
-      const nextEmptyIndex = newOtp.findIndex((val, idx) => idx > index && val === '');
-      const focusIndex = nextEmptyIndex === -1 ? Math.min(index + digits.length, length - 1) : nextEmptyIndex;
-      inputRefs.current[focusIndex]?.focus();
-      
-      // Auto-submit if complete (with rate limit check)
-      const otpString = newOtp.join('');
-      if (otpString.length === length) {
-        handleVerificationAttempt(otpString);
-      }
-    } else {
-      // Single digit
-      const digit = digits.slice(-1);
-      
-      const newOtp = [...otp];
-      newOtp[index] = digit;
-      setOtp(newOtp);
-
-      // Move to next input if digit was entered
-      if (digit && index < length - 1) {
-        inputRefs.current[index + 1]?.focus();
-      }
-
-      // Check if all digits are filled (with rate limit check)
-      const otpString = newOtp.join('');
-      if (otpString.length === length) {
-        handleVerificationAttempt(otpString);
-      }
-    }
-  };
-
-  // Client-side rate limiting for verification attempts
   const handleVerificationAttempt = (code: string) => {
-    // Check if in lockout period
     if (lockoutUntil && lockoutUntil > Date.now()) {
       const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
       setClientError(`Too many attempts. Please wait ${remaining} seconds.`);
       return;
     }
 
-    // Increment attempt counter
     const newAttemptCount = attemptCount + 1;
     setAttemptCount(newAttemptCount);
 
-    // Lock after 3 failed attempts (60 second lockout)
     if (newAttemptCount >= 3) {
-      const lockoutTime = Date.now() + 60000; // 60 seconds
+      const lockoutTime = Date.now() + 60000;
       setLockoutUntil(lockoutTime);
       setClientError('Too many attempts. Locked for 60 seconds.');
-      // Clear the OTP inputs
       setOtp(new Array(length).fill(''));
       return;
     }
 
-    // Clear client error and pass to parent
     setClientError(null);
     onComplete(code);
   };
 
-  const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
+  // Single handler for all input (typing, autofill, paste) via the hidden input
+  const handleHiddenInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isLoading) return;
-    
-    // Handle backspace
+    if (lockoutUntil && lockoutUntil > Date.now()) return;
+
+    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, length);
+    const newOtp = new Array(length).fill('');
+    for (let i = 0; i < value.length; i++) {
+      newOtp[i] = value[i];
+    }
+    setOtp(newOtp);
+
+    if (value.length === length) {
+      handleVerificationAttempt(value);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (isLoading) return;
+
     if (e.key === 'Backspace') {
       e.preventDefault();
-      
-      const newOtp = [...otp];
-      
-      if (otp[index]) {
-        // Clear current input
-        newOtp[index] = '';
+      const currentValue = otp.join('');
+      if (currentValue.length > 0) {
+        const newValue = currentValue.slice(0, -1);
+        const newOtp = new Array(length).fill('');
+        for (let i = 0; i < newValue.length; i++) {
+          newOtp[i] = newValue[i];
+        }
         setOtp(newOtp);
-      } else if (index > 0) {
-        // Move to previous input and clear it
-        newOtp[index - 1] = '';
-        setOtp(newOtp);
-        inputRefs.current[index - 1]?.focus();
       }
-    }
-    
-    // Handle arrow keys
-    if (e.key === 'ArrowLeft' && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-    if (e.key === 'ArrowRight' && index < length - 1) {
-      inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     if (isLoading) return;
-    
-    // Get the current input index
-    const currentIndex = inputRefs.current.findIndex(ref => ref === e.target);
-    
+
     const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, length);
-    const newOtp = [...otp];
-    
-    // Always fill from the beginning for pasted data (more intuitive)
-    for (let i = 0; i < pastedData.length && i < length; i++) {
+    const newOtp = new Array(length).fill('');
+    for (let i = 0; i < pastedData.length; i++) {
       newOtp[i] = pastedData[i];
     }
-    
     setOtp(newOtp);
-    
-    // Focus the next empty input or the last input
-    const nextEmptyIndex = newOtp.findIndex(val => val === '');
-    const focusIndex = nextEmptyIndex === -1 ? length - 1 : nextEmptyIndex;
-    inputRefs.current[focusIndex]?.focus();
-    
-    // Auto-submit if complete (with rate limit check)
+
     if (pastedData.length === length) {
       handleVerificationAttempt(pastedData);
     }
@@ -198,9 +130,17 @@ const OTPInput: React.FC<OTPInputProps> = ({
       onResend();
       setResendTimer(30);
       setOtp(new Array(length).fill(''));
-      inputRefs.current[0]?.focus();
+      hiddenInputRef.current?.focus();
     }
   };
+
+  const focusHiddenInput = () => {
+    hiddenInputRef.current?.focus();
+  };
+
+  // Which digit box should show the cursor/focus indicator
+  const activeIndex = otp.join('').length;
+  const isLocked = isLoading || (lockoutUntil !== null && lockoutUntil > Date.now());
 
   return (
     <div className="flex flex-col items-center space-y-4 relative">
@@ -212,74 +152,62 @@ const OTPInput: React.FC<OTPInputProps> = ({
         </p>
       </div>
 
-      {/* Hidden input for mobile autofill - properly positioned */}
-      <input
-        type="tel"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        maxLength={length}
-        value={otp.join('')}
-        style={{
-          position: 'absolute',
-          top: '0',
-          left: '0',
-          width: '100%',
-          height: '100%',
-          opacity: 0,
-          fontSize: '16px', // Prevent zoom on iOS
-          zIndex: 1,
-        }}
-        onChange={(e) => {
-          const value = e.target.value.replace(/[^0-9]/g, '');
-          if (value.length > 0) {
-            const newOtp = new Array(length).fill('');
-            for (let i = 0; i < Math.min(value.length, length); i++) {
-              newOtp[i] = value[i];
-            }
-            setOtp(newOtp);
+      {/* Tappable area that focuses the hidden input */}
+      <div className="relative" onClick={focusHiddenInput}>
+        {/* Hidden input - sole autofill and keyboard target */}
+        <input
+          ref={hiddenInputRef}
+          type="tel"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={length}
+          value={otp.join('')}
+          onChange={handleHiddenInputChange}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          disabled={isLocked}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            opacity: 0,
+            fontSize: '16px',
+            zIndex: 10,
+            caretColor: 'transparent',
+          }}
+          aria-label="Verification code"
+        />
 
-            // Auto-submit if complete (with rate limit check)
-            if (value.length === length) {
-              handleVerificationAttempt(value);
-            }
-          }
-        }}
-      />
-
-      <div className="flex space-x-2 sm:space-x-3 relative">
-        {otp.map((digit, index) => (
-          <input
-            key={index}
-            ref={el => inputRefs.current[index] = el}
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]"
-            maxLength={1}
-            value={digit}
-            onChange={(e) => handleChange(index, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(index, e)}
-            onPaste={handlePaste}
-            disabled={isLoading || (lockoutUntil !== null && lockoutUntil > Date.now())}
-            className={`
-              w-12 h-14 sm:w-14 sm:h-16
-              text-center text-xl font-bold
-              border-2 rounded-lg
-              transition-all duration-200
-              ${error || clientError
-                ? 'border-red-500 bg-red-50'
-                : digit
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-300 hover:border-gray-400'
-              }
-              ${(isLoading || (lockoutUntil !== null && lockoutUntil > Date.now())) ? 'opacity-50 cursor-not-allowed' : ''}
-              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-            `}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-          />
-        ))}
+        {/* Visual digit boxes (display only) */}
+        <div className="flex space-x-2 sm:space-x-3">
+          {otp.map((digit, index) => (
+            <div
+              key={index}
+              className={`
+                w-12 h-14 sm:w-14 sm:h-16
+                flex items-center justify-center
+                text-center text-xl font-bold
+                border-2 rounded-lg
+                transition-all duration-200
+                ${error || clientError
+                  ? 'border-red-500 bg-red-50'
+                  : digit
+                    ? 'border-blue-500 bg-blue-50'
+                    : isFocused && index === activeIndex
+                      ? 'border-blue-500 ring-2 ring-blue-500'
+                      : 'border-gray-300'
+                }
+                ${isLocked ? 'opacity-50' : ''}
+              `}
+            >
+              {digit}
+            </div>
+          ))}
+        </div>
       </div>
 
       {(error || clientError) && (
@@ -303,7 +231,7 @@ const OTPInput: React.FC<OTPInputProps> = ({
             }
           `}
         >
-          {resendTimer > 0 
+          {resendTimer > 0
             ? `Resend code in ${resendTimer}s`
             : 'Resend code'
           }

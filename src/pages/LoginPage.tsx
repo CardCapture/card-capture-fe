@@ -157,6 +157,8 @@ const LoginPage = () => {
                 <Input
                   id="email"
                   type="email"
+                  name="email"
+                  autoComplete="username"
                   placeholder="Enter your work email"
                   required
                   value={email}
@@ -170,6 +172,8 @@ const LoginPage = () => {
                 <Input
                   id="password"
                   type="password"
+                  name="password"
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
