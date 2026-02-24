@@ -53,6 +53,7 @@ export interface RecruiterSignupRequest {
     admin_last_name?: string;
   };
   universal_event_ids: string[];
+  captcha_token?: string;
 }
 
 export interface RecruiterSignupResponse {
@@ -103,6 +104,18 @@ class RecruiterSignupService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to fetch schools');
+    }
+    return response.json();
+  }
+
+  /**
+   * Get distinct states from upcoming events for filter dropdown.
+   */
+  async getStates(): Promise<string[]> {
+    const response = await fetch(`${API_BASE_URL}/public/universal-events/states`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to fetch states');
     }
     return response.json();
   }

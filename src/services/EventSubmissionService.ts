@@ -11,6 +11,7 @@ export interface EventSubmissionData {
   contact_name: string;
   contact_email: string;
   contact_phone: string;
+  captcha_token?: string;
   start_time?: string; // HH:MM format
   end_time?: string;
   location?: string;

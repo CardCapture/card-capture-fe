@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import {
   EventSubmissionData,
 } from "@/services/EventSubmissionService";
 import { validators } from "@/utils/validation";
+import { loadHCaptchaScript, getCaptchaToken } from "@/utils/captcha";
 
 const US_STATES = [
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
@@ -128,6 +129,11 @@ const formatNumberWithCommas = (value: string): string => {
 };
 
 const CreateEventPage: React.FC = () => {
+  // Load hCaptcha script
+  useEffect(() => {
+    return loadHCaptchaScript();
+  }, []);
+
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>(
@@ -248,6 +254,8 @@ const CreateEventPage: React.FC = () => {
     setLoading(true);
 
     try {
+      const captchaToken = await getCaptchaToken('event_submission');
+
       const submissionData: EventSubmissionData = {
         name: formData.name,
         event_date: formData.event_date,
@@ -262,6 +270,7 @@ const CreateEventPage: React.FC = () => {
         ...(formData.state && { state: formData.state }),
         ...(formData.zip && { zip: formData.zip }),
         ...(formData.description && { description: formData.description }),
+        captcha_token: captchaToken,
         needs_inquiry_cards: formData.needs_inquiry_cards,
         ...(formData.expected_students && { expected_students: parseInt(formData.expected_students.replace(/,/g, ""), 10) }),
         // Secondary contact
