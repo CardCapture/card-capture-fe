@@ -1,5 +1,5 @@
 import { authFetch } from '@/lib/authFetch';
-import { logger } from '@/utils/logger';
+import { getCaptchaToken } from '@/utils/captcha';
 
 export interface EmailStartRequest {
   email: string;
@@ -92,7 +92,7 @@ class RegistrationServiceClass {
       },
       body: JSON.stringify({
         email,
-        captcha_token: await this.getCaptchaToken()
+        captcha_token: await getCaptchaToken('registration')
       }),
     });
 
@@ -115,7 +115,7 @@ class RegistrationServiceClass {
       },
       body: JSON.stringify({
         code,
-        captcha_token: await this.getCaptchaToken()
+        captcha_token: await getCaptchaToken('registration')
       }),
     });
 
@@ -228,35 +228,6 @@ class RegistrationServiceClass {
     return response.json();
   }
 
-  /**
-   * Get CAPTCHA token from hCaptcha
-   */
-  private async getCaptchaToken(): Promise<string | undefined> {
-    const siteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY;
-
-    // Skip captcha when site key is not configured (local dev/testing)
-    if (!siteKey) {
-      logger.log('hCaptcha skipped: VITE_HCAPTCHA_SITE_KEY not set');
-      return undefined;
-    }
-
-    // Check if hCaptcha JS is loaded on the page
-    if (typeof window.hcaptcha === 'undefined') {
-      logger.warn('hCaptcha script not loaded, proceeding without CAPTCHA token');
-      return undefined;
-    }
-
-    try {
-      // Execute invisible hCaptcha programmatically
-      const token = await window.hcaptcha.execute(siteKey, {
-        action: 'registration'
-      });
-      return token;
-    } catch (error) {
-      logger.warn('hCaptcha execution failed:', error);
-      return undefined;
-    }
-  }
 }
 
 export const RegistrationService = new RegistrationServiceClass();

@@ -11,9 +11,17 @@ import {
   Card,
   CardContent,
 } from '@/components/ui/card';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 import { Calendar, MapPin, Clock, Search, Loader2, ChevronLeft, ChevronRight, Check, CalendarX, X, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logger } from '@/utils/logger';
+import { loadHCaptchaScript, getCaptchaToken } from '@/utils/captcha';
 import { supabase } from '@/lib/supabaseClient';
 import recruiterSignupService, { UniversalEvent } from '@/services/RecruiterSignupService';
 
@@ -40,6 +48,8 @@ const EventSelectionPage: React.FC = () => {
 
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
+  const [stateFilter, setStateFilter] = useState<string>('');
+  const [availableStates, setAvailableStates] = useState<string[]>([]);
   const [events, setEvents] = useState<UniversalEvent[]>([]);
   const [selectedEvents, setSelectedEvents] = useState<UniversalEvent[]>([]);
   const [totalEvents, setTotalEvents] = useState(0);
@@ -49,6 +59,11 @@ const EventSelectionPage: React.FC = () => {
 
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Load hCaptcha script
+  useEffect(() => {
+    return loadHCaptchaScript();
+  }, []);
 
   // Load signup data from session storage
   useEffect(() => {
@@ -65,13 +80,19 @@ const EventSelectionPage: React.FC = () => {
     }
   }, [navigate]);
 
-  // Search events when page loads or search changes
+  // Fetch available states on mount
+  useEffect(() => {
+    recruiterSignupService.getStates().then(setAvailableStates).catch(() => {});
+  }, []);
+
+  // Search events when page loads or search/filter changes
   useEffect(() => {
     const searchEvents = async () => {
       try {
         setSearchLoading(true);
         const response = await recruiterSignupService.searchEvents({
           query: searchQuery || undefined,
+          state: stateFilter || undefined,
           page: currentPage,
           limit: eventsPerPage,
         });
@@ -88,7 +109,7 @@ const EventSelectionPage: React.FC = () => {
 
     const debounce = setTimeout(searchEvents, 300);
     return () => clearTimeout(debounce);
-  }, [searchQuery, currentPage]);
+  }, [searchQuery, stateFilter, currentPage]);
 
   // Open sheet when events are selected
   useEffect(() => {
@@ -197,6 +218,8 @@ const EventSelectionPage: React.FC = () => {
     setError(null);
 
     try {
+      const captchaToken = await getCaptchaToken('recruiter_signup');
+
       // Send all selected event IDs
       const response = await recruiterSignupService.signup({
         email: signupData.email,
@@ -205,6 +228,7 @@ const EventSelectionPage: React.FC = () => {
         last_name: signupData.lastName,
         school_selection: signupData.schoolSelection,
         universal_event_ids: selectedEvents.map(e => e.id),
+        captcha_token: captchaToken,
       });
 
       // Clear the stored signup data
@@ -319,7 +343,7 @@ const EventSelectionPage: React.FC = () => {
                 <span className="font-bold text-xl tracking-tight">CardCapture</span>
               </Link>
               <h1 className="text-3xl font-bold">Select Your Events</h1>
-              <p className="text-muted-foreground mt-2">$17 per event. Select one or more events to purchase.</p>
+              <p className="text-muted-foreground mt-2">Select one or more events to purchase.</p>
             </div>
 
             {/* Search and filters */}
@@ -329,7 +353,7 @@ const EventSelectionPage: React.FC = () => {
                   <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search events by name, city, or location..."
+                      placeholder="Search by event name, city, state, or venue..."
                       value={searchQuery}
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
@@ -338,6 +362,25 @@ const EventSelectionPage: React.FC = () => {
                       className="pl-10"
                     />
                   </div>
+                  <Select
+                    value={stateFilter}
+                    onValueChange={(value) => {
+                      setStateFilter(value === 'all' ? '' : value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="All States" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All States</SelectItem>
+                      {availableStates.map((state) => (
+                        <SelectItem key={state} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { RegistrationService } from '@/services/RegistrationService';
+import { loadHCaptchaScript } from '@/utils/captcha';
 import { logger } from '@/utils/logger';
 
 function isSchoolEmail(email: string): boolean {
@@ -30,25 +31,9 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Load hCaptcha script for invisible captcha (only when site key is configured)
+  // Load hCaptcha script for invisible captcha
   useEffect(() => {
-    const siteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY;
-    if (!siteKey) return;
-
-    // Skip if already loaded
-    if (document.querySelector('script[src*="hcaptcha.com"]')) return;
-
-    const script = document.createElement('script');
-    script.src = 'https://js.hcaptcha.com/1/api.js?render=explicit';
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-
-    return () => {
-      // Cleanup on unmount
-      const existing = document.querySelector('script[src*="hcaptcha.com"]');
-      if (existing) existing.remove();
-    };
+    return loadHCaptchaScript();
   }, []);
 
   // SEO and Analytics
