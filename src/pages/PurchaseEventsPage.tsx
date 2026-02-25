@@ -31,7 +31,7 @@ const PurchaseEventsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { profile } = useAuth();
-  const { isAdmin } = useRole();
+  const { canPurchaseEvents } = useRole();
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,12 +53,12 @@ const PurchaseEventsPage: React.FC = () => {
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Verify admin access
+  // Verify access
   useEffect(() => {
-    if (!isAdmin) {
+    if (!canPurchaseEvents) {
       navigate('/events');
     }
-  }, [isAdmin, navigate]);
+  }, [canPurchaseEvents, navigate]);
 
   // Fetch available states on mount
   useEffect(() => {
@@ -270,7 +270,7 @@ const PurchaseEventsPage: React.FC = () => {
     );
   };
 
-  if (!isAdmin) {
+  if (!canPurchaseEvents) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

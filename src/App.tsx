@@ -214,11 +214,11 @@ function App() {
                       }
                     />
 
-                    {/* Admin-only route for purchasing events */}
+                    {/* Event purchase route for admins and recruiters */}
                     <Route
                       path="/purchase-events"
                       element={
-                        <RoleProtectedRoute requiredPermission="isAdmin">
+                        <RoleProtectedRoute requiredPermission="canPurchaseEvents">
                           <PurchaseEventsPage />
                         </RoleProtectedRoute>
                       }

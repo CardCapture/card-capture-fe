@@ -14,13 +14,13 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
   const isMobile = useIsMobile()
-  const { canAccessScanPage, canAccessEventsPage, canAccessSettings, isAdmin } = useRole()
+  const { canAccessScanPage, canAccessEventsPage, canAccessSettings, canPurchaseEvents } = useRole()
 
   // Filter navigation items based on permissions
   const navItems = [
     { href: '/events', label: 'Events', icon: <CalendarDays />, canAccess: canAccessEventsPage },
     { href: '/scan', label: 'Scan', icon: <Camera />, canAccess: canAccessScanPage },
-    { href: '/purchase-events', label: 'Purchase Events', icon: <ShoppingCart />, canAccess: isAdmin },
+    { href: '/purchase-events', label: 'Purchase Events', icon: <ShoppingCart />, canAccess: canPurchaseEvents },
   ].filter(item => item.canAccess)
 
   const bottomItems = [

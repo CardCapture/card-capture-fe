@@ -31,6 +31,7 @@ export const useRole = () => {
     canDeleteEvents: roles.includes('admin'),
     canArchiveEvents: roles.some(r => ['admin', 'recruiter'].includes(r)),
     
+    canPurchaseEvents: roles.some(r => ['admin', 'recruiter'].includes(r)),
     canAccessAdminSettings: roles.includes('admin'),
     canAccessBilling: roles.includes('admin'),
     canAccessIntegrations: roles.includes('admin'),
