@@ -283,8 +283,11 @@ export default function MultiStepRegistrationPage() {
           title: "Welcome back!",
           description: "Your information has been pre-filled. Update anything you'd like.",
         });
+      } else if (sessionData.session_type === 'sms_link' && sessionData.metadata?.phone) {
+        // New SMS user - pre-fill cell (phone) from session
+        updateData({ cell: sessionData.metadata.phone });
       } else if (sessionData.email) {
-        // New user - just pre-fill email
+        // New email user - just pre-fill email
         updateData({ email: sessionData.email });
       }
     } catch (error) {

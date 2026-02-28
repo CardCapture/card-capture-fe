@@ -64,6 +64,7 @@ const MFASettingsPage = React.lazy(() => import("./pages/MFASettingsPage"));
 // New registration system pages
 const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
 const CheckEmailPage = React.lazy(() => import("./pages/CheckEmailPage"));
+const CheckPhonePage = React.lazy(() => import("./pages/CheckPhonePage"));
 const RegistrationFormPage = React.lazy(() => import("./pages/RegistrationFormPage"));
 const MultiStepRegistrationPage = React.lazy(() => import("./pages/MultiStepRegistrationPage"));
 const RegistrationSuccessPage = React.lazy(() => import("./pages/RegistrationSuccessPage"));
@@ -142,6 +143,7 @@ function App() {
                 >
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/register/check-email" element={<CheckEmailPage />} />
+                  <Route path="/register/check-phone" element={<CheckPhonePage />} />
                   <Route path="/register/verify" element={<MagicLinkVerifyPage />} />
                   <Route path="/register/form" element={<MultiStepRegistrationPage />} />
                   <Route path="/register/success" element={<RegistrationSuccessPage />} />

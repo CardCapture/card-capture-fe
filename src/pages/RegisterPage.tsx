@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, ArrowRight, Shield, Lock, CheckCircle, Zap } from 'lucide-react';
+import { Mail, ArrowRight, Shield, Lock, CheckCircle, Zap, Smartphone, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SmartPhoneInput } from '@/components/ui/smart-phone-input';
 import { useToast } from '@/hooks/use-toast';
 import { RegistrationService } from '@/services/RegistrationService';
 import { loadHCaptchaScript } from '@/utils/captcha';
@@ -20,8 +21,11 @@ function isSchoolEmail(email: string): boolean {
 
 export default function RegisterPage() {
   const [visible, setVisible] = useState(false);
+  const [showPhoneInput, setShowPhoneInput] = useState(false);
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [showCodeInput, setShowCodeInput] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
   const [eventCode, setEventCode] = useState('');
@@ -139,11 +143,55 @@ export default function RegisterPage() {
     }
   };
   
+  const formatPhoneDisplay = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  };
+
+  const getRawDigits = (value: string) => value.replace(/\D/g, '').slice(0, 10);
+
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const digits = getRawDigits(phone);
+    if (digits.length !== 10 || submitting || submissionRef.current) return;
+
+    logger.log('analytics:cta_click', { type: 'sms_registration' });
+
+    submissionRef.current = true;
+    setSubmitting(true);
+    try {
+      const result = await RegistrationService.startSmsRegistration(digits);
+
+      navigate('/register/check-phone', { state: { phone: digits, isReturning: result.is_returning } });
+
+      toast({
+        title: "Check your phone",
+        description: "We've sent you a text with a registration link.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send registration text",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+      submissionRef.current = false;
+    }
+  };
+
   const handlePrimaryCTAClick = () => {
-    logger.log('analytics:cta_click', { type: 'primary_email_cta' });
+    logger.log('analytics:cta_click', { type: 'primary_phone_cta' });
+    setShowPhoneInput(true);
+  };
+
+  const handleEmailCTAClick = () => {
+    logger.log('analytics:cta_click', { type: 'secondary_email_cta' });
     setShowEmailInput(true);
   };
-  
+
   const handleSecondaryCTAClick = () => {
     logger.log('analytics:cta_click', { type: 'secondary_code_cta' });
     setShowCodeInput(true);
@@ -190,17 +238,17 @@ export default function RegisterPage() {
               </header>
 
               {/* Primary Actions */}
-              {!showEmailInput && !showCodeInput && (
+              {!showPhoneInput && !showEmailInput && !showCodeInput && (
                 <div className="space-y-6 max-w-md mx-auto">
                   <div className="space-y-4">
                     <Button
                       size="lg"
                       className="w-full text-lg py-6 font-medium"
                       onClick={handlePrimaryCTAClick}
-                      aria-label="Continue with email to create your profile"
+                      aria-label="Continue with phone to create your profile"
                     >
-                      <Mail className="mr-2 h-5 w-5" />
-                      Continue with Email
+                      <Smartphone className="mr-2 h-5 w-5" />
+                      Continue with Phone
                     </Button>
 
                     <div className="relative">
@@ -213,11 +261,11 @@ export default function RegisterPage() {
                     </div>
 
                     <button
-                      className="w-full text-center text-primary hover:text-primary/80 font-medium transition-colors py-2"
-                      onClick={handleSecondaryCTAClick}
-                      aria-label="Enter event code from your school or college fair"
+                      className="w-full text-center text-foreground/60 hover:text-foreground/80 text-sm transition-colors py-2"
+                      onClick={handleEmailCTAClick}
+                      aria-label="Continue with email instead"
                     >
-                      I have an Event Code
+                      Don't have a phone? Use email instead
                     </button>
                   </div>
                   
@@ -259,6 +307,56 @@ export default function RegisterPage() {
                       </button>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Phone Input Form */}
+              {showPhoneInput && (
+                <div className="max-w-md mx-auto">
+                  <form onSubmit={handlePhoneSubmit} className="space-y-6">
+                    <SmartPhoneInput
+                      label="Phone Number"
+                      value={phone}
+                      onChange={(val) => {
+                        setPhone(val);
+                        setPhoneError('');
+                      }}
+                      error={phoneError}
+                      onValidate={(val) => {
+                        if (val.length > 0 && val.length !== 10) {
+                          return 'Please enter a 10-digit US phone number';
+                        }
+                        return null;
+                      }}
+                      helpText="We'll text you a secure link to complete registration"
+                      required
+                    />
+
+                    <div className="flex gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setShowPhoneInput(false);
+                          setPhone('');
+                          setPhoneError('');
+                        }}
+                        className="flex-1"
+                        aria-label="Go back to main options"
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={submitting || getRawDigits(phone).length !== 10 || !!phoneError}
+                        className="flex-1"
+                        aria-label={submitting ? 'Sending registration text' : 'Send registration text to continue'}
+                      >
+                        {submitting ? 'Sending...' : 'Continue'}
+                        {!submitting && <ArrowRight className="ml-2 h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </form>
                 </div>
               )}
 

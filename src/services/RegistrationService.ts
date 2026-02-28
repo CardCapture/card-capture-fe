@@ -40,8 +40,9 @@ export interface RegistrationFormData {
 }
 
 export interface FormSession {
-  session_type: 'magic_link' | 'event_code';
+  session_type: 'magic_link' | 'event_code' | 'sms_link';
   email?: string;
+  phone?: string;
   metadata?: any;
   existing_student?: any;  // Existing student data for pre-filling form
 }
@@ -99,6 +100,29 @@ class RegistrationServiceClass {
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.detail || 'Failed to start registration');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Start registration with SMS (magic link via text)
+   */
+  async startSmsRegistration(phone: string): Promise<{ success: boolean; message: string; is_returning?: boolean }> {
+    const response = await authFetch(`${this.baseUrl}/api/register/start-sms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        phone,
+        captcha_token: await getCaptchaToken('registration')
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to send registration text');
     }
 
     return response.json();
