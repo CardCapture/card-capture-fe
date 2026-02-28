@@ -145,6 +145,7 @@ function App() {
                   <Route path="/register/check-email" element={<CheckEmailPage />} />
                   <Route path="/register/check-phone" element={<CheckPhonePage />} />
                   <Route path="/register/verify" element={<MagicLinkVerifyPage />} />
+                  <Route path="/register/verify/:token" element={<MagicLinkVerifyPage />} />
                   <Route path="/register/form" element={<MultiStepRegistrationPage />} />
                   <Route path="/register/success" element={<RegistrationSuccessPage />} />
                   <Route path="/register/verify-email" element={<VerifyEmailPage />} />

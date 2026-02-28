@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { Shield, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,13 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function MagicLinkVerifyPage() {
   const [searchParams] = useSearchParams();
+  const { token: pathToken } = useParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const token = searchParams.get('token');
+  const token = pathToken || searchParams.get('token');
 
   useEffect(() => {
     if (!token) {
