@@ -14,6 +14,10 @@
           "destination": "/for-students/index.html"
         },
         {
+          "source": "/register/verify/**",
+          "destination": "/register/verify/index.html"
+        },
+        {
           "source": "**",
           "destination": "/index.html"
         }
@@ -70,6 +74,10 @@
         {
           "source": "/for-students",
           "destination": "/for-students/index.html"
+        },
+        {
+          "source": "/register/verify/**",
+          "destination": "/register/verify/index.html"
         },
         {
           "source": "**",
