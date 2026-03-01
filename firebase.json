@@ -6,12 +6,20 @@
       "ignore": ["firebase.json", "**/node_modules/**"],
       "rewrites": [
         {
+          "source": "/for-recruiters",
+          "destination": "/for-recruiters/index.html"
+        },
+        {
           "source": "/for-coordinators",
           "destination": "/for-coordinators/index.html"
         },
         {
           "source": "/for-students",
           "destination": "/for-students/index.html"
+        },
+        {
+          "source": "/register",
+          "destination": "/register/index.html"
         },
         {
           "source": "/register/verify/**",
@@ -68,12 +76,20 @@
       "ignore": ["firebase.json", "**/node_modules/**"],
       "rewrites": [
         {
+          "source": "/for-recruiters",
+          "destination": "/for-recruiters/index.html"
+        },
+        {
           "source": "/for-coordinators",
           "destination": "/for-coordinators/index.html"
         },
         {
           "source": "/for-students",
           "destination": "/for-students/index.html"
+        },
+        {
+          "source": "/register",
+          "destination": "/register/index.html"
         },
         {
           "source": "/register/verify/**",

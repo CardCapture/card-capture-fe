@@ -110,6 +110,7 @@ function App() {
                   }
                 >
                   <Route path="/" element={<HomePage />} />
+                  <Route path="/for-recruiters" element={<HomePage />} />
                   <Route path="/for-coordinators" element={<HomePage />} />
                   <Route path="/for-students" element={<HomePage />} />
                   <Route path="/login" element={<LoginPage />} />
