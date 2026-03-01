@@ -415,6 +415,7 @@ export default function MultiStepRegistrationPage() {
   }
 
   const isEmailLocked = session?.session_type === 'magic_link';
+  const isPhoneLocked = session?.session_type === 'sms_link';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-4 px-4">
@@ -530,8 +531,9 @@ export default function MultiStepRegistrationPage() {
                   value={formData.cell}
                   onChange={(value) => updateData({ cell: value })}
                   onValidate={combineValidators(validators.required, validators.phone)}
-                  helpText="For important updates from schools"
+                  helpText={isPhoneLocked ? "Verified via SMS" : "For important updates from schools"}
                   required
+                  disabled={isPhoneLocked}
                 />
                 
                 <div className="space-y-4">

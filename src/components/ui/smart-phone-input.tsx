@@ -12,19 +12,21 @@ interface SmartPhoneInputProps {
   helpText?: string;
   className?: string;
   required?: boolean;
+  disabled?: boolean;
 }
 
-export function SmartPhoneInput({ 
-  label, 
-  value, 
-  onChange, 
-  error, 
-  success, 
-  onValidate, 
+export function SmartPhoneInput({
+  label,
+  value,
+  onChange,
+  error,
+  success,
+  onValidate,
   helpText,
   className,
   required = false,
-  ...props 
+  disabled = false,
+  ...props
 }: SmartPhoneInputProps) {
   const [displayValue, setDisplayValue] = useState(value);
   const [touched, setTouched] = useState(false);
@@ -201,11 +203,13 @@ export function SmartPhoneInput({
           placeholder="Your mobile number"
           maxLength={12}
           autoComplete="tel"
+          disabled={disabled}
           className={cn(
             "w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200",
             "text-base", // Prevent zoom on iOS
             displayError && "border-red-500 focus:ring-red-500 focus:border-red-500",
             isValid && "border-green-500 focus:ring-green-500 focus:border-green-500 pr-10",
+            disabled && "bg-gray-100 text-gray-500 cursor-not-allowed",
             className
           )}
           {...props}
