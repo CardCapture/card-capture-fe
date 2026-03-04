@@ -10,19 +10,11 @@
 - [x] Grant invited to CardCapture GitHub org
 
 ### Before the Call
-1. **Commit CLAUDE.md and SETUP_GUIDE.md to staging**
-   ```bash
-   cd card-capture-fe
-   git add CLAUDE.md SETUP_GUIDE.md
-   git commit -m "Add CLAUDE.md and setup guide for contributors"
-   git push origin staging
-   ```
+1. **Send Grant two things via text/Signal** (not email, they contain keys):
+   - The `.env.grant` file (he'll save this as `.env.local` later)
+   - The `settings.json` content from the "Claude Code Settings" section below
 
-2. **Send Grant two files via text/Signal** (not email, they contain keys):
-   - `.env.grant` (he'll save this as `.env.local`)
-   - The `settings.json` content from Part 2 Step 6 below
-
-3. **Make sure Grant has done these before the call:**
+2. **Make sure Grant has done these before the call:**
    - Created a GitHub account and accepted the CardCapture org invite
    - Signed up for Claude Pro ($20/month) at https://claude.ai
    - Has his Windows laptop ready
@@ -31,86 +23,182 @@
 
 ## Part 2: On the Phone with Grant
 
-Walk him through these steps. He types, you talk him through it.
+There are only 3 manual steps. After that, Claude handles the rest.
 
 ### Step 1: Install WSL (~5 min + restart)
 
-Tell him to open **PowerShell as Administrator** (right-click, "Run as administrator"):
+1. Click the **Windows search bar** (bottom-left of screen, next to the Start menu)
+2. Type **PowerShell**
+3. **Right-click** "Windows PowerShell" and choose **"Run as administrator"**
+4. If Windows asks "Do you want to allow this app to make changes?" click **Yes**
+5. A blue terminal window opens. Type this and press Enter:
 
 ```
 wsl --install
 ```
 
-This installs Ubuntu. **He needs to restart his computer.** After restart, Ubuntu opens automatically and asks for a username and password. Tell him to pick something simple.
+6. Wait for it to finish, then **restart the computer**
+7. After restart, a terminal pops up asking for a **username** and **password**. Pick something simple. (Nothing shows when typing the password. That's normal.)
 
-### Step 2: Install Node.js (~3 min)
+### Step 2: Install Node.js and Claude Code (~5 min)
 
-In the Ubuntu terminal:
+Open the **Ubuntu** app from the Start menu (search "Ubuntu"). Run these one at a time:
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+```
+(It asks for the password from Step 1. Nothing shows while typing. That's normal.)
+
+```bash
 sudo apt-get install -y nodejs
-node --version
 ```
-
-Should show v20.x.
-
-### Step 3: Set Up Git Identity (~2 min)
 
 ```bash
-git config --global user.name "Grant"
-git config --global user.email "grant@cardcapture.io"
+npm install -g @anthropic-ai/claude-code
 ```
 
-### Step 4: SSH Key for GitHub (~5 min)
+### Step 3: Set Up Claude Code Settings (~3 min)
 
-```bash
-ssh-keygen -t ed25519 -C "grant@cardcapture.io"
-```
-
-Tell him to press Enter for every prompt (no passphrase).
-
-```bash
-cat ~/.ssh/id_ed25519.pub
-```
-
-He copies the output, goes to https://github.com/settings/keys, clicks "New SSH key", pastes it, saves.
-
-Test it:
-```bash
-ssh -T git@github.com
-```
-
-Should say "Hi [username]! You've successfully authenticated."
-
-### Step 5: Clone the Repo (~3 min)
-
-```bash
-git clone git@github.com:CardCapture/card-capture-fe.git
-cd card-capture-fe
-npm install
-```
-
-The `npm install` takes a minute or two.
-
-### Step 6: Add Config Files (~3 min)
-
-**The .env.local file** (the one you texted him as `.env.grant`):
-
-```bash
-nano .env.local
-```
-
-He pastes the contents you sent him, then `Ctrl+X`, `Y`, `Enter` to save.
-
-**The Claude settings file:**
+Still in the Ubuntu terminal:
 
 ```bash
 mkdir -p ~/.claude
 nano ~/.claude/settings.json
 ```
 
-He pastes this, then `Ctrl+X`, `Y`, `Enter`:
+A text editor opens in the terminal:
+1. **Right-click** in the terminal to paste the settings.json content (Ctrl+V won't work here)
+2. Press **Ctrl+X** to exit
+3. It asks "Save modified buffer?" -- press **Y**
+4. It shows the filename -- press **Enter**
+
+---
+
+### That's it for manual steps. Claude handles the rest.
+
+Run this:
+
+```bash
+claude
+```
+
+Log in with the Claude Pro account (a browser window opens, follow the prompts).
+
+Once Claude is running, tell it:
+
+> "Read the file SETUP_GUIDE.md and walk me through the remaining setup steps."
+
+Claude will read this file and take it from here.
+
+---
+
+## Setup Steps for Claude to Follow
+
+Claude: the user is a non-technical co-founder setting up this project for the first time on Windows/WSL. Walk them through each step below one at a time. Explain what you're doing in plain language. Wait for confirmation before moving to the next step.
+
+### 1. Create the workspace folder structure
+```bash
+mkdir -p ~/cardcapture/collateral
+```
+
+This creates:
+- `~/cardcapture/` -- root workspace for all Card Capture work
+- `~/cardcapture/collateral/` -- for marketing flyers, copy drafts, brainstorms, and anything that doesn't go in the codebase
+
+Create a README in the collateral folder so the user knows what it's for:
+```bash
+cat > ~/cardcapture/collateral/README.md << 'EOF'
+# Card Capture Collateral
+
+Use this folder for anything that doesn't belong in the codebase:
+- Marketing flyers and one-pagers
+- Copy drafts and messaging docs
+- Brainstorms and planning notes
+- Design briefs
+
+You can ask Claude to create and edit files here. Nothing in this folder is tracked by git or deployed anywhere.
+EOF
+```
+
+### 2. Set up Git identity
+```bash
+git config --global user.name "Grant"
+git config --global user.email "grant@cardcapture.io"
+```
+
+### 3. Generate SSH key for GitHub
+Run:
+```bash
+ssh-keygen -t ed25519 -C "grant@cardcapture.io"
+```
+Press Enter for all prompts (no passphrase).
+
+Then show the public key:
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
+
+Tell the user to:
+1. Copy the key (select text, right-click to copy)
+2. Open https://github.com/settings/keys in their browser
+3. Click "New SSH key"
+4. Name it "Windows laptop"
+5. Paste the key and click "Add SSH key"
+
+Wait for them to confirm before continuing.
+
+### 4. Test GitHub connection
+```bash
+ssh -T git@github.com
+```
+Should say "Hi [username]! You've successfully authenticated."
+
+If it fails, help them troubleshoot the SSH key setup.
+
+### 5. Clone the repository
+```bash
+cd ~/cardcapture
+git clone git@github.com:CardCapture/card-capture-fe.git
+cd card-capture-fe
+npm install
+```
+The npm install takes a minute or two. That's normal.
+
+### 6. Create the .env.local file
+Ask the user: "Kreg sent you a .env file via text. Can you paste the contents here?"
+
+Save what they paste as `~/cardcapture/card-capture-fe/.env.local`
+
+### 7. Test the app
+```bash
+npm run dev
+```
+Tell the user to open http://localhost:3000 in their Windows browser. They should see the Card Capture app. If it loads, the setup is working.
+
+### 8. First test change
+Walk them through the full workflow:
+1. Create a branch: `git checkout -b feat/grant-test`
+2. Make a small visible change to `src/pages/AboutPage.tsx` (change a heading or add a line of text)
+3. Have them preview it at http://localhost:3000/about
+4. Commit the change, push the branch, and open a PR to staging
+5. Tell them Kreg will review and merge the PR on his end
+
+If this whole loop works, the setup is complete.
+
+Tell the user their workspace is set up like this:
+```
+~/cardcapture/
+  card-capture-fe/    -- the app code (git repo)
+  collateral/         -- marketing materials, copy drafts, etc.
+```
+
+To work, just run `cd ~/cardcapture && claude`. Claude can access both folders from there.
+
+---
+
+## Claude Code Settings
+
+This is the settings.json content to paste in Step 3:
 
 ```json
 {
@@ -149,82 +237,38 @@ He pastes this, then `Ctrl+X`, `Y`, `Enter`:
 }
 ```
 
-### Step 7: Test the App (~2 min)
-
-```bash
-npm run dev
-```
-
-He opens his Windows browser to http://localhost:3000. The app should load and work against the staging API.
-
-`Ctrl+C` to stop the server.
-
-### Step 8: Install and Launch Claude Code (~5 min)
-
-```bash
-npm install -g @anthropic-ai/claude-code
-```
-
-Then:
-```bash
-cd ~/card-capture-fe
-claude
-```
-
-He'll be prompted to authenticate with his Claude Pro account. Follow the browser flow.
-
-### Step 9: First Test Run (~10 min)
-
-Once Claude is running, walk him through this:
-
-1. **Create a branch:**
-   Tell Claude: "Create a new branch called feat/grant-test"
-
-2. **Make a small change:**
-   Tell Claude: "On the About page, add a line that says 'Test change by Grant' at the top"
-
-3. **Preview it:**
-   Tell Claude: "Run the dev server so I can preview"
-   He checks http://localhost:3000/about in his browser.
-
-4. **Commit and push:**
-   Tell Claude: "Commit this change and push it to my branch"
-   (Claude will ask for approval on the commit and push since they're not in the allow list)
-
-5. **Open a PR:**
-   Tell Claude: "Open a pull request to staging"
-
-6. **You review the PR on your end**, approve it, then close/delete the test branch.
-
-If that whole loop works, he's good to go. Delete the test branch and celebrate.
-
 ---
 
 ## Daily Workflow (for Grant, after setup)
 
+Open the Ubuntu terminal, then:
+
 ```bash
-# Open Ubuntu terminal
-cd card-capture-fe
-git checkout staging
-git pull
-git checkout -b feat/describe-your-change
+cd ~/cardcapture
 claude
 ```
 
-Describe what you want in plain English. Preview in the browser. Ask Claude to commit, push, and open a PR when you're happy.
+Tell Claude what you want to do in plain English. Examples:
+- "Update the heading on the home page" (Claude edits code in `card-capture-fe/`)
+- "Change the contact email on the contact page"
+- "Draft a one-pager for recruiters explaining Card Capture" (Claude creates it in `collateral/`)
+- "Create a marketing flyer for career fairs"
+
+Claude can access both folders from here. For code changes, it handles branching, committing, pushing, and opening PRs. For collateral, it just creates files locally.
 
 ## Tips
 - Always preview changes in the browser before committing
 - If something looks wrong, tell Claude to fix it or undo it
 - VS Code works great with WSL: run `code .` from the Ubuntu terminal
 - If Claude gets rate limited, take a break and try later
+- You can ask Claude anything: "What does this file do?" or "Where is the contact page?"
 
 ## Troubleshooting
 
-**localhost:3000 not loading**: Make sure `npm run dev` is running. Try http://127.0.0.1:3000.
+**localhost:3000 not loading**: Make sure the dev server is running. Try http://127.0.0.1:3000.
 
-**npm install failed**: Run `sudo apt-get update && sudo apt-get upgrade -y` then try again.
+**npm install failed**: Tell Claude "run sudo apt-get update and then try npm install again"
 
-**"Permission denied (publickey)"**: SSH key isn't set up right. Re-do Step 4.
+**"Permission denied (publickey)"**: SSH key isn't linked to GitHub. Tell Claude "help me set up my SSH key for GitHub."
 
-**Claude rate limited**: Pro plan has limits. For heavy sessions, let Kreg know.
+**Claude rate limited**: Pro plan has usage limits. Take a break and come back later.
