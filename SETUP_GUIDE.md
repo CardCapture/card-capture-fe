@@ -150,7 +150,8 @@ You are helping a non-technical co-founder work on Card Capture.
 
 ## When creating collateral
 - Save files in the `collateral/` folder
-- Use markdown (.md) for text documents
+- For marketing materials, flyers, one-pagers, or anything that would be printed or shared visually, create HTML files so the user can open them in a browser to preview, give feedback, and iterate
+- For internal notes, brainstorms, or plain text drafts, markdown (.md) is fine
 - These files are local only, not deployed or tracked by git
 EOF
 ```
