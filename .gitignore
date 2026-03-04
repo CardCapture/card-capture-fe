@@ -69,6 +69,3 @@ build/
 
 
 *.sql
-
-# Claude Code context files - never commit
-**/CLAUDE.md
