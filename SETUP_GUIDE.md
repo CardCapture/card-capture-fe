@@ -120,6 +120,41 @@ You can ask Claude to create and edit files here. Nothing in this folder is trac
 EOF
 ```
 
+Create a CLAUDE.md in the root workspace so Claude knows how to work with this user:
+```bash
+cat > ~/cardcapture/CLAUDE.md << 'EOF'
+# Card Capture Workspace
+
+You are helping a non-technical co-founder work on Card Capture.
+
+## How to communicate
+- Always explain what you're doing in plain, non-technical language
+- When you make a change, tell the user what file you changed and why
+- If something goes wrong, explain what happened and how you're fixing it
+- Don't assume the user knows git, terminal commands, or programming concepts
+
+## Workspace layout
+- `card-capture-fe/` -- the frontend app (React, git repo)
+- `collateral/` -- marketing materials, copy drafts, brainstorms (not tracked by git)
+
+## When making frontend changes
+- Always start the dev server (`npm run dev` in `card-capture-fe/`) so the user can preview changes at http://localhost:3000
+- Run `npm run build` to verify changes compile before committing
+- Run `npm run test:unit` to check nothing is broken before committing
+
+## Git workflow (for card-capture-fe only)
+- Never push directly to `main` or `staging`
+- Always create a feature branch: `git checkout -b feat/description`
+- After changes are ready, commit, push the branch, and open a PR to `staging`
+- Kreg reviews and merges all PRs
+
+## When creating collateral
+- Save files in the `collateral/` folder
+- Use markdown (.md) for text documents
+- These files are local only, not deployed or tracked by git
+EOF
+```
+
 ### 2. Set up Git identity
 ```bash
 git config --global user.name "Grant"
