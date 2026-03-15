@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>College Fair Registration - CardCapture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: #111827;
+      background: #f0f4f8;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .flyer {
+      width: 8.5in;
+      min-height: 11in;
+      background: #ffffff;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .flyer { box-shadow: none; width: 100%; }
+    }
+
+    @page {
+      size: 8.5in 11in;
+      margin: 0;
+    }
+
+    /* Header bar */
+    .header {
+      background: linear-gradient(135deg, #0070E0 0%, #0080FF 40%, #339DFF 100%);
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-mark {
+      width: 48px;
+      height: 48px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -1px;
+    }
+
+    .logo-text {
+      color: white;
+    }
+
+    .logo-text .name {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .logo-text .tagline {
+      font-size: 12px;
+      font-weight: 500;
+      opacity: 0.85;
+      margin-top: 1px;
+    }
+
+    .header-badge {
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 10px;
+      padding: 10px 20px;
+      text-align: center;
+      color: white;
+    }
+
+    .header-badge .label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 52px 48px 40px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      color: #111827;
+    }
+
+    .hero h1 span {
+      color: #0080FF;
+    }
+
+    .hero .subtitle {
+      font-size: 17px;
+      color: #6B7280;
+      margin-top: 16px;
+      line-height: 1.6;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Main content grid */
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      padding: 0 48px 40px;
+      align-items: start;
+    }
+
+    /* Steps */
+    .steps-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9CA3AF;
+      margin-bottom: 24px;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 28px;
+      align-items: flex-start;
+    }
+
+    .step-number {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+      background: #0080FF;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 15px;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+
+    .step-content h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 13px;
+      color: #6B7280;
+      line-height: 1.5;
+    }
+
+    /* No phone callout */
+    .no-phone {
+      background: linear-gradient(135deg, #0070E0, #0080FF);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-top: 4px;
+    }
+
+    .no-phone h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 4px;
+    }
+
+    .no-phone p {
+      font-size: 13px;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.5;
+    }
+
+    /* QR section */
+    .qr-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .qr-box {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 20px;
+      padding: 28px 32px 24px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .qr-box .scan-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9CA3AF;
+      margin-bottom: 20px;
+    }
+
+    .qr-image {
+      width: 220px;
+      height: 220px;
+      margin: 0 auto 20px;
+    }
+
+    .qr-url {
+      font-size: 18px;
+      font-weight: 800;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+
+    .qr-url-sub {
+      font-size: 13px;
+      color: #6B7280;
+    }
+
+    /* Stats row */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      padding: 0 48px 40px;
+    }
+
+    .stat {
+      text-align: center;
+      padding: 20px 16px;
+      border: 1px solid #E5E7EB;
+      border-radius: 14px;
+      background: #F9FAFB;
+    }
+
+    .stat .value {
+      font-size: 32px;
+      font-weight: 900;
+      color: #0080FF;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat .label {
+      font-size: 12px;
+      color: #6B7280;
+      font-weight: 500;
+    }
+
+    /* Footer */
+    .footer {
+      background: #F9FAFB;
+      border-top: 1px solid #E5E7EB;
+      padding: 18px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-left {
+      font-size: 13px;
+      color: #6B7280;
+    }
+
+    .footer-left strong {
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .footer-right {
+      font-size: 13px;
+      color: #0080FF;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<div class="flyer">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-group">
+      <div class="logo-mark">CC</div>
+      <div class="logo-text">
+        <div class="name">CardCapture</div>
+        <div class="tagline">The Modern College Fair Platform</div>
+      </div>
+    </div>
+    <div class="header-badge">
+      <div class="label">College Fair<br/>Registration</div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Scan Once.<br/><span>Share with Every School.</span></h1>
+    <p class="subtitle">
+      Create your free CardCapture profile in under 2 minutes. Share your info with every recruiter at the fair. No repeating yourself.
+    </p>
+  </div>
+
+  <!-- Main content: Steps + QR -->
+  <div class="content">
+    <div>
+      <div class="steps-label">How It Works</div>
+
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3>Scan the QR Code</h3>
+          <p>Use your phone to scan the code on this flyer or at any CardCapture station at the fair.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3>Create Your Profile</h3>
+          <p>Enter your name, contact info, and grad year. Under 2 minutes, no app download.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3>Get Your Personal QR Code</h3>
+          <p>Show it to recruiters at every table. One scan and your info is shared instantly.</p>
+        </div>
+      </div>
+
+      <!-- No phone callout -->
+      <div class="no-phone">
+        <h3>No Phone? No Problem.</h3>
+        <p>Ask a recruiter for a handwritten inquiry card. Your info gets digitized automatically.</p>
+      </div>
+    </div>
+
+    <!-- QR Code -->
+    <div class="qr-section">
+      <div class="qr-box">
+        <div class="scan-label">Scan to Register Now</div>
+        <img src="cardcapture-register-qr.png" alt="QR Code - cardcapture.io/register" class="qr-image" />
+        <div class="qr-url">cardcapture.io/register</div>
+        <div class="qr-url-sub">Create your free profile in seconds</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="value">&lt;2 min</div>
+      <div class="label">To Set Up Your Profile</div>
+    </div>
+    <div class="stat">
+      <div class="value">1</div>
+      <div class="label">Profile for Every School</div>
+    </div>
+    <div class="stat">
+      <div class="value">Free</div>
+      <div class="label">Always, for Students</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-left">
+      <strong>CardCapture</strong> &middot; The only college fair platform that works with or without phones
+    </div>
+    <div class="footer-right">cardcapture.io</div>
+  </div>
+</div>
+
+</body>
+</html>
