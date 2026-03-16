@@ -20,6 +20,7 @@ import {
   Mail,
   Building2,
   Megaphone,
+  Printer,
 } from "lucide-react";
 
 function DocSection({
@@ -486,6 +487,29 @@ export default function DocsPage() {
                     </p>
                   </div>
                 </div>
+              </DocSection>
+
+              <DocSection title="Printable Collateral" icon={FileText}>
+                <p className="text-gray-600 mb-4">
+                  Ready-made materials you can print and share to help students sign up before the fair.
+                </p>
+                <div className="border rounded-lg p-4">
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">College Fair Registration Flyer</h4>
+                    <p className="text-gray-600 text-sm mb-3">
+                      One-page flyer with a QR code to cardcapture.io/register. Post around campus or hand out at the door.
+                    </p>
+                    <Button asChild>
+                      <a href="/college-fair-flyer.html" target="_blank" rel="noopener noreferrer">
+                        <Printer className="w-4 h-4 mr-2" />
+                        View & Print Flyer
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-gray-500 text-xs mt-3">
+                  Want a version with your school's branding? Just ask.
+                </p>
               </DocSection>
 
               <PromotingYourEventSection />

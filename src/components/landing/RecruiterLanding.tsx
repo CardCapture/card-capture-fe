@@ -15,7 +15,10 @@ import {
   Zap,
   WifiOff,
   Share2,
-  ShieldCheck
+  ShieldCheck,
+  Palette,
+  Building2,
+  Package
 } from 'lucide-react';
 import ccLogoOnly from '../../../assets/cc-logo-only.svg';
 import ccLogoPoster from '../../../assets/cc-logo-only-transparent.png';
@@ -28,6 +31,7 @@ const RecruiterLanding = () => {
   const [howItWorksVisible, setHowItWorksVisible] = useState(false);
   const [featuresVisible, setFeaturesVisible] = useState(false);
   const [qrCardVisible, setQrCardVisible] = useState(false);
+  const [whiteLabelVisible, setWhiteLabelVisible] = useState(false);
 
   useEffect(() => {
     setHeroVisible(true);
@@ -55,6 +59,7 @@ const RecruiterLanding = () => {
       createObserver('recruiter-how-it-works', setHowItWorksVisible),
       createObserver('recruiter-features', setFeaturesVisible),
       createObserver('recruiter-qr-card', setQrCardVisible),
+      createObserver('recruiter-white-label', setWhiteLabelVisible),
     ];
 
     return () => observers.forEach((o) => o.disconnect());
@@ -358,6 +363,280 @@ const RecruiterLanding = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* White-Label Cards Section */}
+      <section id="recruiter-white-label" className="relative py-20 md:py-24 overflow-hidden bg-white">
+        <div className="absolute -top-20 -left-20 w-[420px] h-[420px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute -bottom-16 -right-16 w-[360px] h-[360px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
+
+        <div className="max-w-6xl mx-auto px-4 relative z-10">
+          <div className={`${whiteLabelVisible ? 'animate-fade-in' : 'opacity-0'}`}>
+
+            {/* Eyebrow + Heading */}
+            <div className="text-center mb-16">
+              <span className="inline-block bg-primary/10 text-primary text-xs font-semibold tracking-wider uppercase px-4 py-1.5 rounded-full border border-primary/25 mb-5">
+                White-Label Cards
+              </span>
+              <h2 className="text-4xl md:text-5xl font-bold mb-5">
+                Your Brand. <span className="text-primary">Your Cards.</span>
+              </h2>
+              <p className="text-lg text-foreground/60 max-w-lg mx-auto">
+                Custom inquiry cards with your logo and colors, fully compatible with CardCapture's AI transcription.
+              </p>
+            </div>
+
+            {/* Hero Layout: Card Mockup + Value Props */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mb-20">
+
+              {/* Left: McMurry branded card mockup (full card) */}
+              <div className="relative">
+                <div className="absolute -inset-5 bg-primary/5 rounded-3xl blur-[30px]" />
+                <div className="absolute top-4 left-4 -right-4 -bottom-4 bg-[#f0e4e8] rounded-2xl border border-[#701931]/15" />
+                <div className="absolute top-2 left-2 -right-2 -bottom-2 bg-[#f5ecef] rounded-2xl border border-[#701931]/15" />
+
+                {/* Main card face */}
+                <div className="relative bg-white rounded-2xl border border-[#701931]/20 shadow-[0_20px_60px_rgba(0,0,0,0.10),0_4px_16px_rgba(112,25,49,0.12)] overflow-hidden">
+                  {/* Maroon swoosh header */}
+                  <div className="relative bg-[#701931] h-[72px] overflow-hidden">
+                    <div className="absolute -top-5 -right-10 w-44 h-44 bg-white/5 rounded-full" />
+                    <div className="absolute bottom-0 left-0 right-0 h-5 bg-white rounded-t-[50%]" />
+                    <p className="relative z-10 text-center pt-4 text-white text-base font-bold tracking-[0.2em] uppercase">
+                      Inquiry Card
+                    </p>
+                  </div>
+
+                  <div className="px-8 pb-7 pt-3">
+                    {/* Row 1: First Name, Last Name */}
+                    <div className="grid grid-cols-2 gap-x-4 mb-4">
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">First Name</p>
+                      </div>
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">Last Name</p>
+                      </div>
+                    </div>
+                    {/* Row 2: Preferred Name, Cell Phone */}
+                    <div className="grid grid-cols-2 gap-x-4 mb-4">
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">Preferred Name</p>
+                      </div>
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">Cell Phone</p>
+                      </div>
+                    </div>
+                    {/* Row 3: Email */}
+                    <div className="mb-4">
+                      <div className="h-6 border-b-[1.5px] border-gray-300" />
+                      <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">Email Address</p>
+                    </div>
+                    {/* Row 4: Street Address */}
+                    <div className="mb-4">
+                      <div className="h-6 border-b-[1.5px] border-gray-300" />
+                      <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">Street Address</p>
+                    </div>
+                    {/* Row 5: City, State, Zip */}
+                    <div className="grid grid-cols-[1.4fr_0.6fr_1fr] gap-x-4 mb-4">
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">City</p>
+                      </div>
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">State</p>
+                      </div>
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">Zip Code</p>
+                      </div>
+                    </div>
+                    {/* Row 6: High School, DOB */}
+                    <div className="grid grid-cols-[1fr_0.5fr] gap-x-4 mb-4">
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">High School</p>
+                      </div>
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">Date of Birth</p>
+                      </div>
+                    </div>
+                    {/* Row 7: Major, Grad Year, GPA, SAT, ACT */}
+                    <div className="grid grid-cols-[1.4fr_0.5fr_0.35fr_0.35fr_0.35fr] gap-x-3 mb-4">
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">Potential Major</p>
+                      </div>
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">Grad Year</p>
+                      </div>
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">GPA</p>
+                      </div>
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">SAT</p>
+                      </div>
+                      <div>
+                        <div className="h-6 border-b-[1.5px] border-gray-300" />
+                        <p className="text-[10px] font-semibold text-[#701931] uppercase tracking-wide mt-1">ACT</p>
+                      </div>
+                    </div>
+                    {/* Text permission checkbox */}
+                    <div className="flex items-center justify-center gap-5 py-3 mb-4">
+                      <span className="text-[11px] font-semibold text-[#701931]">May we text you?</span>
+                      <div className="flex gap-4">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-4 h-4 border-2 border-[#701931] rounded-sm" />
+                          <span className="text-[11px] font-semibold text-[#701931]">Yes</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-4 h-4 border-2 border-[#701931] rounded-sm" />
+                          <span className="text-[11px] font-semibold text-[#701931]">No</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* McMurry logo footer */}
+                    <div className="text-center pt-4 border-t border-gray-200">
+                      <img
+                        src="https://ftlweumoajawitlszpqx.supabase.co/storage/v1/object/public/assets/mcmurry-logo-horiz.png"
+                        alt="McMurry University"
+                        className="h-12 mx-auto"
+                      />
+                    </div>
+
+                    {/* Powered by CardCapture */}
+                    <div className="flex items-center justify-center gap-1.5 mt-5 text-[9px] text-gray-400">
+                      <img src={ccLogoOnly} alt="CC" className="w-3.5 h-3.5" />
+                      Powered by CardCapture
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Value propositions */}
+              <div className="flex flex-col gap-5">
+                {[
+                  {
+                    icon: <Palette className="h-5 w-5 text-primary" />,
+                    title: 'Fully Branded',
+                    description: 'Your logo, colors, and fields on professional card stock, shipped to your door.',
+                  },
+                  {
+                    icon: <Brain className="h-5 w-5 text-primary" />,
+                    title: 'Same AI, Zero Extra Steps',
+                    description: 'White-label cards work with CardCapture identically to standard cards. No reconfiguration needed.',
+                  },
+                  {
+                    icon: <Building2 className="h-5 w-5 text-primary" />,
+                    title: 'Great for Your Own Events',
+                    description: 'Open houses, campus tours, and institution-hosted fairs where your brand should be front and center.',
+                  },
+                  {
+                    icon: <Package className="h-5 w-5 text-primary" />,
+                    title: 'Bulk Ordering, Fast Turnaround',
+                    description: 'Custom quotes for any quantity. Small runs or large-volume orders.',
+                  },
+                ].map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex gap-4 items-start p-5 bg-primary/[0.03] border border-primary/10 rounded-2xl"
+                  >
+                    <div className="w-11 h-11 flex-shrink-0 bg-primary/10 rounded-xl flex items-center justify-center">
+                      {item.icon}
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-foreground mb-1">{item.title}</h4>
+                      <p className="text-sm text-foreground/60">{item.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Use Cases */}
+            <div className="mb-20">
+              <h3 className="text-center text-2xl md:text-3xl font-bold mb-8">
+                Built for Every Scenario
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                  {
+                    icon: <Building2 className="h-7 w-7 text-primary" />,
+                    title: 'Open Houses',
+                    description: 'Branded cards reinforce your identity when students visit campus.',
+                  },
+                  {
+                    icon: <Share2 className="h-7 w-7 text-primary" />,
+                    title: 'Regional Tours',
+                    description: 'Make a lasting impression at smaller markets and private school visits.',
+                  },
+                  {
+                    icon: <Users className="h-7 w-7 text-primary" />,
+                    title: 'College Fairs You Host',
+                    description: 'Use your branded cards at your booth or provide them to visiting institutions.',
+                  },
+                ].map((item, index) => (
+                  <div
+                    key={index}
+                    className="bg-white border border-foreground/5 rounded-2xl p-7 shadow-sm"
+                  >
+                    <div className="w-14 h-14 mx-auto mb-4 bg-primary/10 rounded-2xl flex items-center justify-center">
+                      {item.icon}
+                    </div>
+                    <h4 className="text-base font-bold text-foreground mb-2">{item.title}</h4>
+                    <p className="text-sm text-foreground/60">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* White-Label CTA Block */}
+            <div className="relative bg-primary rounded-3xl p-12 md:p-16 text-center overflow-hidden">
+              <div className="absolute -top-16 -right-16 w-72 h-72 bg-white/[0.07] rounded-full pointer-events-none" />
+              <div className="absolute -bottom-20 -left-10 w-60 h-60 bg-white/[0.05] rounded-full pointer-events-none" />
+
+              <div className="relative">
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  Put Your Brand on Every Card
+                </h2>
+                <p className="text-base text-white/85 max-w-md mx-auto mb-8">
+                  Tell us your branding and quantity. Custom quote within one business day.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="text-lg px-8 py-6"
+                    onClick={() => navigate('/get-started')}
+                  >
+                    Request a Quote
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="ghost"
+                    className="text-lg px-8 py-6 border-2 border-white/50 text-white bg-transparent hover:bg-white/10 hover:border-white/70"
+                    onClick={() => navigate('/get-started')}
+                  >
+                    Schedule a Demo
+                  </Button>
+                </div>
+                <p className="text-xs text-white/60 mt-6">
+                  No minimum order · Proofs before printing · Ships nationwide
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
