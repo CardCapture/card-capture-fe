@@ -23,9 +23,9 @@ test.describe('Authentication Flow', () => {
     await page.fill('input[type="password"]', 'wrongpassword');
     await page.click('button[type="submit"]');
 
-    // Should show error message
+    // Should show error message (rendered in a destructive div, not role="alert")
     await expect(
-      page.locator('[role="alert"], .error, [data-testid="error-message"]')
+      page.locator('[role="alert"], .text-destructive, [data-testid="error-message"]')
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -69,23 +69,28 @@ test.describe('Authentication Flow', () => {
 });
 
 test.describe('Registration Flow', () => {
-  test('should display registration page', async ({ page }) => {
+  test('should display registration page with signup options', async ({ page }) => {
     await page.goto('/register');
 
-    // Should have email input at minimum
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    // Student registration has a primary "Continue with Phone" button
+    await expect(
+      page.getByRole('button', { name: /continue with phone/i })
+    ).toBeVisible({ timeout: 10000 });
+
+    // And an email alternative
+    await expect(
+      page.getByRole('button', { name: /email/i })
+    ).toBeVisible();
   });
 
-  test('should validate required fields', async ({ page }) => {
+  test('should show email input after selecting email flow', async ({ page }) => {
     await page.goto('/register');
 
-    // Try to submit empty form
-    const submitButton = page.locator('button[type="submit"]');
-    if (await submitButton.isVisible()) {
-      await submitButton.click();
+    // Click the email option to enter the email registration flow
+    const emailOption = page.getByRole('button', { name: /email/i });
+    await emailOption.click();
 
-      // Should show validation errors or stay on page
-      await expect(page).toHaveURL(/register/);
-    }
+    // Now an email input should be visible
+    await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 5000 });
   });
 });
