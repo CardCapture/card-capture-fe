@@ -27,8 +27,16 @@ async function globalSetup(config: FullConfig) {
   const password = process.env.TEST_USER_PASSWORD;
 
   if (!email || !password) {
-    console.log('No test credentials provided. Creating empty auth state.');
-    // Create an empty storage state
+    // No creds provided - use existing auth state if available
+    if (fs.existsSync(authFile)) {
+      const content = JSON.parse(fs.readFileSync(authFile, 'utf-8'));
+      const hasAuth = content.origins?.some((o: any) => o.localStorage?.length > 0);
+      if (hasAuth) {
+        console.log('No test credentials provided. Using existing auth state.');
+        return;
+      }
+    }
+    console.log('No test credentials and no existing auth state. Creating empty auth state.');
     fs.writeFileSync(
       authFile,
       JSON.stringify({
