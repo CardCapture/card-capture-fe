@@ -124,6 +124,29 @@ export const usersApi = {
   },
 
   /**
+   * Set new password using a one-time reset token
+   */
+  async setNewPassword(resetToken: string, password: string): Promise<{ success: boolean; message: string }> {
+    const response = await authFetch(
+      `${API_BASE_URL}/auth/set-new-password`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reset_token: resetToken, password }),
+      }
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to set new password (${response.status})`);
+    }
+
+    return response.json();
+  },
+
+  /**
    * Validate magic link token
    */
   async validateMagicLink(token: string): Promise<{
