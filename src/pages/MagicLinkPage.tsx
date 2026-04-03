@@ -80,7 +80,7 @@ const MagicLinkPage: React.FC = () => {
 
                 setMessage('Password reset link verified and authenticated! Redirecting...');
                 setTimeout(() => {
-                  navigate('/reset-password', {
+                  navigate('/reset-password/confirm', {
                     state: {
                       email: result.email,
                       fromMagicLink: true,
@@ -93,7 +93,7 @@ const MagicLinkPage: React.FC = () => {
                 // Fallback to normal flow without session
                 setMessage('Password reset link verified! Redirecting to reset password page...');
                 setTimeout(() => {
-                  navigate('/reset-password', {
+                  navigate('/reset-password/confirm', {
                     state: {
                       email: result.email,
                       fromMagicLink: true,
@@ -106,7 +106,7 @@ const MagicLinkPage: React.FC = () => {
               // No session provided - normal flow
               setMessage('Password reset link verified! Redirecting to reset password page...');
               setTimeout(() => {
-                navigate('/reset-password', {
+                navigate('/reset-password/confirm', {
                   state: {
                     email: result.email,
                     fromMagicLink: true,
@@ -137,7 +137,7 @@ const MagicLinkPage: React.FC = () => {
             const linkType = searchParams.get('type');
             if (linkType === 'password_reset') {
               setTimeout(() => {
-                navigate('/reset-password', { 
+                navigate('/reset-password/confirm', { 
                   state: { 
                     email: 'Please enter your email',
                     fromMagicLink: true 

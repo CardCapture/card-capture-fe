@@ -17,7 +17,7 @@ const AuthCallback = () => {
     if (type === 'recovery') {
       // Password reset flow
       logger.log('🔑 Redirecting to password reset page');
-      navigate('/reset-password' + window.location.hash);
+      navigate('/reset-password/confirm' + window.location.hash);
     } else if (type === 'invite') {
       // Invite flow  
       logger.log('📧 Redirecting to accept invite page');
