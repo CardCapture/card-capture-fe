@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "@/lib/toast";
 import { logger } from '@/utils/logger';
+import { usersApi } from "@/api/backend/users";
 
 const ResetPasswordPage = () => {
   const [password, setPassword] = useState("");
@@ -22,6 +23,7 @@ const ResetPasswordPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -35,29 +37,32 @@ const ResetPasswordPage = () => {
       // Check if we came from our magic link system
       if (location.state?.fromMagicLink) {
         logger.log("✅ Arrived from magic link system - ready for password reset");
-        
-        // Clear any existing error since magic link was successful
         setError(null);
-        
-        // Check if user is authenticated (magic link should have set session)
+
+        if (location.state?.resetToken) {
+          logger.log("✅ Reset token found from magic link");
+          setResetToken(location.state.resetToken);
+          if (location.state?.email) {
+            setEmail(location.state.email);
+          }
+          window.history.replaceState(null, "", location.pathname);
+          return;
+        }
+
+        // Fallback: check for Supabase session
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           logger.log("✅ User session found - ready for password reset");
           setIsAuthenticated(true);
-          // Clear the state to prevent re-processing on navigation
           window.history.replaceState(null, "", location.pathname);
           return;
-                 } else {
-           logger.log("⚠️ No session found, but magic link indicated success");
-           // For password reset, we might not always have a session
-           // Check if email was passed from magic link
-           if (location.state?.email && location.state.email !== 'Please enter your email') {
-             setEmail(location.state.email);
-             logger.log("✅ Email found from magic link:", location.state.email);
-           }
-           setIsAuthenticated(false);
-           return;
-         }
+        } else {
+          if (location.state?.email && location.state.email !== 'Please enter your email') {
+            setEmail(location.state.email);
+          }
+          setIsAuthenticated(false);
+          return;
+        }
       }
 
       // If we have a hash in the URL, we were redirected from legacy Supabase auth
@@ -155,16 +160,13 @@ const ResetPasswordPage = () => {
       return;
     }
 
-    // For non-authenticated users (magic link flow), require email
-    if (!isAuthenticated && !email) {
-      setError("Email is required");
-      return;
-    }
-
     setLoading(true);
 
     try {
-      if (isAuthenticated) {
+      if (resetToken) {
+        // Use the one-time reset token from the magic link flow
+        await usersApi.setNewPassword(resetToken, password);
+      } else if (isAuthenticated) {
         // User has an active session (legacy hash fragment flow)
         const { error: updateError } = await supabase.auth.updateUser({
           password: password,
@@ -174,19 +176,8 @@ const ResetPasswordPage = () => {
           throw updateError;
         }
       } else {
-        // User came from magic link, try to sign in with new password
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: password,
-        });
-
-        if (signInError) {
-          // If sign in fails, the user probably needs to set their password first
-          // We need to call the backend to handle password reset for magic link users
-          logger.log("Password reset needed for magic link user");
-          setError("Please contact support to complete your password reset, or try using the email link again.");
-          return;
-        }
+        setError("Invalid reset session. Please request a new password reset link.");
+        return;
       }
 
       // Show success message
@@ -212,17 +203,15 @@ const ResetPasswordPage = () => {
         <CardHeader>
           <CardTitle>Reset Your Password</CardTitle>
           <CardDescription>
-            {isAuthenticated 
+            {resetToken || isAuthenticated
               ? "Please enter your new password below."
-              : location.state?.fromMagicLink 
-                ? "Your reset link has been verified. Please enter your new password below."
-                : "Please enter your email and new password below."
+              : "Please enter your email and new password below."
             }
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {!isAuthenticated && (
+            {!isAuthenticated && !resetToken && (
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <Input
