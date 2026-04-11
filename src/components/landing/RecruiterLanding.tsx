@@ -508,7 +508,7 @@ const RecruiterLanding = () => {
                     {/* McMurry logo footer */}
                     <div className="text-center pt-4 border-t border-gray-200">
                       <img
-                        src="https://pkpcqmlswrwsefxqhfuf.supabase.co/storage/v1/object/public/assets/mcmurry-logo-horiz.png"
+                        src="https://assets.cardcapture.io/storage/v1/object/public/assets/Mcmurry_univ_logo_horiz%20(1).png"
                         alt="McMurry University"
                         className="h-12 mx-auto"
                       />
