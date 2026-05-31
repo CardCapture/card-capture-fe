@@ -100,6 +100,31 @@ export class SchoolService {
   }
 
   /**
+   * Accept a discovered field suggestion (promote into card_fields).
+   * Returns the updated card_fields and suggested_card_fields.
+   */
+  static async acceptSuggestedField(schoolId: string, key: string) {
+    try {
+      return await backendSchoolsApi.acceptSuggestedField(schoolId, key);
+    } catch (error) {
+      logger.error("SchoolService: Failed to accept suggested field", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Dismiss a discovered field suggestion (remove from suggested_card_fields).
+   */
+  static async dismissSuggestedField(schoolId: string, key: string) {
+    try {
+      return await backendSchoolsApi.dismissSuggestedField(schoolId, key);
+    } catch (error) {
+      logger.error("SchoolService: Failed to dismiss suggested field", error);
+      throw error;
+    }
+  }
+
+  /**
    * Update majors list with validation
    */
   static async updateMajors(schoolId: string, majors: string[]): Promise<void> {

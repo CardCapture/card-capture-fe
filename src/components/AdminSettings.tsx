@@ -45,6 +45,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "@/lib/toast";
 import { updateSchoolCardFields } from "@/lib/api";
 import { CardFieldPreferences } from "@/components/CardFieldPreferences";
+import { SuggestedFields } from "@/components/SuggestedFields";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -171,6 +172,7 @@ const AdminSettings: React.FC = () => {
     loading: schoolLoading,
     error: schoolError,
     updateSchool,
+    refetch: refetchSchool,
   } = useSchool(schoolId || undefined);
 
   // User management state
@@ -660,6 +662,13 @@ const AdminSettings: React.FC = () => {
       });
       content = (
         <div className="space-y-6">
+          {school?.id && school?.suggested_card_fields?.length ? (
+            <SuggestedFields
+              schoolId={school.id}
+              suggestions={school.suggested_card_fields}
+              onChange={refetchSchool}
+            />
+          ) : null}
           {loadingFields ? (
             <div>Loading field preferences...</div>
           ) : (

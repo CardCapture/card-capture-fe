@@ -32,4 +32,51 @@ export const backendSchoolsApi = {
 
     return response.json();
   },
+
+  /**
+   * Accept a discovered field suggestion: promotes it into card_fields and
+   * removes it from suggested_card_fields. Returns the updated lists.
+   */
+  async acceptSuggestedField(
+    schoolId: string,
+    key: string
+  ): Promise<{ card_fields: SchoolData["card_fields"]; suggested_card_fields: SchoolData["suggested_card_fields"] }> {
+    const response = await authFetch(
+      `${API_BASE_URL}/schools/${schoolId}/suggested-fields/accept`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to accept suggested field (${response.status})`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Dismiss a discovered field suggestion: removes it from suggested_card_fields.
+   */
+  async dismissSuggestedField(
+    schoolId: string,
+    key: string
+  ): Promise<{ suggested_card_fields: SchoolData["suggested_card_fields"] }> {
+    const response = await authFetch(
+      `${API_BASE_URL}/schools/${schoolId}/suggested-fields/dismiss`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to dismiss suggested field (${response.status})`);
+    }
+
+    return response.json();
+  },
 };

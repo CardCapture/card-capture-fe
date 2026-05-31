@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 // Custom Components and Hooks
 import { useToast } from "@/hooks/use-toast";
+import { SuggestedFields } from "@/components/SuggestedFields";
 import { useCardsOverride } from "@/hooks/useCardsOverride";
 import { useSchool } from "@/hooks/useSchool";
 import { useEvent } from "@/hooks/useEvent";
@@ -104,7 +105,7 @@ const Dashboard = () => {
     loading: eventLoading,
     refetch: refetchEvent,
   } = useEvent(eventId);
-  const { school, loading: schoolLoading } = useSchool(profile?.school_id);
+  const { school, loading: schoolLoading, refetch: refetchSchool } = useSchool(profile?.school_id);
   
   // Debug school loading
   useEffect(() => {
@@ -1268,6 +1269,19 @@ const Dashboard = () => {
                 </div>
                 {/* Form Fields Panel - Mobile: Full width, Desktop: Half width */}
                 <div className="min-w-0 overflow-x-hidden">
+                  {school?.id &&
+                  school?.suggested_card_fields?.length &&
+                  selectedCardForReview?.fields ? (
+                    <div className="mb-3">
+                      <SuggestedFields
+                        schoolId={school.id}
+                        suggestions={school.suggested_card_fields}
+                        onChange={refetchSchool}
+                        variant="banner"
+                        filterKeys={Object.keys(selectedCardForReview.fields)}
+                      />
+                    </div>
+                  ) : null}
                   <ReviewForm
                     selectedCardForReview={selectedCardForReview}
                     fieldsToShow={fieldsToShow}

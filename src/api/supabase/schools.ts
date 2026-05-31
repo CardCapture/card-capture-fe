@@ -27,6 +27,17 @@ export interface SchoolData {
         placeholder?: string;
       }>;
   majors?: string[];
+  // Fields discovered by the vision-only extraction path that are not yet in
+  // card_fields. Surfaced as accept/dismiss suggestions in settings and review.
+  suggested_card_fields?: SuggestedCardField[];
+}
+
+export interface SuggestedCardField {
+  key: string;
+  label?: string;
+  field_type?: 'text' | 'select' | 'checkbox' | 'email' | 'phone' | 'date';
+  sample_value?: string;
+  options?: string[];
 }
 
 export const schoolsApi = {
