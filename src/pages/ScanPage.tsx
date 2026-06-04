@@ -26,6 +26,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { offlineQueue } from '@/services/offlineQueue';
 import { logger } from '@/utils/logger';
+import { reportError } from '@/utils/sentry';
 
 const ScanPage: React.FC = () => {
   const { events, fetchEvents } = useEvents();
@@ -171,18 +172,29 @@ const ScanPage: React.FC = () => {
 
   // Handle image captured from CameraCapture component
   const handleImageCaptured = async (imageDataUrl: string) => {
-    // Resize the image before upload
-    const resizedFile = await resizeImage(imageDataUrl);
-    logger.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
+    try {
+      // Resize the image before upload
+      const resizedFile = await resizeImage(imageDataUrl);
+      logger.log('Resized file size (MB):', (resizedFile.size / 1024 / 1024).toFixed(2));
 
-    // Show brief success overlay, then resume scanning
-    setCaptureSuccess(true);
-    setTimeout(() => {
-      setCaptureSuccess(false);
-      setScanKey(prev => prev + 1);
-    }, 1500);
+      // Show brief success overlay, then resume scanning
+      setCaptureSuccess(true);
+      setTimeout(() => {
+        setCaptureSuccess(false);
+        setScanKey(prev => prev + 1);
+      }, 1500);
 
-    processImage(resizedFile);
+      processImage(resizedFile);
+    } catch (error) {
+      // Without this, a resize/decode failure (e.g. a blank or corrupt capture)
+      // rejects an unawaited promise and the whole capture vanishes with no
+      // feedback. Surface it to the user and to Sentry.
+      reportError(error, {
+        tags: { feature: 'camera_capture_process' },
+        extra: { eventId: selectedEventId },
+      });
+      toast.error('Something went wrong saving that photo. Please try again.');
+    }
   };
 
   // Handle file selection

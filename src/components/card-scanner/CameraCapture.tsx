@@ -5,6 +5,8 @@ import { Camera, ArrowLeft } from 'lucide-react';
 import { useCameraPermission } from '@/hooks/useCameraPermission';
 import { Capacitor } from '@capacitor/core';
 import { BrowserMultiFormatReader } from '@zxing/library';
+import { reportError, reportMessage } from '@/utils/sentry';
+import { toast } from '@/lib/toast';
 
 interface CameraCaptureProps {
   onCapture: (imageDataUrl: string) => void;
@@ -73,7 +75,28 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQR
           localStream.getTracks().forEach(track => track.stop());
         }
       } catch (err) {
-        setError('Unable to access camera. Please ensure you have granted camera permissions.');
+        const errorName = err instanceof Error ? err.name : 'UnknownError';
+        reportError(err, {
+          tags: { feature: 'camera_init', error_name: errorName },
+          extra: {
+            userAgent: navigator.userAgent,
+            isNative: Capacitor.isNativePlatform(),
+          },
+        });
+
+        // Distinguish a blocked permission from a device/hardware problem so
+        // the user gets an actionable message (and we can tell them apart in Sentry).
+        if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
+          setError('Camera access was blocked. Allow camera permissions in your browser settings, then reload and try again.');
+        } else if (
+          errorName === 'NotFoundError' ||
+          errorName === 'NotReadableError' ||
+          errorName === 'OverconstrainedError'
+        ) {
+          setError('We could not start your camera. Close any other app using the camera, then reload and try again.');
+        } else {
+          setError('Unable to access camera. Please ensure you have granted camera permissions.');
+        }
       }
     };
 
@@ -90,7 +113,21 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQR
   // Assign stream to video element
   useEffect(() => {
     if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+      const video = videoRef.current;
+      video.srcObject = stream;
+      // Some Android browsers (battery saver, in-app webviews) do not honor the
+      // autoPlay attribute, leaving the video paused with 0x0 dimensions. Kick
+      // off playback explicitly and report if it is blocked so a frozen preview
+      // doesn't fail silently when the user taps capture.
+      const playResult = video.play();
+      if (playResult && typeof playResult.catch === 'function') {
+        playResult.catch((err: unknown) => {
+          reportError(err, {
+            tags: { feature: 'camera_play' },
+            extra: { userAgent: navigator.userAgent },
+          });
+        });
+      }
     }
   }, [stream]);
 
@@ -156,11 +193,33 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel, onQR
   const captureImage = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    // Guard against capturing before the video stream has produced a frame.
+    // On some Android browsers getUserMedia succeeds but the <video> never
+    // actually plays, leaving videoWidth/videoHeight at 0. Capturing then would
+    // draw a 0x0 canvas, produce a blank image, and fail silently downstream
+    // (the user sees the screen dim but no photo is taken). Report it instead.
+    if (!video.videoWidth || !video.videoHeight) {
+      reportMessage('Camera capture attempted with no video frame', {
+        tags: { feature: 'camera_capture' },
+        extra: {
+          readyState: video.readyState,
+          paused: video.paused,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          isNative: Capacitor.isNativePlatform(),
+          userAgent: navigator.userAgent,
+        },
+      });
+      toast.error('The camera is still starting up. Wait a moment, then tap capture again.', 'Camera not ready');
+      return;
+    }
+
     // Pause QR scanning while capture processes
     isScanningRef.current = false;
 
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
     if (!context) return;
     canvas.width = video.videoWidth;
