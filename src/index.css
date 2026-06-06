@@ -34,7 +34,30 @@
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.85rem;
-    
+
+    /* Status colors (needs-review / ready / exported / archived) for the
+       events + card-review redesign. soft = tint bg, border, ink = text,
+       solid = dot/accent. Mirrors the design-system status palette. */
+    --status-review-soft: 55 92% 95%;
+    --status-review-border: 48 96% 77%;
+    --status-review-ink: 35 84% 29%;
+    --status-review-solid: 45 93% 39%;
+
+    --status-ready-soft: 138 76% 92%;
+    --status-ready-border: 141 79% 85%;
+    --status-ready-ink: 142 72% 29%;
+    --status-ready-solid: 142 76% 36%;
+
+    --status-exported-soft: 214 100% 97%;
+    --status-exported-border: 213 97% 87%;
+    --status-exported-ink: 217 91% 39%;
+    --status-exported-solid: 217 100% 55%;
+
+    --status-archived-soft: 210 40% 96%;
+    --status-archived-border: 214 32% 80%;
+    --status-archived-ink: 215 16% 47%;
+    --status-archived-solid: 215 16% 47%;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -73,6 +96,27 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+
+    /* Status colors (dark): muted tints, brighter ink for contrast. */
+    --status-review-soft: 35 50% 14%;
+    --status-review-border: 38 60% 30%;
+    --status-review-ink: 48 96% 70%;
+    --status-review-solid: 45 93% 47%;
+
+    --status-ready-soft: 142 40% 14%;
+    --status-ready-border: 142 40% 28%;
+    --status-ready-ink: 141 70% 70%;
+    --status-ready-solid: 142 70% 45%;
+
+    --status-exported-soft: 217 45% 16%;
+    --status-exported-border: 217 50% 32%;
+    --status-exported-ink: 213 90% 78%;
+    --status-exported-solid: 217 91% 60%;
+
+    --status-archived-soft: 217 32% 18%;
+    --status-archived-border: 217 28% 32%;
+    --status-archived-ink: 215 20% 70%;
+    --status-archived-solid: 215 20% 65%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

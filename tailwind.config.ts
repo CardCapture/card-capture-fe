@@ -62,6 +62,32 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				status: {
+					review: {
+						soft: 'hsl(var(--status-review-soft))',
+						border: 'hsl(var(--status-review-border))',
+						ink: 'hsl(var(--status-review-ink))',
+						solid: 'hsl(var(--status-review-solid))'
+					},
+					ready: {
+						soft: 'hsl(var(--status-ready-soft))',
+						border: 'hsl(var(--status-ready-border))',
+						ink: 'hsl(var(--status-ready-ink))',
+						solid: 'hsl(var(--status-ready-solid))'
+					},
+					exported: {
+						soft: 'hsl(var(--status-exported-soft))',
+						border: 'hsl(var(--status-exported-border))',
+						ink: 'hsl(var(--status-exported-ink))',
+						solid: 'hsl(var(--status-exported-solid))'
+					},
+					archived: {
+						soft: 'hsl(var(--status-archived-soft))',
+						border: 'hsl(var(--status-archived-border))',
+						ink: 'hsl(var(--status-archived-ink))',
+						solid: 'hsl(var(--status-archived-solid))'
+					}
 				}
 			},
 			borderRadius: {

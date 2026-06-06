@@ -11,7 +11,7 @@ import {
 import { PhoneNumberInput } from "@/components/ui/phone-number-input";
 import { DateInput } from "@/components/ui/date-input";
 
-import { CheckCircle } from "lucide-react";
+import { Check, Flag, Info } from "lucide-react";
 import { logger } from '@/utils/logger';
 import { formatPhoneNumber, formatBirthday, normalizeFieldValue, normalizeAddress, cn } from "@/lib/utils";
 import type { ProspectCard, FieldData } from "@/types/card";
@@ -99,7 +99,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         isReviewed && !isQrScan
           ? "border-green-300 focus-visible:ring-green-400 bg-green-50"
           : needsReview
-          ? "border-red-300 focus-visible:ring-red-400"
+          ? "border-status-review-border bg-status-review-soft focus-visible:ring-status-review-solid"
           : ""
       }`;
     };
@@ -647,9 +647,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger>
-                  <div className="flex h-3 w-3 items-center justify-center rounded-full bg-red-400 flex-shrink-0 text-white text-[8px] font-bold leading-none">
-                    !
-                  </div>
+                  <Flag className="h-3.5 w-3.5 flex-shrink-0 text-status-review-solid" />
                 </TooltipTrigger>
                 <TooltipContent side="left">
                   <p>Address needs review</p>
@@ -811,23 +809,51 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                   : needsReview
                   ? "Needs human review"
                   : null;
+              const noteText =
+                typeof reviewNotes === "string" && reviewNotes.length > 0
+                  ? reviewNotes
+                  : "Please confirm this field.";
+              const isHighSchool = actualFieldKey === "high_school";
+              const hsValidationValue = (
+                selectedCardForReview.fields?.high_school_validation as
+                  | { value?: string }
+                  | undefined
+              )?.value;
+              // When High School needs review (not verified) it renders its own
+              // suggestion / "not found" note below the input, so put "Mark
+              // reviewed" to the field's right instead of stacking below.
+              const hsSuggestionShowing =
+                isHighSchool && hsValidationValue !== "verified";
+              const markReviewedButton = (
+                <button
+                  type="button"
+                  onClick={(e) => handleFieldReview(actualFieldKey, e)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-2 hover:no-underline focus:outline-none",
+                    isReviewed
+                      ? "text-status-ready-ink"
+                      : "text-status-review-ink"
+                  )}
+                >
+                  <Check className="h-4 w-4" />
+                  {isReviewed ? "Reviewed" : "Mark reviewed"}
+                </button>
+              );
               return (
                 <div
                   key={fieldKey}
-                  className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 py-2 sm:py-1"
+                  className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 py-2 sm:py-1"
                 >
                   {/* Label - Full width on mobile, fixed width on desktop */}
                   <Label
                     htmlFor={fieldKey}
-                    className="w-full sm:w-32 text-left sm:text-right text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1 sm:justify-end shrink-0"
+                    className="w-full sm:w-32 text-left sm:text-right text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1 sm:justify-end shrink-0 sm:pt-2"
                   >
                     {showRedIcon && (
                       <TooltipProvider delayDuration={100}>
                         <Tooltip>
                           <TooltipTrigger>
-                            <div className="flex h-3 w-3 items-center justify-center rounded-full bg-red-400 flex-shrink-0 text-white text-[8px] font-bold leading-none">
-                              !
-                            </div>
+                            <Flag className="h-3.5 w-3.5 flex-shrink-0 text-status-review-solid" />
                           </TooltipTrigger>
                           <TooltipContent side="left">
                             <p>{tooltipContent}</p>
@@ -837,47 +863,41 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                     )}
                     {label}:
                   </Label>
-                  
-                  {/* Field and Status Zone - Flex row on mobile */}
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    {/* Field - Full width on mobile */}
-                    <div className={`flex-1 sm:flex-none ${getFieldWidth(actualFieldKey)}`}>
-                      {renderFieldInput(fieldKey, actualFieldKey, isReviewed, needsReview && !isReviewed)}
-                    </div>
 
-                    {/* Status Zone - Next to Field */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      {showReviewCircle && (
-                        <TooltipProvider delayDuration={100}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className={`h-10 w-10 sm:h-8 sm:w-8 p-1 ${
-                                  isReviewed
-                                    ? "text-green-500"
-                                    : "text-gray-400 hover:text-gray-600"
-                                }`}
-                                onClick={(e) =>
-                                  handleFieldReview(actualFieldKey, e)
-                                }
+                  {/* Field + inline review action */}
+                  <div className="flex flex-col gap-1.5 w-full sm:w-auto">
+                    {showReviewCircle && hsSuggestionShowing ? (
+                      // High School edge case: link to the right of the field,
+                      // because the field already shows its suggestion note below.
+                      <div className="flex items-start gap-3">
+                        <div className={getFieldWidth(actualFieldKey)}>
+                          {renderFieldInput(fieldKey, actualFieldKey, isReviewed, needsReview && !isReviewed)}
+                        </div>
+                        <div className="shrink-0 pt-1.5">{markReviewedButton}</div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className={getFieldWidth(actualFieldKey)}>
+                          {renderFieldInput(fieldKey, actualFieldKey, isReviewed, needsReview && !isReviewed)}
+                        </div>
+                        {showReviewCircle && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px]">
+                            {/* High School shows its own note, so skip the generic
+                                "low confidence" hint there to avoid duplicates. */}
+                            {!isReviewed && !isHighSchool && (
+                              <span
+                                className="inline-flex items-center gap-1.5 text-status-review-ink"
+                                title={noteText}
                               >
-                                <CheckCircle className="h-5 w-5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                              <p>
-                                {isReviewed
-                                  ? "Mark as needing review"
-                                  : "Mark as reviewed"}
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
+                                <Info className="h-3.5 w-3.5 flex-shrink-0" />
+                                <span>Low confidence</span>
+                              </span>
+                            )}
+                            {markReviewedButton}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               );

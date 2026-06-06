@@ -60,6 +60,7 @@ import {
   formatDateOrTimeAgo,
   escapeCsvValue,
   normalizeFieldValue,
+  cn,
 } from "@/lib/utils";
 import type { ProspectCard } from "@/types/card";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -76,6 +77,8 @@ import MoveConfirmDialog from "@/components/modals/MoveConfirmDialog";
 import DeleteConfirmDialog from "@/components/modals/DeleteConfirmDialog";
 import ManualEntryModal from "@/components/modals/ManualEntryModal";
 import CardTable from "@/components/cards/CardTable";
+import { StudentCell } from "@/components/cards/StudentCell";
+import { FilterPillTabs, type FilterPillTab } from "@/components/status/FilterPillTabs";
 import { useEventName } from "@/hooks/useEventName";
 import { useCardReviewModal } from "@/hooks/useCardReviewModal";
 import { useCardTableActions } from "@/hooks/useCardTableActions";
@@ -92,6 +95,15 @@ import { EventHeader } from "./EventDetails/EventHeader";
 import { SignupSheetUpload } from "@/components/SignupSheetUpload";
 import { SignupSheetProcessing } from "@/components/SignupSheetProcessing";
 import { CreateEventModal } from "@/components/CreateEventModal";
+
+// Name fields are consolidated into the Student cell, so they are not
+// rendered as their own table columns.
+const NAME_FIELD_KEYS = new Set([
+  "first_name",
+  "last_name",
+  "preferred_first_name",
+  "name",
+]);
 
 // === Component Definition ===
 const Dashboard = () => {
@@ -610,11 +622,22 @@ const Dashboard = () => {
     }
   }, [selectedCardForReview?.id, imageKeyRef]);
 
+  // Field columns exclude the name fields (now consolidated into the Student cell)
+  const columnFieldOrder = useMemo(
+    () => reviewFieldOrder.filter((key) => !NAME_FIELD_KEYS.has(key)),
+    [reviewFieldOrder]
+  );
+
   // Table definition
   const columns = useMemo<ColumnDef<ProspectCard>[]>(
     () => [
       {
         id: "select",
+        meta: {
+          stickyClass: "sticky left-0",
+          cellClass: "px-0 sm:px-0 w-11 text-center",
+          headClass: "px-0 sm:px-0 w-11 text-center",
+        },
         header: ({ table }) => (
           <div className="flex justify-center">
             <input
@@ -645,119 +668,28 @@ const Dashboard = () => {
         ),
       },
       {
-        accessorKey: "created_at",
-        header: "Date added",
-        cell: ({ row }) => formatDateOrTimeAgo(row.original.created_at),
-        enableSorting: true,
+        id: "student",
+        header: "Student",
+        meta: { stickyClass: "sticky left-11 border-r border-border" },
+        cell: ({ row }) => <StudentCell card={row.original} />,
+        enableSorting: false,
       },
-      {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => {
-          const card = row.original;
-          const currentStatus = determineCardStatus(card);
-          const exportedAt = card.exported_at;
-          const isSignupSheet = card.upload_type === "signup_sheet";
-          let displayText: string;
-          if (currentStatus === "needs_review") {
-            displayText = isSignupSheet ? "Sign-up Sheet" : "Needs Review";
-          } else if (currentStatus === "reviewed") {
-            displayText = "Ready for Export";
-          } else if (currentStatus === "exported") {
-            displayText = "Exported";
-          } else if (currentStatus === "archived") {
-            displayText = "Archived";
-          } else if (currentStatus === "ai_failed") {
-            displayText = "Needs Retry";
-          } else {
-            displayText = currentStatus
-              ? currentStatus.charAt(0).toUpperCase() +
-                currentStatus.slice(1).replace(/_/g, " ")
-              : "Unknown";
-          }
-          const getBadgeClasses = () => {
-            if (currentStatus === "reviewed") {
-              return "border-green-500 text-green-700 bg-green-50 font-semibold text-xs px-3 py-1 rounded-full";
-            } else if (currentStatus === "needs_review") {
-              // Use purple/indigo for signup sheets, yellow for regular needs review
-              if (isSignupSheet) {
-                return "border-indigo-400 text-indigo-800 bg-indigo-50 font-semibold text-xs px-3 py-1 rounded-full";
-              } else {
-                return "border-yellow-400 text-yellow-800 bg-yellow-50 font-semibold text-xs px-3 py-1 rounded-full";
-              }
-            } else if (currentStatus === "exported") {
-              return "border-blue-500 text-blue-700 bg-blue-50 font-semibold text-xs px-3 py-1 rounded-full";
-            } else if (currentStatus === "archived") {
-              return "border-gray-500 text-gray-700 bg-gray-50 font-semibold text-xs px-3 py-1 rounded-full";
-            } else if (currentStatus === "ai_failed") {
-              return "border-amber-500 text-amber-700 bg-amber-50 font-semibold text-xs px-3 py-1 rounded-full";
-            }
-            return "border-slate-200 text-slate-600 bg-white font-semibold text-xs px-3 py-1 rounded-full";
-          };
-          if (currentStatus === "exported" && exportedAt) {
-            return (
-              <TooltipProvider delayDuration={100}>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Badge variant="outline" className={getBadgeClasses()}>
-                      {displayText}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Exported at {formatDateOrTimeAgo(exportedAt)}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          }
-          return (
-            <div className="flex flex-col gap-1">
-              {isSignupSheet ? (
-                <TooltipProvider delayDuration={100}>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Badge variant="outline" className={getBadgeClasses()}>
-                        {displayText}
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Imported from sign-up sheet, please review</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ) : (
-                <Badge variant="outline" className={getBadgeClasses()}>
-                  {displayText}
-                </Badge>
-              )}
-            </div>
-          );
-        },
-        enableSorting: true,
-        sortDescFirst: true,
-        sortingFn: (rowA, rowB) => {
-          const getStatusValue = (row) => {
-            const status = determineCardStatus(row.original);
-            if (status === "reviewed") return 1; // Ready to Export
-            if (status === "exported") return 0;
-            return -1; // All others
-          };
-          return getStatusValue(rowA) - getStatusValue(rowB);
-        },
-      },
-      ...reviewFieldOrder.map((fieldKey) => ({
+      ...columnFieldOrder.map((fieldKey) => ({
         accessorKey: fieldKey,
         header: dataFieldsMap.get(fieldKey) || fieldKey.replace(/_/g, " "),
         accessorFn: (row) => row.fields?.[fieldKey]?.value ?? "",
         cell: ({ getValue, row }) => {
           const value = getValue();
           const fieldData = row.original.fields?.[fieldKey];
-          const needsReview = fieldData?.requires_human_review === true;
           const isReviewed = fieldData?.reviewed === true;
-          const reviewNotes = fieldData?.review_notes;
           const isSignupSheet = row.original.upload_type === "signup_sheet";
-          const showIcon = needsReview && !isSignupSheet; // Hide red icons for signup sheets
-          
+          // Flagged = AI unsure, not yet resolved, and not a signup-sheet import
+          const needsReview =
+            fieldData?.requires_human_review === true &&
+            !isReviewed &&
+            !isSignupSheet;
+          const reviewNotes = fieldData?.review_notes;
+
           // Ensure value is always a string - handle objects gracefully
           let stringValue = "";
           if (typeof value === "string") {
@@ -774,33 +706,30 @@ const Dashboard = () => {
           } else {
             stringValue = String(value ?? "");
           }
-          
+
           let formattedValue = normalizeFieldValue(stringValue, fieldKey);
           if (fieldKey === "cell") formattedValue = formatPhoneNumber(formattedValue);
           if (fieldKey === "date_of_birth")
             formattedValue = formatBirthday(formattedValue);
-          const tooltipContent =
-            reviewNotes || (needsReview ? "Needs human review" : null);
+          const numeric = fieldKey === "cell" || fieldKey === "date_of_birth";
+
+          // Flagged cells get an amber tint that fills the cell (negative
+          // margins cancel the TableCell padding, then re-add it).
           return (
-            <TooltipProvider delayDuration={100}>
-              <div className="flex items-center gap-1.5">
-                {showIcon && (
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <div className="flex h-3 w-3 items-center justify-center rounded-full bg-red-400 flex-shrink-0 text-white text-[8px] font-bold leading-none">
-                        !
-                      </div>
-                    </TooltipTrigger>
-                    {tooltipContent && (
-                      <TooltipContent side="top">
-                        <p>{tooltipContent}</p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                )}
-                <span>{formattedValue}</span>
-              </div>
-            </TooltipProvider>
+            <span
+              className={cn(
+                "block -mx-2 -my-3 px-2 py-3 sm:-mx-4 sm:px-4",
+                numeric && "tabular-nums",
+                // Only tint flagged cells that actually have a value — an empty
+                // amber bar looks like a stray highlight.
+                needsReview &&
+                  Boolean(formattedValue) &&
+                  "bg-status-review-soft font-semibold text-status-review-ink"
+              )}
+              title={needsReview ? reviewNotes || "Needs review" : undefined}
+            >
+              {formattedValue}
+            </span>
           );
         },
         enableSorting: true,
@@ -816,7 +745,7 @@ const Dashboard = () => {
           ]
         : []),
     ],
-    [selectedTab, dataFieldsMap, reviewFieldOrder, bulkSelection]
+    [selectedTab, dataFieldsMap, columnFieldOrder, bulkSelection]
   );
 
   // Table instance
@@ -1092,83 +1021,49 @@ const Dashboard = () => {
           {/* Signup Sheet Processing Indicator */}
           <SignupSheetProcessing show={isSignupSheetProcessing} />
           
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden rounded-[18px]">
             <CardContent className="p-3 sm:p-6">
-              {/* Mobile-Responsive Tabs */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b">
-                {/* Main Tabs - Left side */}
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 w-full sm:w-auto">
-                  <button
-                    onClick={() => setSelectedTab("needs_review")}
-                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                      selectedTab === "needs_review"
-                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    <span>Needs Review</span>
-                    <Badge
-                      variant="outline"
-                      className="ml-2 text-indigo-700 border-indigo-200 bg-white text-xs"
-                    >
-                      {getStatusCount("needs_review")}
-                    </Badge>
-                  </button>
-                  <button
-                    onClick={() => setSelectedTab("ready_to_export")}
-                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                      selectedTab === "ready_to_export"
-                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    <span>Ready to Export</span>
-                    <Badge
-                      variant="outline"
-                      className="ml-2 text-blue-700 border-blue-200 bg-white text-xs"
-                    >
-                      {getStatusCount("reviewed")}
-                    </Badge>
-                  </button>
-                  {showNeedsRetryTab && (
-                    <button
-                      onClick={() => setSelectedTab("ai_failed")}
-                      className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                        selectedTab === "ai_failed"
-                          ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}
-                    >
-                      <span>Needs Retry</span>
-                      <Badge
-                        variant="outline"
-                        className="ml-2 text-amber-700 border-amber-200 bg-white text-xs"
-                      >
-                        {needsRetryCount}
-                      </Badge>
-                    </button>
-                  )}
-                </div>
-
-                {/* Archived Tab - Right side */}
-                <div className="w-full sm:w-auto mt-2 sm:mt-0">
-                  <button
-                    onClick={() => setSelectedTab("archived")}
-                    className={`px-3 sm:px-4 py-2 sm:py-2.5 -mb-px flex items-center justify-between sm:justify-center transition-colors text-sm sm:text-base ${
-                      selectedTab === "archived"
-                        ? "border-b-2 border-indigo-500 text-gray-900 font-semibold"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    <span>Archived</span>
-                    <Badge
-                      variant="outline"
-                      className="ml-2 text-gray-600 border-gray-200 bg-white text-xs"
-                    >
-                      {getStatusCount("archived")}
-                    </Badge>
-                  </button>
-                </div>
+              {/* Status filter pills */}
+              <div className="mb-6">
+                <FilterPillTabs
+                  value={selectedTab}
+                  onChange={(val) => {
+                    setSelectedTab(val);
+                    if (val === "ready_to_export") setHideExported(true);
+                  }}
+                  tabs={
+                    [
+                      {
+                        value: "needs_review",
+                        label: "Needs Review",
+                        tone: "review",
+                        count: getStatusCount("needs_review"),
+                      },
+                      {
+                        value: "ready_to_export",
+                        label: "Ready to Export",
+                        tone: "ready",
+                        count: getStatusCount("reviewed"),
+                      },
+                      ...(showNeedsRetryTab
+                        ? [
+                            {
+                              value: "ai_failed",
+                              label: "Needs Retry",
+                              tone: "review" as const,
+                              count: needsRetryCount,
+                            },
+                          ]
+                        : []),
+                      {
+                        value: "archived",
+                        label: "Archived",
+                        tone: "archived",
+                        count: getStatusCount("archived"),
+                      },
+                    ] as FilterPillTab[]
+                  }
+                />
               </div>
               <CardTable
                 table={table}
@@ -1220,32 +1115,25 @@ const Dashboard = () => {
                     image.
                   </DialogDescription>
                 </div>
-                <div className="flex flex-col items-start sm:items-end space-y-1 w-full sm:w-auto">
-                  <div className="flex items-center gap-1 text-xs sm:text-sm font-medium transition-all duration-200">
-                    {reviewProgress.allReviewed ? (
-                      <div className="flex items-center gap-1 text-green-600 animate-in fade-in duration-300">
-                        <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
-                        <span>All fields reviewed!</span>
-                      </div>
-                    ) : (
-                      <span className="text-primary-600">
-                        {reviewProgress.reviewedCount} /{" "}
-                        {reviewProgress.totalFields} fields reviewed
+                <div className="flex items-center w-full sm:w-auto sm:justify-end">
+                  {(() => {
+                    const attentionCount = Math.max(
+                      0,
+                      reviewProgress.totalFields - reviewProgress.reviewedCount
+                    );
+                    return attentionCount > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-status-review-border bg-status-review-soft px-3 py-1 text-xs sm:text-sm font-semibold text-status-review-ink animate-in fade-in duration-300">
+                        <Info className="h-4 w-4" />
+                        {attentionCount} field{attentionCount === 1 ? "" : "s"} need
+                        attention
                       </span>
-                    )}
-                  </div>
-                  {!reviewProgress.allReviewed && (
-                    <div className="transition-all duration-300 w-full sm:w-32">
-                      <Progress
-                        className="w-full sm:w-32 h-1"
-                        value={
-                          (reviewProgress.reviewedCount /
-                            reviewProgress.totalFields) *
-                          100
-                        }
-                      />
-                    </div>
-                  )}
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-status-ready-border bg-status-ready-soft px-3 py-1 text-xs sm:text-sm font-semibold text-status-ready-ink animate-in fade-in duration-300">
+                        <CheckCircle className="h-4 w-4" />
+                        All fields look good
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </DialogHeader>

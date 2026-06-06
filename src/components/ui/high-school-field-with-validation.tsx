@@ -109,7 +109,7 @@ export function HighSchoolFieldWithValidation({
     if (fieldData?.reviewed || isVerified) {
       return `${baseClasses} border-green-300 focus-visible:ring-green-400 bg-green-50`;
     } else if (fieldData?.requires_human_review || noMatches) {
-      return `${baseClasses} border-red-300 focus-visible:ring-red-400`;
+      return `${baseClasses} border-status-review-border bg-status-review-soft focus-visible:ring-status-review-solid`;
     } else if (needsValidation) {
       return `${baseClasses} border-yellow-300 focus-visible:ring-yellow-400 bg-yellow-50`;
     }

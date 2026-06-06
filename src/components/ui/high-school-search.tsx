@@ -509,20 +509,10 @@ export function HighSchoolSearch({
           {!isEnhancedValidation && isVerified && (
             <Check className="h-4 w-4 text-green-600" />
           )}
-          
-          {!isEnhancedValidation && needsReview && !isVerified && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <AlertCircle className="h-4 w-4 text-amber-500" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>School needs verification</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          
+
+          {/* In-field "needs review" alert icon removed to match other fields;
+              the amber border + below-field note already convey this state. */}
+
           {inputValue && (
             <Button
               type="button"

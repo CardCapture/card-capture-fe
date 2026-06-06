@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { logger } from '@/utils/logger';
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -353,7 +354,7 @@ const CardTable: React.FC<CardTableProps> = ({
 
         {/* Mobile-Responsive Selection Action Bar */}
         {bulkSelection.selectedCount > 0 ? (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg shadow-sm sticky top-0 z-10 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-top-2">
+          <div className="bg-status-exported-soft border border-status-exported-border rounded-xl shadow-sm sticky top-0 z-10 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-top-2">
             <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 py-3 gap-3 sm:gap-0">
               <div className="flex items-center gap-2">
                 <input
@@ -367,7 +368,7 @@ const CardTable: React.FC<CardTableProps> = ({
                   onChange={bulkSelection.toggleAll}
                   className="h-4 w-4 rounded border-gray-300 text-primary-600 transition-colors hover:border-primary-500 focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
                 />
-                <span className="text-sm font-semibold text-blue-800">
+                <span className="text-sm font-semibold text-status-exported-ink">
                   {bulkSelection.selectedCount}{" "}
                   {bulkSelection.selectedCount === 1 ? "Card" : "Cards"}{" "}
                   Selected
@@ -528,27 +529,38 @@ const CardTable: React.FC<CardTableProps> = ({
                 <TableHeader className="bg-gray-50 sticky top-0 z-10">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead
-                          key={header.id}
-                          className={`py-3 px-2 sm:px-4 whitespace-nowrap text-xs sm:text-sm ${
-                            header.column.getCanSort()
-                              ? "cursor-pointer select-none"
-                              : ""
-                          }`}
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <div className="flex items-center gap-1 font-medium text-gray-500">
-                            {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
+                      {headerGroup.headers.map((header) => {
+                        const meta = header.column.columnDef.meta as
+                          | {
+                              stickyClass?: string;
+                              headClass?: string;
+                            }
+                          | undefined;
+                        return (
+                          <TableHead
+                            key={header.id}
+                            className={cn(
+                              "py-3 px-2 sm:px-4 whitespace-nowrap text-[11px] uppercase tracking-wide font-semibold text-gray-500",
+                              header.column.getCanSort() &&
+                                "cursor-pointer select-none",
+                              meta?.stickyClass,
+                              meta?.stickyClass && "z-20 bg-gray-50",
+                              meta?.headClass
                             )}
-                            {{ asc: " ▲", desc: " ▼" }[
-                              header.column.getIsSorted() as string
-                            ] ?? ""}
-                          </div>
-                        </TableHead>
-                      ))}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <div className="flex items-center gap-1">
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                              {{ asc: " ▲", desc: " ▼" }[
+                                header.column.getIsSorted() as string
+                              ] ?? ""}
+                            </div>
+                          </TableHead>
+                        );
+                      })}
                     </TableRow>
                   ))}
                 </TableHeader>
@@ -564,20 +576,30 @@ const CardTable: React.FC<CardTableProps> = ({
                             tableRow.original.document_id
                           ) && "selected"
                         }
-                        className="hover:bg-gray-100 cursor-pointer"
+                        className="cursor-pointer bg-white hover:bg-gray-50 data-[state=selected]:bg-status-exported-soft"
                         onClick={() => handleRowClick(tableRow.original)}
                       >
-                        {tableRow.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            className="px-2 sm:px-4 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700"
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
+                        {tableRow.getVisibleCells().map((cell) => {
+                          const meta = cell.column.columnDef.meta as
+                            | { stickyClass?: string; cellClass?: string }
+                            | undefined;
+                          return (
+                            <TableCell
+                              key={cell.id}
+                              className={cn(
+                                "px-2 sm:px-4 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700",
+                                meta?.stickyClass,
+                                meta?.stickyClass && "z-10 bg-inherit",
+                                meta?.cellClass
+                              )}
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     ))
                   : !cardsLoading && (
@@ -648,6 +670,9 @@ const CardTable: React.FC<CardTableProps> = ({
                 <SelectItem value="100">100</SelectItem>
               </SelectContent>
             </Select>
+            <span className="text-muted-foreground">
+              · {filteredCards.length} total
+            </span>
           </div>
 
           <div className="flex items-center gap-2 text-xs sm:text-sm">

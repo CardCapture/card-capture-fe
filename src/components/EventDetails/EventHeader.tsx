@@ -1,19 +1,9 @@
 import React, { memo, useCallback, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  ChevronRight,
-  Info,
-  CheckCircle,
-  Download,
-  Archive,
-  Pencil,
-  Check,
-  X,
-  Loader2,
-} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ChevronRight, CalendarDays, Download, Pencil } from "lucide-react";
+import { StatusPill } from "@/components/status/StatusPill";
 import { CompactProcessingStatus } from "@/components/CompactProcessingStatus";
 import { ProcessingService } from "@/services/processingService";
 import { useProcessingStatus } from "@/hooks/useProcessingStatus";
@@ -112,6 +102,20 @@ const EventHeader: React.FC<EventHeaderProps> = ({
     }
   }, [selectedEvent?.id, onRefreshCards]);
 
+  // Ring highlight on the active status chip
+  const chipRing = (active: boolean) =>
+    cn("rounded-full transition-shadow", active && "ring-2 ring-blue-400/70 ring-offset-1");
+
+  // Parse YYYY-MM-DD as a local date (avoids timezone shifting) and format short.
+  const formatEventDate = (iso: string) => {
+    const [year, month, day] = iso.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   return (
     <>
       {/* Breadcrumb Navigation */}
@@ -138,168 +142,122 @@ const EventHeader: React.FC<EventHeaderProps> = ({
         </nav>
       </div>
 
-      {/* Header Section - Mobile Responsive */}
+      {/* Tinted header band — the level delineator between the events grid
+          and this card-review screen. */}
       <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
-        <Card className="mb-4 sm:mb-6">
-          <CardContent className="relative flex flex-col gap-4 p-4 sm:p-6">
-            {/* Event Details Section */}
-            <div className="flex flex-col text-left w-full">
-              <div className="flex flex-col text-left min-w-0 flex-1">
-                <div className="flex items-start gap-2">
-                  <div className="flex-1">
-                    <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-1 text-left flex items-center gap-2">
-                      <span className="break-words">
-                        {selectedEvent ? selectedEvent.name : "All Events"}
+        <div className="relative mb-4 rounded-[18px] border border-status-exported-border bg-[linear-gradient(120deg,#EFF6FF,#F4F8FF)] p-5 sm:mb-6 sm:p-6">
+          {/* Title + Export */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-gray-900 sm:text-2xl">
+                <span className="break-words">
+                  {selectedEvent ? selectedEvent.name : "All Events"}
+                </span>
+                <button
+                  className="flex h-9 w-9 items-center justify-center rounded-md text-gray-400 transition-colors hover:text-blue-600"
+                  onClick={onEditEvent}
+                  aria-label="Edit event"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              </h1>
+              {selectedEvent && (
+                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+                  {selectedEvent.date && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <CalendarDays className="h-4 w-4 text-gray-400" />
+                      {formatEventDate(selectedEvent.date)}
+                    </span>
+                  )}
+                  {selectedEvent.slate_event_id && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="font-medium">Event UUID:</span>
+                      <span className="font-mono text-xs">
+                        {selectedEvent.slate_event_id}
                       </span>
-                      <button
-                        className="text-gray-400 hover:text-blue-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                        onClick={onEditEvent}
-                        aria-label="Edit event"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                    </h1>
-                    {selectedEvent && (
-                      <div className="flex flex-col gap-1 text-sm text-gray-600">
-                        {selectedEvent.date && (
-                          <div className="flex items-center gap-1">
-                            <span className="font-medium">Date:</span>
-                            <span>{(() => {
-                              // Parse date as local date to avoid timezone issues
-                              const [year, month, day] = selectedEvent.date.split('-').map(Number);
-                              const date = new Date(year, month - 1, day);
-                              return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                            })()}</span>
-                          </div>
-                        )}
-                        {selectedEvent.slate_event_id && (
-                          <div className="flex items-center gap-1">
-                            <span className="font-medium">Event UUID:</span>
-                            <span className="font-mono text-xs">{selectedEvent.slate_event_id}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                    </span>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
-
-            {/* Processing Status - Desktop: Absolutely positioned top-right */}
             {selectedEvent && (
-              <div className="absolute top-4 right-4 sm:top-6 sm:right-6 hidden sm:block">
-                <CompactProcessingStatus
-                  status={processingStatus}
-                  loading={processingLoading}
-                  refresh={processingRefresh}
-                  className="min-w-[240px]"
-                  onRetryFailed={handleRetryFailed}
-                  onStopProcessing={handleStopProcessing}
-                  onDismissFailure={handleDismissFailure}
-                />
-              </div>
-            )}
-
-            {/* Processing Status - Mobile: Block element below title */}
-            {selectedEvent && (
-              <div className="block sm:hidden w-full">
-                <CompactProcessingStatus
-                  status={processingStatus}
-                  loading={processingLoading}
-                  refresh={processingRefresh}
-                  className="w-full"
-                  onRetryFailed={handleRetryFailed}
-                  onStopProcessing={handleStopProcessing}
-                  onDismissFailure={handleDismissFailure}
-                />
-              </div>
-            )}
-
-            {/* Status Badges - Mobile Responsive Grid */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleNeedsReviewClick}
-                className="focus:outline-none rounded cursor-pointer"
-                style={{ touchAction: "manipulation" }}
-                aria-label="Show Needs Review"
-              >
-                <Badge
-                  variant="outline"
-                  className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${
-                    selectedTab === "needs_review"
-                      ? "border-2 border-indigo-500 text-indigo-700 bg-indigo-50"
-                      : ""
-                  }`}
-                >
-                  <Info className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-500" />
-                  <span className="hidden sm:inline">Needs Review:</span>
-                  <span>{getStatusCount("needs_review")}</span>
-                </Badge>
-              </button>
-              <button
-                type="button"
+              <Button
                 onClick={handleReadyToExportClick}
-                className="focus:outline-none rounded cursor-pointer"
-                style={{ touchAction: "manipulation" }}
-                aria-label="Show Ready to Export"
+                disabled={getStatusCount("reviewed") === 0}
+                className="min-h-[44px] gap-2 self-start bg-blue-600 text-white hover:bg-blue-700"
+                aria-label="Go to cards ready to export"
               >
-                <Badge
-                  variant="outline"
-                  className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${
-                    selectedTab === "ready_to_export" && hideExported
-                      ? "border-2 border-green-500 text-green-700 bg-green-50"
-                      : ""
-                  }`}
-                >
-                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
-                  <span className="hidden sm:inline">Ready:</span>
-                  <span>{getStatusCount("reviewed")}</span>
-                </Badge>
-              </button>
-              <button
-                type="button"
-                onClick={handleExportedClick}
-                className="focus:outline-none rounded cursor-pointer"
-                style={{ touchAction: "manipulation" }}
-                aria-label="Show Exported"
-              >
-                <Badge
-                  variant="outline"
-                  className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${
-                    selectedTab === "ready_to_export" && !hideExported
-                      ? "border-2 border-blue-500 text-blue-700 bg-blue-50"
-                      : ""
-                  }`}
-                >
-                  <Download className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
-                  <span className="hidden sm:inline">Exported:</span>
-                  <span>{getStatusCount("exported")}</span>
-                </Badge>
-              </button>
-              <button
-                type="button"
-                onClick={handleArchivedClick}
-                className="focus:outline-none rounded cursor-pointer"
-                style={{ touchAction: "manipulation" }}
-                aria-label="Show Archived"
-              >
-                <Badge
-                  variant="outline"
-                  className={`flex items-center space-x-1 text-xs py-1 w-fit transition-colors duration-150 cursor-pointer ${
-                    selectedTab === "archived"
-                      ? "border-2 border-gray-500 text-gray-700 bg-gray-50"
-                      : ""
-                  }`}
-                >
-                  <Archive className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
-                  <span className="hidden sm:inline">Archived:</span>
-                  <span>{getStatusCount("archived")}</span>
-                </Badge>
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+            )}
+          </div>
+
+          {/* Status chips */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleNeedsReviewClick}
+              className={chipRing(selectedTab === "needs_review")}
+              aria-label="Show Needs Review"
+            >
+              <StatusPill
+                status="review"
+                label="Needs Review"
+                count={getStatusCount("needs_review")}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={handleReadyToExportClick}
+              className={chipRing(selectedTab === "ready_to_export" && hideExported)}
+              aria-label="Show Ready"
+            >
+              <StatusPill
+                status="ready"
+                label="Ready"
+                count={getStatusCount("reviewed")}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={handleExportedClick}
+              className={chipRing(selectedTab === "ready_to_export" && !hideExported)}
+              aria-label="Show Exported"
+            >
+              <StatusPill
+                status="exported"
+                label="Exported"
+                count={getStatusCount("exported")}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={handleArchivedClick}
+              className={chipRing(selectedTab === "archived")}
+              aria-label="Show Archived"
+            >
+              <StatusPill
+                status="archived"
+                label="Archived"
+                count={getStatusCount("archived")}
+              />
+            </button>
+          </div>
+
+          {/* Processing status (renders only while jobs are active) */}
+          {selectedEvent && (
+            <CompactProcessingStatus
+              status={processingStatus}
+              loading={processingLoading}
+              refresh={processingRefresh}
+              className="mt-4 w-full sm:max-w-md"
+              onRetryFailed={handleRetryFailed}
+              onStopProcessing={handleStopProcessing}
+              onDismissFailure={handleDismissFailure}
+            />
+          )}
+        </div>
       </div>
     </>
   );

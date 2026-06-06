@@ -5,7 +5,7 @@ import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { logger } from '@/utils/logger';
-import { CheckCircle, TriangleAlert } from "lucide-react";
+import { Check, CheckCircle, TriangleAlert } from "lucide-react";
 import {
   Tooltip,
   TooltipProvider,
@@ -182,7 +182,9 @@ export function AddressGroupSimple({
   // Check if address field needs review and show checkbox
   const addressNeedsReview = addressFieldData?.requires_human_review;
   const addressIsReviewed = addressFieldData?.reviewed;
-  const showReviewCheckbox = addressNeedsReview && !addressIsReviewed && onFieldReview;
+  // Show the single review control whenever the address needs review; it marks
+  // ALL address fields (street/city/state/zip) reviewed in one click.
+  const showReviewCheckbox = addressNeedsReview && onFieldReview;
 
   const handleAddressAutocomplete = (addressData: {
     street: string;
@@ -286,35 +288,20 @@ export function AddressGroupSimple({
           {renderAddressStatus()}
         </div>
         
-        {/* Mark as Reviewed Checkbox - Only show if address needs review */}
+        {/* Single review control — marks all address fields reviewed at once */}
         {showReviewCheckbox && (
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={`h-8 w-8 p-1 ml-2 ${
-                    addressIsReviewed
-                      ? "text-green-500"
-                      : "text-gray-400 hover:text-gray-600"
-                  }`}
-                  onClick={() => onFieldReview?.('address')}
-                  disabled={disabled}
-                >
-                  <CheckCircle className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p>
-                  {addressIsReviewed
-                    ? "Mark as needing review"
-                    : "Mark as reviewed"}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <button
+            type="button"
+            onClick={() => onFieldReview?.('address')}
+            disabled={disabled}
+            className={cn(
+              "ml-2 inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-2 hover:no-underline focus:outline-none disabled:opacity-50",
+              addressIsReviewed ? "text-status-ready-ink" : "text-status-review-ink"
+            )}
+          >
+            <Check className="h-4 w-4" />
+            {addressIsReviewed ? "Reviewed" : "Mark reviewed"}
+          </button>
         )}
       </div>
 
