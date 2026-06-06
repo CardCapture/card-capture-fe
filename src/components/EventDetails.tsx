@@ -1103,7 +1103,7 @@ const Dashboard = () => {
 
         {/* Review Modal Dialog */}
         <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
-          <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-7xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] md:w-[calc(100%-4rem)] h-[calc(100dvh-2rem)] sm:h-[calc(100dvh-4rem)] md:h-[calc(100dvh-8rem)] rounded-lg overflow-hidden flex flex-col p-0">
+          <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 translate-x-0 translate-y-0 w-full max-w-full h-[92dvh] rounded-t-2xl rounded-b-none border-x-0 border-b-0 sm:left-[50%] sm:top-[50%] sm:bottom-auto sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-7xl sm:w-[calc(100%-2rem)] md:w-[calc(100%-4rem)] sm:h-[calc(100dvh-4rem)] md:h-[calc(100dvh-8rem)] sm:rounded-lg sm:border overflow-hidden flex flex-col p-0">
             <DialogHeader className="flex-shrink-0">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b gap-3 sm:gap-0">
                 <div className="space-y-1">

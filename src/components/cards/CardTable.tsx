@@ -54,6 +54,7 @@ import { IntegrationsService } from "@/services/IntegrationsService";
 import type { SchoolData } from "@/api/supabase/schools";
 import { QRScannerModal } from "@/components/QRScannerModal";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { MobileCardList } from "@/components/cards/MobileCardList";
 
 // Add any additional imports as needed
 
@@ -517,8 +518,28 @@ const CardTable: React.FC<CardTableProps> = ({
           </div>
         ) : null}
 
-        {/* Mobile-Responsive Table Container */}
-        <div className="overflow-hidden rounded-lg border border-gray-200">
+        {/* Mobile: stacked record cards (table collapses below sm) */}
+        {!cardsLoading &&
+          (paginatedCards.length > 0 ? (
+            <MobileCardList
+              cards={paginatedCards}
+              onRowClick={handleRowClick}
+              bulkSelection={bulkSelection}
+            />
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-500 sm:hidden">
+              {selectedTab === "needs_review"
+                ? "Nice work! No cards need review right now."
+                : selectedTab === "ready_to_export"
+                  ? "No cards ready to export yet."
+                  : selectedTab === "archived"
+                    ? "No archived cards."
+                    : "No AI processing failures."}
+            </div>
+          ))}
+
+        {/* Desktop table container */}
+        <div className="hidden overflow-hidden rounded-lg border border-gray-200 sm:block">
           <div className="relative w-full overflow-x-auto">
             <Table
               className={`min-w-full ${
