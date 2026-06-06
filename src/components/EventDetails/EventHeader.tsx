@@ -147,7 +147,7 @@ const EventHeader: React.FC<EventHeaderProps> = ({
       <div className="container max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
         <div className="relative mb-4 rounded-[18px] border border-status-exported-border bg-[linear-gradient(120deg,#EFF6FF,#F4F8FF)] p-5 sm:mb-6 sm:p-6">
           {/* Title + Export */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-row items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-gray-900 sm:text-2xl">
                 <span className="break-words">
@@ -184,7 +184,7 @@ const EventHeader: React.FC<EventHeaderProps> = ({
               <Button
                 onClick={handleReadyToExportClick}
                 disabled={getStatusCount("reviewed") === 0}
-                className="min-h-[44px] gap-2 self-start bg-blue-600 text-white hover:bg-blue-700"
+                className="min-h-[44px] shrink-0 gap-2 bg-blue-600 text-white hover:bg-blue-700"
                 aria-label="Go to cards ready to export"
               >
                 <Download className="h-4 w-4" />
