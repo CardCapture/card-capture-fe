@@ -84,39 +84,39 @@ export function ScanStatusCard({
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Ready to Export */}
             {userStats.ready_for_export > 0 && (
-              <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg flex-1">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <div className="flex items-center gap-2 p-2 bg-status-ready-soft rounded-lg flex-1">
+                <CheckCircle2 className="h-4 w-4 text-status-ready-solid" />
                 <div>
-                  <div className="text-sm font-medium text-green-900">
+                  <div className="text-sm font-medium text-status-ready-ink">
                     {userStats.ready_for_export}
                   </div>
-                  <div className="text-xs text-green-700">Ready</div>
+                  <div className="text-xs text-status-ready-ink">Ready</div>
                 </div>
               </div>
             )}
 
             {/* Needs Review */}
             {userStats.needs_review > 0 && (
-              <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded-lg flex-1">
-                <Clock className="h-4 w-4 text-yellow-600" />
+              <div className="flex items-center gap-2 p-2 bg-status-review-soft rounded-lg flex-1">
+                <Clock className="h-4 w-4 text-status-review-solid" />
                 <div>
-                  <div className="text-sm font-medium text-yellow-900">
+                  <div className="text-sm font-medium text-status-review-ink">
                     {userStats.needs_review}
                   </div>
-                  <div className="text-xs text-yellow-700">Review</div>
+                  <div className="text-xs text-status-review-ink">Review</div>
                 </div>
               </div>
             )}
 
             {/* Exported */}
             {userStats.exported > 0 && (
-              <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg flex-1">
-                <CheckCircle2 className="h-4 w-4 text-blue-600" />
+              <div className="flex items-center gap-2 p-2 bg-status-exported-soft rounded-lg flex-1">
+                <CheckCircle2 className="h-4 w-4 text-status-exported-solid" />
                 <div>
-                  <div className="text-sm font-medium text-blue-900">
+                  <div className="text-sm font-medium text-status-exported-ink">
                     {userStats.exported}
                   </div>
-                  <div className="text-xs text-blue-700">Exported</div>
+                  <div className="text-xs text-status-exported-ink">Exported</div>
                 </div>
               </div>
             )}

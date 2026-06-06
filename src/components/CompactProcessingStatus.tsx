@@ -111,7 +111,7 @@ export function CompactProcessingStatus({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Loader2 className={`h-4 w-4 ${showFailedState ? 'text-red-500' : 'text-blue-500'} ${showFailedState ? '' : 'animate-spin'}`} />
+            <Loader2 className={`h-4 w-4 ${showFailedState ? 'text-destructive' : 'text-status-exported-solid'} ${showFailedState ? '' : 'animate-spin'}`} />
           </div>
           <span className={`text-sm font-medium ${showFailedState ? 'text-red-700' : 'text-gray-700'}`}>
             {showFailedState ? 'Processing Failed' : 'Processing'}
@@ -185,10 +185,10 @@ export function CompactProcessingStatus({
 
       {/* Progress Bar */}
       <div className="mb-2">
-        <div className="w-full bg-gray-100 rounded-full h-1.5">
+        <div className="w-full bg-muted rounded-full h-1.5">
           <div
             className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
-              showFailedState ? 'bg-red-500' : 'bg-blue-500'
+              showFailedState ? 'bg-destructive' : 'bg-status-exported-solid'
             }`}
             style={{ width: showFailedState ? '100%' : `${progressPercentage}%` }}
           />
