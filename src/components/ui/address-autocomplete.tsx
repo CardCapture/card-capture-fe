@@ -417,7 +417,7 @@ export function AddressAutocomplete({
           autoCorrect="off"
           autoCapitalize="off"
           className={cn(
-            "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+            "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
             error && "border-red-500 focus-visible:ring-red-500",
             success && "border-green-500 focus-visible:ring-green-500 pr-10",
             className
@@ -425,18 +425,18 @@ export function AddressAutocomplete({
           {...props}
         />
         
-        {/* Icons */}
-        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-          {isLoading ? (
-            <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
-          ) : success ? (
-            <Check className="h-5 w-5 text-green-500" />
-          ) : error ? (
-            <AlertCircle className="h-5 w-5 text-red-500" />
-          ) : (
-            <MapPin className="h-5 w-5 text-gray-400" />
-          )}
-        </div>
+        {/* Status icons only (no idle map-pin — it read like a nested control) */}
+        {(isLoading || success || error) && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
+            ) : success ? (
+              <Check className="h-5 w-5 text-green-500" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-500" />
+            )}
+          </div>
+        )}
 
         {/* Portal-based Dropdown to escape overflow containers */}
         {showDropdown && predictions.length > 0 && typeof document !== 'undefined' && createPortal(

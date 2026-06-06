@@ -636,25 +636,16 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       data => data?.reviewed
     );
     
-    const isSignupSheet = selectedCardForReview?.upload_type === "signup_sheet";
-    const showRedIcon = hasAnyReviewNeeded && !hasAnyAddressReviewed && !isSignupSheet; // Hide red icons for signup sheets or reviewed addresses
-    
+    // The address group renders its own status note ("Edit Address to
+    // validate" / "Address verified") and its own Mark-reviewed control, so we
+    // don't add a redundant flag icon to the label here.
+    void hasAnyReviewNeeded;
+    void hasAnyAddressReviewed;
+
     return (
       <div key="address-group" className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 py-2 sm:py-1">
         {/* Label - Full width on mobile, fixed width on desktop */}
         <Label className="w-full sm:w-32 text-left sm:text-right text-xs sm:text-sm font-medium text-gray-600 flex items-center gap-1 sm:justify-end shrink-0 sm:pt-2">
-          {showRedIcon && (
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Flag className="h-3.5 w-3.5 flex-shrink-0 text-status-review-solid" />
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  <p>Address needs review</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
           Address:
         </Label>
 
@@ -797,8 +788,27 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
               
               const reviewNotes = fieldData?.review_notes || undefined;
               const isSignupSheet = selectedCardForReview?.upload_type === "signup_sheet";
-              const showRedIcon = needsReview && !isReviewed && !isSignupSheet; // Hide red icons for signup sheets
-              const showReviewCircle = needsReview || (actualFieldKey === 'high_school' && !isReviewed && !formData['ceeb_code']); // Show circle for high school when needs review
+              // A High School counts as verified (no review needed) once it has
+              // a CEEB code or its validation reads "verified" — regardless of
+              // whether the CEEB has been mirrored into formData yet.
+              const hsCeeb =
+                formData["ceeb_code"] ||
+                selectedCardForReview?.fields?.ceeb_code?.value ||
+                "";
+              const hsVerified =
+                actualFieldKey === "high_school" &&
+                ((
+                  selectedCardForReview?.fields?.high_school_validation as
+                    | { value?: string }
+                    | undefined
+                )?.value === "verified" ||
+                  !!hsCeeb);
+              const showRedIcon =
+                needsReview && !isReviewed && !isSignupSheet && !hsVerified; // Hide flag for signup sheets / verified HS
+              const showReviewCircle = hsVerified
+                ? false
+                : needsReview ||
+                  (actualFieldKey === "high_school" && !isReviewed && !hsCeeb);
               
               if (actualFieldKey === 'high_school') {
                 // Debug logging removed for production

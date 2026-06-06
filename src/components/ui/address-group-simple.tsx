@@ -182,9 +182,11 @@ export function AddressGroupSimple({
   // Check if address field needs review and show checkbox
   const addressNeedsReview = addressFieldData?.requires_human_review;
   const addressIsReviewed = addressFieldData?.reviewed;
-  // Show the single review control whenever the address needs review; it marks
-  // ALL address fields (street/city/state/zip) reviewed in one click.
-  const showReviewCheckbox = addressNeedsReview && onFieldReview;
+  // One review control for the whole address group (marks street/city/state/zip
+  // reviewed in a single click). Hidden once verified/reviewed so a verified
+  // address never shows both "Address verified" and "Mark reviewed".
+  const showReviewCheckbox =
+    addressNeedsReview && !addressIsReviewed && !wasVerifiedByGoogleMaps && onFieldReview;
 
   const handleAddressAutocomplete = (addressData: {
     street: string;

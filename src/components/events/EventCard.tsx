@@ -39,7 +39,13 @@ export function EventCard({
 }: EventCardProps) {
   const s = event.stats;
   const needsReview = s.needs_review || 0;
-  const total = s.total_cards || 0;
+  const ready = s.ready_for_export || 0;
+  const exported = s.exported || 0;
+  // Corner chip counts the active pipeline only (review + ready + exported) so
+  // it always matches the bar/legend. Archived (and any processing/failed)
+  // cards are a separate end-state the pipeline bar doesn't represent.
+  const pipelineTotal = needsReview + ready + exported;
+  const hasAnyCards = (s.total_cards || 0) > 0;
 
   const handleClick = () => {
     if (selectMode) onToggleSelect?.(event.id);
@@ -86,20 +92,14 @@ export function EventCard({
         </div>
         {!selectMode && (
           <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">
-            {total} {total === 1 ? "card" : "cards"}
+            {pipelineTotal} {pipelineTotal === 1 ? "card" : "cards"}
           </span>
         )}
       </div>
 
       {/* Pipeline bar + legend */}
       <div className="mt-4">
-        <PipelineBar
-          counts={{
-            review: needsReview,
-            ready: s.ready_for_export || 0,
-            exported: s.exported || 0,
-          }}
-        />
+        <PipelineBar counts={{ review: needsReview, ready, exported }} />
       </div>
 
       {/* Footer */}
@@ -111,7 +111,7 @@ export function EventCard({
               <span className="h-1.5 w-1.5 rounded-full bg-status-review-solid" />
               {needsReview} need review
             </span>
-          ) : total > 0 ? (
+          ) : hasAnyCards ? (
             <span className="inline-flex items-center gap-1.5 font-medium text-status-ready-ink">
               <CheckCircle2 className="h-4 w-4" /> All reviewed
             </span>

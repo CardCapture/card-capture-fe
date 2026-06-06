@@ -548,7 +548,7 @@ function EmptyState({
           className="mt-4 gap-2 bg-blue-600 text-white hover:bg-blue-700"
         >
           <PlusCircle className="h-4 w-4" />
-          Create your first event
+          Create event
         </Button>
       )}
     </div>
