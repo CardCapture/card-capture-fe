@@ -2,7 +2,13 @@ import React, { memo, useCallback, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ChevronRight, CalendarDays, Download, Pencil } from "lucide-react";
+import { ChevronRight, CalendarDays, Download, Pencil, ChevronDown, Upload } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { StatusPill } from "@/components/status/StatusPill";
 import { CompactProcessingStatus } from "@/components/CompactProcessingStatus";
 import { ProcessingService } from "@/services/processingService";
@@ -18,6 +24,12 @@ interface EventHeaderProps {
   onEditEvent: () => void;
   onRefreshCards?: () => void;
   processingRefreshRef?: React.MutableRefObject<((force?: boolean) => void) | null>;
+  /** number of currently selected rows — enables/disables the Export button */
+  selectedCount?: number;
+  /** show a CSV/Slate dropdown when the school has Slate configured */
+  hasSlateIntegration?: boolean;
+  onExportCSV?: () => void;
+  onExportSlate?: () => void;
 }
 
 const EventHeader: React.FC<EventHeaderProps> = ({
@@ -30,6 +42,10 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   onEditEvent,
   onRefreshCards,
   processingRefreshRef,
+  selectedCount = 0,
+  hasSlateIntegration = false,
+  onExportCSV,
+  onExportSlate,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -180,17 +196,42 @@ const EventHeader: React.FC<EventHeaderProps> = ({
                 </div>
               )}
             </div>
-            {selectedEvent && (
-              <Button
-                onClick={handleReadyToExportClick}
-                disabled={getStatusCount("reviewed") === 0}
-                className="min-h-[44px] shrink-0 gap-2 bg-blue-600 text-white hover:bg-blue-700"
-                aria-label="Go to cards ready to export"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-            )}
+            {selectedEvent &&
+              (hasSlateIntegration ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      disabled={selectedCount === 0}
+                      className="min-h-[44px] shrink-0 gap-2 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                      aria-label="Export selected cards"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => onExportCSV?.()}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Export to CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onExportSlate?.()}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Export to Slate
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  onClick={() => onExportCSV?.()}
+                  disabled={selectedCount === 0}
+                  className="min-h-[44px] shrink-0 gap-2 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  aria-label="Export selected cards to CSV"
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              ))}
           </div>
 
           {/* Status chips */}

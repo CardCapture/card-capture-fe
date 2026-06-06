@@ -82,6 +82,7 @@ import { FilterPillTabs, type FilterPillTab } from "@/components/status/FilterPi
 import { useEventName } from "@/hooks/useEventName";
 import { useCardReviewModal } from "@/hooks/useCardReviewModal";
 import { useCardTableActions } from "@/hooks/useCardTableActions";
+import { IntegrationsService } from "@/services/IntegrationsService";
 import { useManualEntryModal } from "@/hooks/useManualEntryModal";
 import { useCardUploadActions } from "@/hooks/useCardUploadActions";
 import { useZoom } from "@/hooks/useZoom";
@@ -448,6 +449,7 @@ const Dashboard = () => {
   // Now that filteredCards is defined, we can use it in useCardTableActions
   const {
     handleExportSelected,
+    handleExportToSlate,
     handleMoveSelected,
     handleArchiveSelected,
     handleDeleteSelected,
@@ -458,6 +460,46 @@ const Dashboard = () => {
     selectedEvent,
     dataFieldsMap
   );
+
+  // Whether this school has Slate (SFTP) export configured — drives the
+  // CSV-only button vs CSV/Slate dropdown on the header Export action.
+  const [hasSlateIntegration, setHasSlateIntegration] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const checkSlate = async () => {
+      if (!selectedEvent?.school_id) {
+        setHasSlateIntegration(false);
+        return;
+      }
+      try {
+        const sftp = await IntegrationsService.getSftpConfig(selectedEvent.school_id);
+        if (!cancelled) setHasSlateIntegration(!!(sftp && sftp.host && sftp.username));
+      } catch {
+        if (!cancelled) setHasSlateIntegration(false);
+      }
+    };
+    checkSlate();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEvent?.school_id]);
+
+  // Header Export actions operate on the currently selected rows.
+  const handleHeaderExportCSV = useCallback(() => {
+    if (bulkSelection.selectedCount === 0) {
+      toast.required("at least one card selection");
+      return;
+    }
+    handleExportSelected(bulkSelection.selectedIds);
+  }, [bulkSelection.selectedCount, bulkSelection.selectedIds, handleExportSelected]);
+
+  const handleHeaderExportSlate = useCallback(() => {
+    if (bulkSelection.selectedCount === 0) {
+      toast.required("at least one card selection");
+      return;
+    }
+    handleExportToSlate(bulkSelection.selectedIds);
+  }, [bulkSelection.selectedCount, bulkSelection.selectedIds, handleExportToSlate]);
 
   // --- Pagination Logic ---
   const totalCards = filteredCards.length;
@@ -635,8 +677,8 @@ const Dashboard = () => {
         id: "select",
         meta: {
           stickyClass: "sticky left-0",
-          cellClass: "px-0 sm:px-0 w-11 text-center",
-          headClass: "px-0 sm:px-0 w-11 text-center",
+          cellClass: "text-center",
+          headClass: "text-center",
         },
         header: ({ table }) => (
           <div className="flex justify-center">
@@ -670,7 +712,7 @@ const Dashboard = () => {
       {
         id: "student",
         header: "Student",
-        meta: { stickyClass: "sticky left-11 border-r border-border" },
+        meta: { stickyClass: "sticky left-12 border-r border-border" },
         cell: ({ row }) => <StudentCell card={row.original} />,
         enableSorting: false,
       },
@@ -1014,6 +1056,10 @@ const Dashboard = () => {
           onEditEvent={handleEditEvent}
           onRefreshCards={fetchCards}
           processingRefreshRef={processingRefreshRef}
+          selectedCount={bulkSelection.selectedCount}
+          hasSlateIntegration={hasSlateIntegration}
+          onExportCSV={handleHeaderExportCSV}
+          onExportSlate={handleHeaderExportSlate}
         />
 
         {/* Main Content - Mobile Responsive */}

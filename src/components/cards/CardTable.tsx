@@ -449,52 +449,7 @@ const CardTable: React.FC<CardTableProps> = ({
                   </>
                 ) : (
                   <>
-                    {/* Export button logic: single button if only CSV, dropdown if both */}
-                    {hasSlateIntegration ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={bulkActions.isLoading}
-                            className="text-gray-700 hover:text-gray-900 gap-1.5 flex-1 sm:flex-none min-h-[40px]"
-                          >
-                            {bulkActions.isLoading ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Download className="h-4 w-4" />
-                            )}
-                            Export
-                            <ChevronDown className="h-3 w-3 ml-1" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          <DropdownMenuItem onSelect={handleExportClick}>
-                            <Download className="w-4 h-4 mr-2" />
-                            <span>Export to CSV</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={handleExportToSlateClick}>
-                            <Upload className="w-4 h-4 mr-2" />
-                            <span>Export to Slate</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleExportClick}
-                        disabled={bulkActions.isLoading}
-                        className="text-gray-700 hover:text-gray-900 gap-1.5 flex-1 sm:flex-none min-h-[40px]"
-                      >
-                        {bulkActions.isLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4" />
-                        )}
-                        Export
-                      </Button>
-                    )}
+                    {/* Export lives on the header button; bulk bar keeps Archive */}
                     <Button
                       variant="ghost"
                       size="sm"
