@@ -69,12 +69,46 @@ export class CardService {
   }
 
   /**
-   * Get cards for a specific event (returns flat array for backward compat)
+   * Get cards for a specific event (returns flat array for backward compat).
+   *
+   * Fetches ALL cards for the event by paging through the API. Previously this
+   * relied on the backend's default page size (50), which meant events with
+   * more than 50 cards only ever loaded their first page. Because the table
+   * builds every status tab (needs review / ready / exported) by filtering this
+   * array client-side, any card outside the first page was invisible, e.g. a
+   * "Needs Review" tab showing empty while the summary counted 143.
    */
   static async getCardsByEvent(eventId: string): Promise<ProspectCard[]> {
     try {
-      const response = await cardsApi.getCardsByEvent(eventId);
-      return this.transformCardsData(response.cards);
+      // Matches the backend's max allowed limit (le=500 on GET /cards).
+      const PAGE_SIZE = 500;
+      // Dedupe by id: the backend returns in-progress processing_jobs on every
+      // page (they aren't range-paginated) while counting them in `total`, so a
+      // multi-page fetch would otherwise repeat those cards.
+      const byId = new Map<string, unknown>();
+      let offset = 0;
+      let total = Infinity;
+
+      while (offset < total) {
+        const response = await cardsApi.getCardsByEvent(eventId, {
+          limit: PAGE_SIZE,
+          offset,
+        });
+
+        for (const card of response.cards) {
+          const c = card as { document_id?: string; id?: string };
+          const key = c.document_id || c.id;
+          if (key) byId.set(key, card);
+        }
+
+        total = response.total ?? response.cards.length;
+        // Guard against a backend that ignores paging (returns everything at
+        // once or an empty page) so we never loop forever.
+        if (response.cards.length === 0) break;
+        offset += PAGE_SIZE;
+      }
+
+      return this.transformCardsData(Array.from(byId.values()));
     } catch (error) {
       logger.error("CardService: Failed to get cards by event", error);
       throw error;
