@@ -58,7 +58,6 @@ import {
   formatPhoneNumber,
   formatBirthday,
   formatDateOrTimeAgo,
-  escapeCsvValue,
   normalizeFieldValue,
   cn,
 } from "@/lib/utils";
@@ -82,6 +81,7 @@ import { FilterPillTabs, type FilterPillTab } from "@/components/status/FilterPi
 import { useEventName } from "@/hooks/useEventName";
 import { useCardReviewModal } from "@/hooks/useCardReviewModal";
 import { useCardTableActions } from "@/hooks/useCardTableActions";
+import { downloadCSV } from "@/utils/csvExport";
 import { IntegrationsService } from "@/services/IntegrationsService";
 import { useManualEntryModal } from "@/hooks/useManualEntryModal";
 import { useCardUploadActions } from "@/hooks/useCardUploadActions";
@@ -453,13 +453,7 @@ const Dashboard = () => {
     handleMoveSelected,
     handleArchiveSelected,
     handleDeleteSelected,
-  } = useCardTableActions(
-    filteredCards,
-    fetchCards,
-    oldToast,
-    selectedEvent,
-    dataFieldsMap
-  );
+  } = useCardTableActions(filteredCards, fetchCards, oldToast, selectedEvent);
 
   // Whether this school has Slate (SFTP) export configured — drives the
   // CSV-only button vs CSV/Slate dropdown on the header Export action.
@@ -485,13 +479,36 @@ const Dashboard = () => {
   }, [selectedEvent?.school_id]);
 
   // Header Export actions operate on the currently selected rows.
+  // Build and download the file first, then mark the cards exported server-side.
   const handleHeaderExportCSV = useCallback(() => {
     if (bulkSelection.selectedCount === 0) {
       toast.required("at least one card selection");
       return;
     }
+    // Guard against stale selection ids that no longer resolve to a row —
+    // marking cards exported without producing a file is the bug we just fixed.
+    if (bulkSelection.selectedCards.length === 0) {
+      toast.error("Selected cards could not be found. Refresh and try again.");
+      return;
+    }
+    downloadCSV(
+      bulkSelection.selectedCards,
+      `cards-export-${new Date().toISOString().split("T")[0]}.csv`,
+      selectedEvent?.name || "Unknown Event",
+      reviewFieldOrder,
+      dataFieldsMap,
+      selectedEvent?.slate_event_id
+    );
     handleExportSelected(bulkSelection.selectedIds);
-  }, [bulkSelection.selectedCount, bulkSelection.selectedIds, handleExportSelected]);
+  }, [
+    bulkSelection.selectedCount,
+    bulkSelection.selectedIds,
+    bulkSelection.selectedCards,
+    handleExportSelected,
+    selectedEvent,
+    reviewFieldOrder,
+    dataFieldsMap,
+  ]);
 
   const handleHeaderExportSlate = useCallback(() => {
     if (bulkSelection.selectedCount === 0) {

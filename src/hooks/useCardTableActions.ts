@@ -1,6 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import type { ProspectCard } from "@/types/card";
-import { standardizeState } from "@/utils/stateUtils";
 import { authFetch } from "@/lib/authFetch";
 import { logger } from '@/utils/logger';
 
@@ -12,8 +11,7 @@ export function useCardTableActions(
     description: string;
     variant?: "default" | "destructive";
   }) => void,
-  selectedEvent: { name: string; id: string; school_id: string; slate_event_id?: string | null } | null,
-  dataFieldsMap: Map<string, string>
+  selectedEvent: { name: string; id: string; school_id: string; slate_event_id?: string | null } | null
 ) {
   const handleArchiveSelected = useCallback(async (idsToArchive: string[]) => {
     try {
@@ -255,150 +253,6 @@ export function useCardTableActions(
     }
   }, [toast, fetchCards]);
 
-  const downloadCSV = useCallback(
-    async (selectedIds: string[], table) => {
-      try {
-        if (!selectedIds || selectedIds.length === 0) {
-          toast({
-            title: "No Cards Selected",
-            description: "Please select at least one card to export.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        logger.log('=== downloadCSV Debug ===');
-        logger.log('selectedIds:', selectedIds);
-        logger.log('filteredCards length:', filteredCards.length);
-        
-        toast({
-          title: "Exporting Cards",
-          description: "Processing your export request...",
-          variant: "default",
-        });
-        const apiBaseUrl =
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-        const response = await authFetch(`${apiBaseUrl}/mark-exported`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ document_ids: selectedIds }),
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error ||
-              `Failed to mark cards as exported (${response.status})`
-          );
-        }
-        
-        // Find the selected cards from filteredCards instead of table rows
-        const selectedCards = filteredCards.filter((card) => selectedIds.includes(card.id));
-        logger.log('selectedCards found:', selectedCards.length);
-        
-        // Helper function to split names
-        const splitName = (fullName: string): { firstName: string; lastName: string } => {
-          if (!fullName || typeof fullName !== 'string') {
-            return { firstName: '', lastName: '' };
-          }
-
-          const trimmedName = fullName.trim();
-          if (!trimmedName) {
-            return { firstName: '', lastName: '' };
-          }
-
-          const nameParts = trimmedName.split(/\s+/).filter(part => part.length > 0);
-          
-          if (nameParts.length === 0) {
-            return { firstName: '', lastName: '' };
-          } else if (nameParts.length === 1) {
-            return { firstName: nameParts[0], lastName: '' };
-          } else if (nameParts.length === 2) {
-            return { firstName: nameParts[0], lastName: nameParts[1] };
-          } else {
-            return { 
-              firstName: nameParts[0], 
-              lastName: nameParts.slice(1).join(' ') 
-            };
-          }
-        };
-
-        // Create modified field keys and headers that replace 'name' with 'first_name' and 'last_name'
-        const modifiedFieldKeys: string[] = [];
-        const modifiedHeaders: string[] = ["Event", "Slate Event ID"];
-        
-        Array.from(dataFieldsMap.keys()).forEach(key => {
-          if (key === 'name') {
-            modifiedFieldKeys.push('first_name', 'last_name');
-            modifiedHeaders.push('First Name', 'Last Name');
-          } else {
-            modifiedFieldKeys.push(key);
-            modifiedHeaders.push(dataFieldsMap.get(key) || key);
-          }
-        });
-
-        const headers = modifiedHeaders;
-        const csvContent = [
-          headers.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","),
-          ...selectedCards.map((card) => {
-            const eventName = String(selectedEvent?.name || "Unknown Event");
-            const fields = card.fields as Record<
-              string,
-              { value: string }
-            >;
-            return [
-              `"${eventName.replace(/"/g, '""')}"`,
-              `"${(selectedEvent?.slate_event_id || "").replace(/"/g, '""')}"`,
-              ...modifiedFieldKeys.map((key) => {
-                let value = "";
-                if (key === 'first_name' || key === 'last_name') {
-                  // Handle name splitting
-                  const fullName = String(fields?.['name']?.value ?? "");
-                  const { firstName, lastName } = splitName(fullName);
-                  value = key === 'first_name' ? firstName : lastName;
-                } else {
-                  value = String(fields?.[key]?.value ?? "");
-                  // Standardize state values for consistent CSV output
-                  if (key === 'state') {
-                    value = standardizeState(value);
-                  }
-                }
-                return `"${value.replace(/"/g, '""')}"`;
-              }),
-            ].join(",");
-          }),
-        ].join("\n");
-        const blob = new Blob([csvContent], {
-          type: "text/csv;charset=utf-8;",
-        });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `card_data_${
-          new Date().toISOString().split("T")[0]
-        }.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        await fetchCards();
-        toast({
-          title: "Export Successful",
-          description: `${selectedIds.length} ${
-            selectedIds.length === 1 ? "card" : "cards"
-          } exported successfully.`,
-          variant: "default",
-        });
-      } catch (error) {
-        let message =
-          "Something went wrong while exporting cards. Please try again.";
-        if (error instanceof Error) message = error.message;
-        toast({
-          title: "Export Failed",
-          description: message,
-          variant: "destructive",
-        });
-      }
-    },
-    [dataFieldsMap, toast, fetchCards, selectedEvent, filteredCards]
-  );
 
   return {
     handleArchiveSelected,
@@ -406,6 +260,5 @@ export function useCardTableActions(
     handleExportToSlate,
     handleDeleteSelected,
     handleMoveSelected,
-    downloadCSV,
   };
 }

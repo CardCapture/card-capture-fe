@@ -7,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { logger } from '@/utils/logger';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   Loader2,
-  Download,
   Archive,
   Trash2,
   CheckCircle,
@@ -45,12 +43,9 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { useBulkActions } from "@/hooks/useBulkActions";
-import { downloadCSV } from "@/utils/csvExport";
-import { useCardTableActions } from "@/hooks/useCardTableActions";
 import { useLoader, TableLoader } from "@/contexts/LoaderContext";
 import { CardService } from "@/services/CardService";
-import { useState, useEffect } from "react";
-import { IntegrationsService } from "@/services/IntegrationsService";
+import { useState } from "react";
 import type { SchoolData } from "@/api/supabase/schools";
 import { QRScannerModal } from "@/components/QRScannerModal";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -133,45 +128,11 @@ const CardTable: React.FC<CardTableProps> = ({
   // Use our new bulk actions hook
   const bulkActions = useBulkActions(fetchCards, bulkSelection.clearSelection);
 
-  // Use the card table actions hook for export functionality
-  const { handleExportToSlate } = useCardTableActions(
-    filteredCards,
-    fetchCards,
-    toast,
-    selectedEvent,
-    dataFieldsMap
-  );
-
   // Add retry functionality for AI failed cards
   const [isRetrying, setIsRetrying] = useState(false);
 
   // QR Scanner Modal state
   const [showQRScanner, setShowQRScanner] = useState(false);
-
-  // Check if school has Slate integration enabled
-  const [hasSlateIntegration, setHasSlateIntegration] = useState(false);
-  
-  // Check for SFTP/Slate integration on component mount
-  useEffect(() => {
-    const checkSlateIntegration = async () => {
-      if (!selectedEvent?.school_id) {
-        setHasSlateIntegration(false);
-        return;
-      }
-      
-      try {
-        const sftpConfig = await IntegrationsService.getSftpConfig(selectedEvent.school_id);
-        // Consider Slate configured if host and username are provided
-        const isConfigured = sftpConfig && sftpConfig.host && sftpConfig.username;
-        setHasSlateIntegration(!!isConfigured);
-      } catch (error) {
-        logger.log("No SFTP configuration found for school");
-        setHasSlateIntegration(false);
-      }
-    };
-    
-    checkSlateIntegration();
-  }, [selectedEvent?.school_id]);
 
   // Handle bulk AI retry
   const handleBulkRetryAI = async () => {
@@ -230,46 +191,8 @@ const CardTable: React.FC<CardTableProps> = ({
     }
   };
 
-  // Handle CSV export
-  const handleExportClick = () => {
-    if (bulkSelection.selectedCount === 0) {
-      toast({
-        title: "No Cards Selected",
-        description: "Please select at least one card to export.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    logger.log(`📊 Exporting ${bulkSelection.selectedCount} cards to CSV`);
-    const eventName = selectedEvent?.name || "Unknown Event";
-    downloadCSV(
-      bulkSelection.selectedCards,
-      `cards-export-${new Date().toISOString().split("T")[0]}.csv`,
-      eventName,
-      reviewFieldOrder, // Pass the dynamic field order
-      dataFieldsMap, // Pass the field labels mapping
-      selectedEvent?.slate_event_id // Pass the Slate Event ID
-    );
-
-    // Mark as exported via API
-    bulkActions.exportCards(bulkSelection.selectedIds);
-  };
-
-  // Handle Slate export
-  const handleExportToSlateClick = () => {
-    if (bulkSelection.selectedCount === 0) {
-      toast({
-        title: "No Cards Selected",
-        description: "Please select at least one card to export.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    logger.log(`🎯 Exporting ${bulkSelection.selectedCount} cards to Slate`);
-    handleExportToSlate(bulkSelection.selectedIds);
-  };
+  // CSV and Slate export live on the event header (see EventDetails), which
+  // owns the selection-aware Export button.
 
   return (
     <div className="w-full">
