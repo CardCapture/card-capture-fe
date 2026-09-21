@@ -36,6 +36,17 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
   }
 }
 
+/**
+ * Combined name fields that were later split into first/last. Cards scanned
+ * before the split only carry the combined value, so the split columns are
+ * filled from it at export time rather than exported blank. Stored card data is
+ * left alone; this is a read-time fallback only.
+ */
+const SPLIT_NAME_FALLBACKS: Record<string, { source: string; part: 'firstName' | 'lastName' }> = {
+  parent_guardian_first_name: { source: 'parent_guardian_name', part: 'firstName' },
+  parent_guardian_last_name: { source: 'parent_guardian_name', part: 'lastName' },
+};
+
 export function downloadCSV(
   cards: ProspectCard[], 
   filename: string = "cards-export.csv",
@@ -238,6 +249,27 @@ export function downloadCSV(
       return "";
     }
     
+    // Split name fields: prefer the split value, fall back to splitting the
+    // combined field that older cards still carry.
+    const splitFallback = SPLIT_NAME_FALLBACKS[fieldName];
+    if (splitFallback) {
+      const readValue = (key: string): string => {
+        const data = card.fields?.[key];
+        if (typeof data === "string") return data;
+        if (typeof data === "object" && data?.value !== undefined) {
+          return String(data.value || "");
+        }
+        return "";
+      };
+
+      const direct = readValue(fieldName);
+      if (direct) {
+        return direct;
+      }
+
+      return splitName(readValue(splitFallback.source))[splitFallback.part];
+    }
+
     // Handle other fields with robust data extraction
     const fieldData = card.fields?.[fieldName];
     if (!fieldData) {
