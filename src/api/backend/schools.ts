@@ -66,6 +66,29 @@ export const backendSchoolsApi = {
   },
 
   /**
+   * Update the majors list for a school.
+   *
+   * Goes through the backend for the same reason as updateCardFields: a direct
+   * Supabase write is rejected by RLS and reports success anyway.
+   */
+  async updateMajors(schoolId: string, majors: string[]): Promise<{ majors: string[] }> {
+    const response = await authFetch(`${API_BASE_URL}/schools/${schoolId}/majors`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ majors }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        error.error || `Failed to update majors (${response.status})`
+      );
+    }
+
+    return response.json();
+  },
+
+  /**
    * Accept a discovered field suggestion: promotes it into card_fields and
    * removes it from suggested_card_fields. Returns the updated lists.
    */

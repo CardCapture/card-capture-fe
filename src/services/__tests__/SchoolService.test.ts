@@ -6,12 +6,7 @@ import { schoolsApi } from '@/api/supabase/schools';
 vi.mock('@/api/backend/schools', () => ({
   backendSchoolsApi: {
     updateCardFields: vi.fn().mockResolvedValue({ card_fields: [] }),
-  },
-}));
-
-vi.mock('@/api/supabase/schools', () => ({
-  schoolsApi: {
-    updateCardFields: vi.fn(),
+    updateMajors: vi.fn().mockResolvedValue({ majors: [] }),
   },
 }));
 
@@ -27,11 +22,17 @@ describe('SchoolService.updateCardFields', () => {
 
   // Writing card_fields straight to Supabase is silently rejected by RLS, which
   // is what made "Visible" toggles in Settings appear to save without saving.
-  it('saves through the backend, never directly to Supabase', async () => {
+  it('saves through the backend', async () => {
     await SchoolService.updateCardFields('school-1', fields);
 
     expect(backendSchoolsApi.updateCardFields).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(schoolsApi.updateCardFields)).not.toHaveBeenCalled();
+  });
+
+  // RLS on `schools` rejects these writes and reports success anyway, so a
+  // direct Supabase writer here is a save that lies. Keep them off the client.
+  it('leaves no direct Supabase writer for school settings', () => {
+    expect(schoolsApi).not.toHaveProperty('updateCardFields');
+    expect(schoolsApi).not.toHaveProperty('updateMajors');
   });
 
   it('maps the UI "visible" flag onto the stored "enabled" flag', async () => {
@@ -102,6 +103,31 @@ describe('SchoolService.updateCardFields', () => {
 
     await expect(SchoolService.updateCardFields('school-1', fields)).rejects.toThrow(
       'Access denied'
+    );
+  });
+});
+
+describe('SchoolService.updateMajors', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('saves through the backend, trimming blanks', async () => {
+    await SchoolService.updateMajors('school-1', ['  Nursing  ', '', 'Biology']);
+
+    expect(backendSchoolsApi.updateMajors).toHaveBeenCalledWith('school-1', [
+      'Nursing',
+      'Biology',
+    ]);
+  });
+
+  it('propagates a failed save', async () => {
+    vi.mocked(backendSchoolsApi.updateMajors).mockRejectedValueOnce(
+      new Error('Failed to update majors (500)')
+    );
+
+    await expect(SchoolService.updateMajors('school-1', ['Nursing'])).rejects.toThrow(
+      'Failed to update majors'
     );
   });
 });

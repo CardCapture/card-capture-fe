@@ -134,7 +134,7 @@ export class SchoolService {
         .map((major) => major.trim())
         .filter((major) => major.length > 0);
 
-      await schoolsApi.updateMajors(schoolId, cleanMajors);
+      await backendSchoolsApi.updateMajors(schoolId, cleanMajors);
     } catch (error) {
       logger.error("SchoolService: Failed to update majors", error);
       throw error;
