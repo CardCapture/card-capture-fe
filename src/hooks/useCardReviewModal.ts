@@ -298,7 +298,19 @@ export function useCardReviewModal(
           ];
         })
       );
-      const allRequiredReviewed = Object.values(updatedFields).filter(f => f.requires_human_review).length === 0;
+      // Only fields the reviewer can actually see can hold a card back. A field
+      // the school has turned off in Settings is not rendered, so counting it
+      // here would leave the card permanently stuck in "needs review" with
+      // nothing on screen to act on. reviewFieldOrder is the visible set; if it
+      // is somehow empty, fall back to counting everything rather than marking
+      // an unreviewed card as done.
+      const visibleFields: string[] = reviewFieldOrder ?? [];
+      const isReviewable = (key: string) =>
+        visibleFields.length === 0 || visibleFields.includes(key);
+
+      const allRequiredReviewed = Object.entries(updatedFields).filter(
+        ([key, f]) => f.requires_human_review && isReviewable(key)
+      ).length === 0;
 
       // Get auth token for API call
       const { data: { session } } = await supabase.auth.getSession();
