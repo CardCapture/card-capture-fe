@@ -92,7 +92,7 @@ export class SchoolService {
         placeholder: field.placeholder !== this.generateDefaultPlaceholder(field.key) ? field.placeholder : undefined,
       }));
 
-      await schoolsApi.updateCardFields(schoolId, cardFields);
+      await backendSchoolsApi.updateCardFields(schoolId, cardFields);
     } catch (error) {
       logger.error("SchoolService: Failed to update card fields", error);
       throw error;

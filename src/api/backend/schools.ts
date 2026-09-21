@@ -34,6 +34,38 @@ export const backendSchoolsApi = {
   },
 
   /**
+   * Update the card fields configuration for a school.
+   *
+   * This must go through the backend rather than writing to Supabase directly:
+   * RLS on `schools` only permits UPDATE for users without a school_id, so a
+   * direct write from a school admin is rejected and PostgREST reports success
+   * with zero rows changed. The backend uses the service role and checks that
+   * the caller belongs to the school it is updating.
+   */
+  async updateCardFields(
+    schoolId: string,
+    cardFields: SchoolData["card_fields"]
+  ): Promise<{ card_fields: SchoolData["card_fields"] }> {
+    const response = await authFetch(
+      `${API_BASE_URL}/schools/${schoolId}/card-fields`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ card_fields: cardFields }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        error.error || `Failed to update card fields (${response.status})`
+      );
+    }
+
+    return response.json();
+  },
+
+  /**
    * Accept a discovered field suggestion: promotes it into card_fields and
    * removes it from suggested_card_fields. Returns the updated lists.
    */

@@ -118,24 +118,13 @@ export const schoolsApi = {
   },
 
   /**
-   * Update card fields configuration
-   */
-  async updateCardFields(
-    schoolId: string,
-    cardFields: SchoolData["card_fields"]
-  ): Promise<void> {
-    const { error } = await supabase
-      .from("schools")
-      .update({ card_fields: cardFields })
-      .eq("id", schoolId);
-
-    if (error) {
-      throw new Error(`Failed to update card fields: ${error.message}`);
-    }
-  },
-
-  /**
    * Update majors list
+   *
+   * NOTE: RLS on `schools` only permits UPDATE for users without a school_id,
+   * so this silently does nothing for a school admin: PostgREST returns success
+   * with zero rows changed and `error` stays null. Card fields now go through
+   * the backend for this reason (see backendSchoolsApi.updateCardFields); this
+   * one still needs a backend endpoint of its own.
    */
   async updateMajors(schoolId: string, majors: string[]): Promise<void> {
     const { error } = await supabase
