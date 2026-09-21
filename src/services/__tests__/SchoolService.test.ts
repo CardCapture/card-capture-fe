@@ -10,6 +10,13 @@ vi.mock('@/api/backend/schools', () => ({
   },
 }));
 
+// `@/api/supabase/schools` is imported for real so the "no direct writer" test
+// inspects the actual module. Its supabase client throws at import time when
+// VITE_SUPABASE_* are unset, which is the case in CI, so stub the client.
+vi.mock('@/lib/supabaseClient', () => ({
+  supabase: { from: vi.fn(), auth: { getSession: vi.fn() } },
+}));
+
 const fields: CardField[] = [
   { key: 'first_name', label: 'First Name', visible: true, required: false },
   { key: 'rank', label: 'Rank', visible: false, required: false },
