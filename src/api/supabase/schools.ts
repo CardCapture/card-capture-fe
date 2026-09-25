@@ -17,6 +17,8 @@ export interface SchoolData {
         label?: string;
         options?: string[];
         placeholder?: string;
+        card_label?: string;
+        extract?: boolean;
       }>
     | Record<string, { 
         enabled: boolean; 
@@ -25,19 +27,10 @@ export interface SchoolData {
         label?: string;
         options?: string[];
         placeholder?: string;
+        card_label?: string;
+        extract?: boolean;
       }>;
   majors?: string[];
-  // Fields discovered by the vision-only extraction path that are not yet in
-  // card_fields. Surfaced as accept/dismiss suggestions in settings and review.
-  suggested_card_fields?: SuggestedCardField[];
-}
-
-export interface SuggestedCardField {
-  key: string;
-  label?: string;
-  field_type?: 'text' | 'select' | 'checkbox' | 'email' | 'phone' | 'date';
-  sample_value?: string;
-  options?: string[];
 }
 
 export const schoolsApi = {

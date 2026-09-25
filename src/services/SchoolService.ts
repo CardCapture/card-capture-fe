@@ -14,6 +14,10 @@ export interface CardField {
   field_type?: 'text' | 'select' | 'checkbox' | 'email' | 'phone' | 'date';
   options?: string[];
   placeholder?: string;
+  // Text printed on the card for this field, passed to extraction as a hint
+  card_label?: string;
+  // false = review-only field (not on the card), never sent to extraction
+  extract?: boolean;
 }
 
 export class SchoolService {
@@ -90,36 +94,13 @@ export class SchoolService {
         label: field.label !== this.generateDefaultLabel(field.key) ? field.label : undefined, // Only store if different from default
         options: field.options && field.options.length > 0 ? field.options : undefined,
         placeholder: field.placeholder !== this.generateDefaultPlaceholder(field.key) ? field.placeholder : undefined,
+        card_label: field.card_label || undefined,
+        extract: field.extract === false ? false : undefined,
       }));
 
       await backendSchoolsApi.updateCardFields(schoolId, cardFields);
     } catch (error) {
       logger.error("SchoolService: Failed to update card fields", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Accept a discovered field suggestion (promote into card_fields).
-   * Returns the updated card_fields and suggested_card_fields.
-   */
-  static async acceptSuggestedField(schoolId: string, key: string) {
-    try {
-      return await backendSchoolsApi.acceptSuggestedField(schoolId, key);
-    } catch (error) {
-      logger.error("SchoolService: Failed to accept suggested field", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Dismiss a discovered field suggestion (remove from suggested_card_fields).
-   */
-  static async dismissSuggestedField(schoolId: string, key: string) {
-    try {
-      return await backendSchoolsApi.dismissSuggestedField(schoolId, key);
-    } catch (error) {
-      logger.error("SchoolService: Failed to dismiss suggested field", error);
       throw error;
     }
   }
@@ -171,6 +152,8 @@ export class SchoolService {
         field_type: field.field_type || this.inferFieldType(field.key),
         options: field.options || [],
         placeholder: field.placeholder || this.generateDefaultPlaceholder(field.key),
+        card_label: field.card_label,
+        extract: field.extract,
       }));
     } else if (typeof cardFields === "object") {
       return Object.entries(cardFields).map(([key, config]) => ({
@@ -181,6 +164,8 @@ export class SchoolService {
         field_type: config.field_type || this.inferFieldType(key),
         options: config.options || [],
         placeholder: config.placeholder || this.generateDefaultPlaceholder(key),
+        card_label: config.card_label,
+        extract: config.extract,
       }));
     }
 
