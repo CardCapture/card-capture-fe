@@ -1,5 +1,5 @@
 // src/pages/LoginPage.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDefaultRedirectPath } from "@/utils/roleRedirect";
@@ -24,6 +24,9 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showMFAFlow, setShowMFAFlow] = useState(false);
+  // Auto-start MFA only once per redirect; otherwise an MFA error hides the
+  // flow and this effect immediately restarts it, looping forever.
+  const autoMfaStartedRef = useRef(false);
   const { signInWithPassword, profile, user, refetchProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,8 +41,9 @@ const LoginPage = () => {
 
   // If ProtectedRoute redirected here because MFA is needed, auto-trigger MFA flow
   useEffect(() => {
-    if (requiresMfaRedirect && user && !showMFAFlow) {
+    if (requiresMfaRedirect && user && !showMFAFlow && !autoMfaStartedRef.current) {
       logger.log('User redirected for MFA verification, starting MFA flow');
+      autoMfaStartedRef.current = true;
       setShowMFAFlow(true);
     }
   }, [requiresMfaRedirect, user, showMFAFlow]);

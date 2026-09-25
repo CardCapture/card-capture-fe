@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import MFAEnrollmentModal from './MFAEnrollmentModal';
@@ -39,7 +39,13 @@ const MFAGuard: React.FC<MFAGuardProps> = ({ onError, onSuccess }) => {
   // Maximum retry attempts before forcing logout
   const MAX_ATTEMPTS = 3;
 
+  // StrictMode runs mount effects twice in dev; without this guard two SMS
+  // challenges are requested at once and the second one fails.
+  const flowStartedRef = useRef(false);
+
   useEffect(() => {
+    if (flowStartedRef.current) return;
+    flowStartedRef.current = true;
     logger.log('[MFAGuard] Starting MFA flow');
     startMFAFlow();
   }, []);
