@@ -30,6 +30,7 @@ const AcceptInvitePage = () => {
   const [isFromMagicLink, setIsFromMagicLink] = useState(false);
   const [magicLinkMetadata, setMagicLinkMetadata] = useState<{
     school_id?: string;
+    school_name?: string;
     role?: string[];
     email?: string;
   } | null>(null);
@@ -228,10 +229,20 @@ const AcceptInvitePage = () => {
   // Fetch school information if school_id is provided
   useEffect(() => {
     const fetchSchoolInfo = async () => {
+      // Invites include the school name, since the invitee has no session yet
+      if (magicLinkMetadata?.school_name) {
+        setSchoolInfo({ name: magicLinkMetadata.school_name });
+        return;
+      }
+
       // Get school_id from URL params or magic link metadata
       const currentSchoolId = schoolId || magicLinkMetadata?.school_id;
 
-      if (currentSchoolId) {
+      // The school endpoint requires auth, and authFetch redirects to /login
+      // on a 401, which would bounce a signed-out invitee off this page.
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (currentSchoolId && session) {
         try {
           const schoolData = await SchoolService.getSchoolData(currentSchoolId);
           setSchoolInfo({ name: schoolData.name });
@@ -242,7 +253,7 @@ const AcceptInvitePage = () => {
     };
 
     fetchSchoolInfo();
-  }, [schoolId, magicLinkMetadata?.school_id]);
+  }, [schoolId, magicLinkMetadata?.school_id, magicLinkMetadata?.school_name]);
 
   const passwordRequirements = [
     {
@@ -353,8 +364,10 @@ const AcceptInvitePage = () => {
       // If we have a school_id (from URL params or magic link metadata), assign the user to the school
       const currentSchoolId = schoolId || magicLinkMetadata?.school_id;
       const userRole = magicLinkMetadata?.role || ["admin"]; // Default to admin if not specified
-      
-      if (currentSchoolId) {
+
+      // Magic link invites: the backend already set school and the full role
+      // list when creating the account, so only the legacy flow needs this.
+      if (currentSchoolId && !isFromMagicLink) {
         try {
           // Get the current user ID from the session
           const {
