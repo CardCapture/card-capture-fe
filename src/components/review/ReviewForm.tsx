@@ -417,6 +417,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           state={state}
           city={formData.city || selectedCardForReview?.fields?.city?.value || ''}
           isInModal={isModalOpen}
+          isSignupSheet={selectedCardForReview?.upload_type === "signup_sheet"}
           onChange={(newValue, newCeebCode, newSchoolData) => {
             handleFormChange(actualFieldKey, newValue);
             

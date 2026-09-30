@@ -30,6 +30,7 @@ interface HighSchoolSearchProps {
   isEnhancedValidation?: boolean;
   isInModal?: boolean; // Add prop to handle modal-specific behavior
   isReviewed?: boolean; // Add prop to track if field is reviewed
+  isSignupSheet?: boolean; // Sign-up rows rarely have a reliable state
 }
 
 export function HighSchoolSearch({
@@ -49,6 +50,7 @@ export function HighSchoolSearch({
   isEnhancedValidation = false,
   isInModal = false,
   isReviewed = false,
+  isSignupSheet = false,
 }: HighSchoolSearchProps) {
   const [inputValue, setInputValue] = useState(value);
   const [searchResults, setSearchResults] = useState<HighSchool[]>(suggestions);
@@ -269,7 +271,8 @@ export function HighSchoolSearch({
       const response = await HighSchoolService.searchHighSchools(
         searchQuery,
         15,
-        state
+        state,
+        isSignupSheet
       );
       
       // Combine API results with suggestions if they exist
@@ -307,7 +310,7 @@ export function HighSchoolSearch({
       setIsSearching(false);
       setIsSearchPending(false);
     }
-  }, [state, suggestions]);
+  }, [state, suggestions, isSignupSheet]);
 
   // Handle input change with debouncing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

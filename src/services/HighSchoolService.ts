@@ -28,7 +28,8 @@ export class HighSchoolService {
   static async searchHighSchools(
     query: string,
     limit: number = 10,
-    state?: string
+    state?: string,
+    signup: boolean = false
   ): Promise<HighSchoolSearchResponse> {
     try {
       const params = new URLSearchParams({
@@ -38,6 +39,11 @@ export class HighSchoolService {
       
       if (state) {
         params.append("state", state);
+      }
+
+      // Sign-up sheet rows: backend prefers the school's region, then nationwide
+      if (signup) {
+        params.append("signup", "true");
       }
 
       const response = await authFetch(
