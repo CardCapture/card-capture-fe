@@ -18,6 +18,8 @@ export interface CardField {
   card_label?: string;
   // false = review-only field (not on the card), never sent to extraction
   extract?: boolean;
+  // Value filled in when a card leaves this field blank
+  default?: string;
 }
 
 export class SchoolService {
@@ -96,6 +98,7 @@ export class SchoolService {
         placeholder: field.placeholder !== this.generateDefaultPlaceholder(field.key) ? field.placeholder : undefined,
         card_label: field.card_label || undefined,
         extract: field.extract === false ? false : undefined,
+        default: field.default || undefined,
       }));
 
       await backendSchoolsApi.updateCardFields(schoolId, cardFields);
@@ -154,6 +157,7 @@ export class SchoolService {
         placeholder: field.placeholder || this.generateDefaultPlaceholder(field.key),
         card_label: field.card_label,
         extract: field.extract,
+        default: field.default,
       }));
     } else if (typeof cardFields === "object") {
       return Object.entries(cardFields).map(([key, config]) => ({
@@ -166,6 +170,7 @@ export class SchoolService {
         placeholder: config.placeholder || this.generateDefaultPlaceholder(key),
         card_label: config.card_label,
         extract: config.extract,
+        default: config.default,
       }));
     }
 

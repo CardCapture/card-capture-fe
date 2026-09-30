@@ -19,6 +19,7 @@ export interface SchoolData {
         placeholder?: string;
         card_label?: string;
         extract?: boolean;
+        default?: string;
       }>
     | Record<string, { 
         enabled: boolean; 
@@ -29,6 +30,7 @@ export interface SchoolData {
         placeholder?: string;
         card_label?: string;
         extract?: boolean;
+        default?: string;
       }>;
   majors?: string[];
 }
